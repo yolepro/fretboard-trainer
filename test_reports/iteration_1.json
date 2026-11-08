@@ -1,0 +1,41 @@
+{
+  "summary": "Frontend-only Playwright testing of FretStudio (Expo web, 390x844 portrait + 844x390 landscape). All requested flows pass: tabs, 150 note testIDs (s0 top = high e, s5 bottom = low E), note tap info (s5-f3 => G2, 98.0 Hz), all fret markers (3,5,7,9,15,17,19,21,12-a/b,24-a/b), strict degree colors verified (root #EF4444, 3rd #3B82F6, 5th #10B981, 7th #F59E0B, 13th #06B6D4, neutral grey), mode/root/octave/formula chips update fretboard-title, layer toggles hide/show (65->52->65 notes), octave filter, label-mode degree/note, toggle-neutral. NEW scale picker works (12 scales grouped, 20 chords, root chips, item select closes sheet and updates title, close button + backdrop close). NEW landscape works: control panel hidden, fret-number-16 fully visible (right edge 821px < 844), compact header with picker/play buttons, rotating back restores panel and state. Ear: 3 quiz modes, reveal/skip, counters, mic toggle starts/stops with no crash, denied-permission path shows mic-blocked-card + retry. Settings: 3 switches, notation latin (C->Do, Réb), flats (Solb), A4 +/- (441 Hz reflected in Hz on fretboard), reset-best feedback, settings persist after reload. Found and fixed one layout bug (ChipRow collapsing to ~10px height in landscape). Remaining: wrong string-number label, mic not stopped when leaving Ear tab, deprecated expo-router/unstable-native-tabs import, portrait title truncation.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Note info bar (string number)", "issue": "String numbering inverted: tapping low E string (note-s5-f3) shows 'Corde 1', high e (note-s0-f0) shows 'Corde 6'. The standard convention (FR/EN) is corde 1 = high e, corde 6 = low E. Reference: /app/frontend/app/(tabs)/index.tsx:123 uses `6 - active.string`; it should be `active.string + 1`.", "testID": "note-info-bar", "priority": "HIGH"},
+      {"component": "ChipRow in landscape (FIXED by testing agent)", "issue": "Horizontal ScrollView ChipRow collapsed to ~10px height in landscape (picker-root-selector in ScalePicker, quiz-mode-selector on Ear), so chips looked squashed and overlapping. Root cause: RN-web ScrollView defaults to flexShrink:1. Fixed by adding flexShrink:0 to styles.row in /app/frontend/src/components/Chip.tsx:57. Now 52px, verified in both orientations, landscape fretboard still fits.", "testID": "picker-root-selector", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Ear mic lifecycle", "issue": "The mic keeps listening after leaving the Ear tab (tabs stay mounted and nothing stops it on blur/useFocusEffect). Coming back still shows 'Arrêter l’écoute'. This is a privacy and battery issue, and the detector keeps running while the user plays notes on the Manche tab. Reference: /app/frontend/app/(tabs)/ear.tsx:183 (usePitchDetector(listening,...)).", "affected_testIDs": ["mic-toggle-button"]}
+    ],
+    "design_issues": [
+      {"screen": "Fretboard portrait 390px", "issues": ["fretboard-title gets cut off with long names (e.g. 'A Pentatoniq…', 'Mineure mélodique') because the Gamme and Écouter buttons take the width. Consider moving the formula name to a second line or shrinking the buttons."]},
+      {"screen": "Fretboard", "issues": ["Note touch targets are 34px tall (portrait) and about 41x34 (landscape), under the 44pt guideline. This is probably acceptable for a dense fretboard, but hitSlop is only 2."]},
+      {"screen": "Scale picker", "issues": ["Tapping picker-mode-chord/scale switches the fretboard mode right away (title becomes 'Gmaj7') before any item is chosen. If the user then closes the sheet, the mode has still changed."]},
+      {"screen": "Ear - Degrés d'accord", "issues": ["Prompt wording uses extension names for simple degrees, e.g. 'Joue la treizième (6) de D6' and 'Joue la onzième (4) de Asus4'. Musically it should be 'sixte'/'quarte' for 6/4 (and 'la onzième' should be 'l’onzième')."]}
+    ],
+    "react_native_issues": [
+      {"component": "expo-router/unstable-native-tabs", "issue": "Deprecated import, runtime warning: '`expo-router/unstable-native-tabs` is deprecated. Use `expo-router/native-tabs` instead.' Reference: /app/frontend/app/(tabs)/_layout.tsx:2"}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "Fix the string number in the note info bar: use `Corde {active.string + 1}` (index.tsx:123).",
+    "Stop the mic when the Ear tab loses focus (useFocusEffect from expo-router -> setListening(false) on blur).",
+    "Migrate `import { NativeTabs } from 'expo-router/unstable-native-tabs'` to 'expo-router/native-tabs' in app/(tabs)/_layout.tsx.",
+    "Optional: stop the portrait fretboard-title from being cut off; delay the picker mode change until an item is selected; fix the degree quiz wording (sixte/quarte/seconde)."
+  ],
+  "critical_code_review_comments": [
+    "ear.tsx is 493 lines; consider splitting the tuner dial and quiz card into components.",
+    "onFrame calls setDetected every 70ms, which re-renders the whole Ear screen about 14 times per second; consider throttling or isolating the dial component.",
+    "Score/streak/best increments rely on real mic input and could not be verified headless; reset-best was only checked with best=0."
+  ],
+  "updated_files": ["/app/frontend/src/components/Chip.tsx (added flexShrink:0 to ChipRow style)"],
+  "success_rate": {"backend": "N/A (no backend)", "frontend": "95% (all requested flows functional; 1 label bug, 1 mic lifecycle issue)"},
+  "seed_data_creation": "None. Settings changed during the test were restored to defaults (English, sharps, A4 440, sound on, strict octave off, neutral on).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Frontend-only app, settings stored locally (persist across reload). Fretboard testIDs: note-s{0-5}-f{0-24}, fret-number-{n}. Landscape check: viewport 844x390, fret-number-16 should end before x=844. Mic in headless Chromium uses a fake device; override getUserMedia via add_init_script to test the denied path.",
+  "rca_of_issue": "ChipRow collapse: RN-web ScrollView has flexShrink:1, so with a constrained height (landscape Modal or Ear screen) the 52px row shrank to fit. Fixed with flexShrink:0."
+}

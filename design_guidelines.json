@@ -1,0 +1,152 @@
+{
+  "app_name": "FretStudio (Interactive Guitar Training)",
+  "personality": "7 Dark-First Utility with 6 Glass / Luxe surfaces",
+  "personality_one_liner": "A professional, highly legible dark-mode studio tool focusing on operational precision, vivid functional color-coding, and premium glassmorphic depth.",
+  "color": {
+    "surface": "#101114",
+    "onSurface": "#F4F4F5",
+    "surfaceSecondary": "#1C1E24",
+    "onSurfaceSecondary": "#E4E4E7",
+    "surfaceTertiary": "#272A31",
+    "onSurfaceTertiary": "#D4D4D8",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#101114",
+    "brand": "#F59E0B",
+    "brandPrimary": "#F59E0B",
+    "onBrandPrimary": "#101114",
+    "brandSecondary": "#3B82F6",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#2A2015",
+    "onBrandTertiary": "#FDE68A",
+    "success": "#10B981",
+    "onSuccess": "#022C22",
+    "warning": "#F59E0B",
+    "onWarning": "#451A03",
+    "error": "#EF4444",
+    "onError": "#450A0A",
+    "info": "#06B6D4",
+    "onInfo": "#083344",
+    "border": "#272A31",
+    "borderStrong": "#3F4350",
+    "divider": "#1C1E24",
+    "muted": "#71717A",
+    "onBrand": "#101114",
+    "degreeRoot": "#EF4444",
+    "degree3rd": "#3B82F6",
+    "degree5th": "#10B981",
+    "degree7th": "#F59E0B",
+    "degree9th": "#8B5CF6",
+    "degree11th": "#EC4899",
+    "degree13th": "#06B6D4",
+    "degreeNeutral": "#52525B",
+    "fretboardWood": "#1A1715",
+    "fretWire": "#52525B",
+    "fretMarker": "#E5E7EB"
+  },
+  "typography": {
+    "displayFontFamily": "Space Grotesk",
+    "textFontFamily": "DM Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Use precise, tighter spacing for operational panels (sm/md) and generous padding (xl) for the ear training focus areas. Keep the fretboard maximized.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use heavy glassmorphism for floating control panels (Tonality/Scale selectors) over the dark studio background.",
+      "Use glass for the bottom tab bar to maintain the premium cinematic feel.",
+      "Ensure text on glass surfaces has very high contrast (minimum 75% dark tint behind the glass on dark mode)."
+    ],
+    "dont's": [
+      "Never apply glass to the fretboard itself or the individual note nodes; they must be solid and highly visible.",
+      "Do not use light frosted glass; use deep dark glass (surface/surfaceSecondary tint)."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Fretboard",
+      "purpose": "Interactive horizontal 24-fret guitar neck with scale/chord visualizer.",
+      "states": {
+        "loading": "Dark studio background with a glowing amber tube-amp style spinner.",
+        "empty": "No scale selected state - Fretboard visible with neutral gray notes.",
+        "error": "Error loading audio samples - 'Retry' button with amber accent."
+      },
+      "layout": "Top half (or full screen background): Ambient dark studio image layered with heavy vertical dark scrim (Layer 0). Center-Top: Horizontal ScrollView spanning screen width for the 6-string 24-fret neck. E-low string at BOTTOM, e-high string at TOP. Fret markers at 3,5,7,9,12(double),15,17,19,21,24(double) in 'nacre/pearl' style (subtly glowing or light gray). Note nodes are solid circles applying the strict degree colors. Bottom half: Floating glassmorphic control panel (BottomSheet or sticky footer) containing horizontal pill-selectors for Tonality, Octave, Scale, and Chord."
+    },
+    {
+      "name": "Ear Training",
+      "purpose": "Pitch detection mic-based quiz to recognize notes and intervals.",
+      "states": {
+        "loading": "Connecting to microphone indicator.",
+        "empty": "'Tap to start session' with a pulsing microphone icon.",
+        "error": "Microphone permission denied warning."
+      },
+      "layout": "Minimalist command-center layout. Central circular UI representing a glowing dial/tuner. When singing/playing, the dial reacts in real-time. Use the exact strict degree colors to flash feedback (e.g., Red when they hit the Root). Score and streak counters in Space Grotesk at the top. Glassmorphic card at the bottom containing the current quiz question ('Play a Cmaj7 3rd')."
+    },
+    {
+      "name": "Settings",
+      "purpose": "App preferences and reference sounds.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Clean, list-based utility screen. Single column. Grouped settings (Audio, Visuals, Tuning - locked to Standard). Use brandTertiary tinted Phosphor icons inside rounded squares for each setting row."
+    }
+  ],
+  "images": {
+    "studio_background": {
+      "url": "https://images.unsplash.com/photo-1683362249825-77b26dcb1330?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHwxfHxkYXJrJTIwcmVjb3JkaW5nJTIwc3R1ZGlvJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3OTQxNzE4Nzh8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Dimly lit dark recording studio"
+    },
+    "fretboard_texture": {
+      "url": "https://images.unsplash.com/photo-1791271920201-0170905a46df?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxndWl0YXIlMjBmcmV0Ym9hcmQlMjBjbG9zZSUyMHVwJTIwZGFya3xlbnwwfHx8fDE3OTQxNzE4Nzh8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Close up dark guitar fretboard"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly apply the exact hex colors defined in the 'color' block for harmonic degrees (Root: #EF4444, 3rd: #3B82F6, etc.). Do not alter or map these to other shades.",
+    "The guitar fretboard must be built horizontally with 6 strings (Low E at the bottom edge, High e at the top edge) and 24 frets. Ensure it is wrapped in a horizontal ScrollView.",
+    "Implement fret markers explicitly at frets 3, 5, 7, 9, 12 (double marker), 15, 17, 19, 21, and 24 (double marker) styled as light gray/pearl white dots in the center of the frets (or between strings 3 and 4).",
+    "Incorporate a persistent gradient scrim (black/dark-grey) over any background imagery before layering text or the fretboard to guarantee legibility.",
+    "Use Space Grotesk for technical music data (note names, degrees, fret numbers, scores) to give a professional hardware-synth feel.",
+    "For the Ear Training dial, use pulsing animations and color-code the feedback based on the exact degree colors they hit.",
+    "Settings icons must be placed in rounded squares with a subtle brandTertiary background tint.",
+    "Do not use generic Material shadow panels; use the specified deep glass effect for all elevated containers (like the tonality selector panel) over the dark surface."
+  ]
+}
