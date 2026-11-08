@@ -73,10 +73,21 @@ export async function initAudio() {
   }
 }
 
-export function playNote(midi: number, volume = 1) {
+const releaseTimers = new Map<number, ReturnType<typeof setTimeout>[]>();
+const FADE_STEPS = 5;
+const FADE_MS = 150;
+
+function clearRelease(base: number) {
+  releaseTimers.get(base)?.forEach(clearTimeout);
+  releaseTimers.delete(base);
+}
+
+/** Plays a note; after `durationMs` the sample fades out quickly so it doesn't ring too long. */
+export function playNote(midi: number, volume = 1, durationMs?: number) {
   initAudio();
   const { base, rate } = resolve(midi);
   const p = getPlayer(base);
+  clearRelease(base);
   try {
     p.volume = volume;
     p.shouldCorrectPitch = false;
@@ -86,6 +97,21 @@ export function playNote(midi: number, volume = 1) {
   } catch {
     // player not ready yet; ignore single tap
   }
+  if (!durationMs) return;
+  const timers: ReturnType<typeof setTimeout>[] = [];
+  for (let i = 1; i <= FADE_STEPS; i++) {
+    timers.push(
+      setTimeout(() => {
+        try {
+          if (i === FADE_STEPS) p.pause();
+          else p.volume = volume * (1 - i / FADE_STEPS);
+        } catch {
+          // ignore
+        }
+      }, durationMs + (FADE_MS / FADE_STEPS) * i),
+    );
+  }
+  releaseTimers.set(base, timers);
 }
 
 export function stopAll() {
@@ -98,7 +124,7 @@ export function stopAll() {
   });
 }
 
-export function playSequence(midis: number[], volume = 1, gapMs = 380): () => void {
-  const timers = midis.map((m, i) => setTimeout(() => playNote(m, volume), i * gapMs));
+export function playSequence(midis: number[], volume = 1, gapMs = 380, durationMs?: number): () => void {
+  const timers = midis.map((m, i) => setTimeout(() => playNote(m, volume, durationMs), i * gapMs));
   return () => timers.forEach(clearTimeout);
 }

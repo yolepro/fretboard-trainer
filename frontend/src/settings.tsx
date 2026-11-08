@@ -10,6 +10,7 @@ export type Settings = {
   showNeutral: boolean;
   soundOnTap: boolean;
   volume: number;
+  noteLength: number;
   a4: number;
   strictOctave: boolean;
 };
@@ -21,6 +22,7 @@ const DEFAULTS: Settings = {
   showNeutral: false,
   soundOnTap: true,
   volume: 0.8,
+  noteLength: 800,
   a4: 440,
   strictOctave: false,
 };

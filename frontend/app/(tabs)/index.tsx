@@ -74,9 +74,9 @@ export default function FretboardScreen() {
     (midi: number, s: number, f: number) => {
       setActive({ midi, string: s, fret: f });
       Haptics.selectionAsync().catch(() => {});
-      if (settings.soundOnTap) playNote(midi, settings.volume);
+      if (settings.soundOnTap) playNote(midi, settings.volume, settings.noteLength);
     },
-    [settings.soundOnTap, settings.volume],
+    [settings.soundOnTap, settings.volume, settings.noteLength],
   );
 
   const toggleLayer = (d: DegreeKey) => {
@@ -98,7 +98,7 @@ export default function FretboardScreen() {
     const start = Math.max(40, (baseOct + 1) * 12 + rootPc);
     const notes = formula.intervals.map((i) => start + i.semi);
     if (mode === "scale") notes.push(start + 12);
-    cancelRef.current = playSequence(notes, settings.volume);
+    cancelRef.current = playSequence(notes, settings.volume, 380, Math.min(settings.noteLength, 600));
     setPlaying(true);
     const t = setTimeout(() => setPlaying(false), notes.length * 380 + 200);
     const prevCancel = cancelRef.current;

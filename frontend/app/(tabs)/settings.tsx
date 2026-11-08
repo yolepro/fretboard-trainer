@@ -12,6 +12,7 @@ import {
   Stack,
   Target,
   TextAa,
+  Timer,
   Trash,
   Waveform,
 } from "phosphor-react-native";
@@ -104,13 +105,25 @@ export default function SettingsScreen() {
             ))}
           </View>
           <View style={styles.sep} />
+          <Row testID="setting-note-length" icon={Timer} title="Durée des notes" subtitle="Coupe la résonance après ce délai" />
+          <View style={styles.inlineChips}>
+            {[
+              { v: 400, l: "Très courte" },
+              { v: 800, l: "Courte" },
+              { v: 1500, l: "Moyenne" },
+              { v: 3000, l: "Longue" },
+            ].map(({ v, l }) => (
+              <Chip key={v} testID={`note-length-${v}`} label={l} selected={settings.noteLength === v} onPress={() => update({ noteLength: v })} />
+            ))}
+          </View>
+          <View style={styles.sep} />
           <Row
             testID="setting-test-sound"
             icon={MusicNotes}
             title="Tester le son"
             subtitle="La 3 (A3, 220 Hz)"
             right={
-              <Pressable testID="test-sound-button" onPress={() => playNote(57, settings.volume)} style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}>
+              <Pressable testID="test-sound-button" onPress={() => playNote(57, settings.volume, settings.noteLength)} style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}>
                 <Text style={styles.smallBtnText}>Jouer</Text>
               </Pressable>
             }

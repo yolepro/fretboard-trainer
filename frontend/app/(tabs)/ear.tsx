@@ -78,9 +78,10 @@ export default function EarScreen() {
   };
 
   const playTarget = useCallback((midi: number) => {
-    playNote(midi, settingsRef.current.volume);
-    ignoreUntil.current = Date.now() + 2100;
-    later(() => stopAll(), 1800);
+    const len = Math.max(settingsRef.current.noteLength, 800);
+    playNote(midi, settingsRef.current.volume, len);
+    ignoreUntil.current = Date.now() + len + 400;
+    later(() => stopAll(), len + 200);
   }, []);
 
   const makeQuestion = useCallback(
