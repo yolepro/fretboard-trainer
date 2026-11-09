@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, X } from "phosphor-react-native";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
-import { CHORDS, DEGREE_META, SCALES, degreeKeyFromNum, type Formula } from "@/src/music/theory";
+import { PositionChips } from "@/src/components/PositionChips";
+import { CHORDS, DEGREE_META, SCALES, degreeKeyFromNum, type BoxWindow, type Formula } from "@/src/music/theory";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 export type PickerMode = "scale" | "chord";
@@ -19,6 +20,9 @@ type Props = {
   selectedId: string;
   onSelect: (id: string) => void;
   nameOf: (pc: number) => string;
+  positions: BoxWindow[];
+  selectedPosition: number | null;
+  onPositionChange: (i: number | null) => void;
 };
 
 function groupBy(list: Formula[]) {
@@ -31,7 +35,20 @@ function groupBy(list: Formula[]) {
   return groups;
 }
 
-export function ScalePicker({ visible, onClose, mode, onModeChange, rootPc, onRootChange, selectedId, onSelect, nameOf }: Props) {
+export function ScalePicker({
+  visible,
+  onClose,
+  mode,
+  onModeChange,
+  rootPc,
+  onRootChange,
+  selectedId,
+  onSelect,
+  nameOf,
+  positions,
+  selectedPosition,
+  onPositionChange,
+}: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -71,6 +88,9 @@ export function ScalePicker({ visible, onClose, mode, onModeChange, rootPc, onRo
               <Chip key={pc} testID={`picker-root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => onRootChange(pc)} />
             ))}
           </ChipRow>
+
+          <SectionLabel>Position</SectionLabel>
+          <PositionChips boxes={positions} selected={selectedPosition} onChange={onPositionChange} prefix="picker-position" />
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
             {groups.map((g) => (

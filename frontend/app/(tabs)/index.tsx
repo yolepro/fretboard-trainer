@@ -6,6 +6,7 @@ import { CaretDown, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
+import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
@@ -21,6 +22,7 @@ import {
   midiToFreq,
   octaveOf,
   pcOf,
+  scaleBoxes,
   type DegreeKey,
 } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
@@ -43,6 +45,7 @@ export default function FretboardScreen() {
   const [octave, setOctave] = useState<number | null>(null);
   // All notes share one color; selected degrees get their own color (tonic by default)
   const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
+  const [position, setPosition] = useState<number | null>(null);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -71,6 +74,8 @@ export default function FretboardScreen() {
   const degrees = useMemo(() => formulaDegrees(formula), [formula]);
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
+  const boxes = useMemo(() => scaleBoxes(rootPc, formula), [rootPc, formula]);
+  const windowRange = position !== null ? boxes[position] : null;
 
   const onNotePress = useCallback(
     (midi: number, s: number, f: number) => {
@@ -186,6 +191,7 @@ export default function FretboardScreen() {
         degreeMap={degreeMap}
         visibleLayers={visibleLayers}
         coloredLayers={coloredLayers}
+        windowRange={windowRange}
         octave={octave}
         labelMode={settings.labelMode}
         showNeutral={settings.showNeutral}
@@ -217,6 +223,9 @@ export default function FretboardScreen() {
         selectedId={mode === "scale" ? scaleId : chordId}
         onSelect={(id) => (mode === "scale" ? setScaleId(id) : setChordId(id))}
         nameOf={nameOf}
+        positions={boxes}
+        selectedPosition={position}
+        onPositionChange={setPosition}
       />
 
       {!isLandscape ? (
@@ -245,6 +254,9 @@ export default function FretboardScreen() {
               <Chip key={pc} testID={`root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => setRootPc(pc)} />
             ))}
           </ChipRow>
+
+          <SectionLabel>Position (boîte de gamme)</SectionLabel>
+          <PositionChips boxes={boxes} selected={position} onChange={setPosition} />
 
           <SectionLabel>Octave</SectionLabel>
           <ChipRow testID="octave-selector">

@@ -122,3 +122,46 @@ export function formulaDegrees(formula: Formula): DegreeKey[] {
   const set = new Set(formula.intervals.map((i) => degreeKeyFromNum(i.num)));
   return DEGREE_ORDER.filter((d) => set.has(d));
 }
+
+// ---- Scale boxes (5 positions) ----
+export type BoxWindow = { min: number; max: number };
+
+/**
+ * 5 positions derived from the parent pentatonic (major if the formula has a major 3rd, else minor).
+ * Each box chains 2 pentatonic notes per string from low E to high e, starting on a pentatonic note
+ * of the low E string. Boxes are folded into frets 0–12 when possible and numbered by fret (Pos. 1 = lowest).
+ * Every note of the selected scale/chord inside the box's fret window [min, max] is shown.
+ */
+export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
+  const semis = new Set(formula.intervals.map((i) => pcOf(i.semi)));
+  const penta = semis.has(4) ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10];
+  const pcs = new Set(penta.map((s) => pcOf(rootPc + s)));
+  const nextAbove = (m: number) => {
+    let x = m + 1;
+    while (!pcs.has(pcOf(x))) x++;
+    return x;
+  };
+  const rootFret = pcOf(rootPc - 4);
+  return penta.map((s) => {
+    let current = TUNING[5] + rootFret + s;
+    let min = Infinity;
+    let max = -Infinity;
+    for (let str = 5; str >= 0; str--) {
+      for (let n = 0; n < 2; n++) {
+        if (!(str === 5 && n === 0)) current = nextAbove(current);
+        const fret = current - TUNING[str];
+        min = Math.min(min, fret);
+        max = Math.max(max, fret);
+      }
+    }
+    while (min < 0) {
+      min += 12;
+      max += 12;
+    }
+    while (min - 12 >= 0) {
+      min -= 12;
+      max -= 12;
+    }
+    return { min, max: Math.min(max, FRET_COUNT) };
+  }).sort((a, b) => a.min - b.min);
+}

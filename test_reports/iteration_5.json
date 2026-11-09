@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 5, frontend only: tested the scale-box (5 positions) feature with Playwright in portrait (390x844) and landscape (844x390). Every requested flow passed. C major labels are exact (Pos. 1 · 0–3, 2–5, 5–8, 7–10, 9–13). position-3 shows only notes on frets 5..8 (16 notes) and scrolls the fretboard (scrollLeft 0->293). position-all brings back all 90 notes. Labels update when the root or formula changes. A minor pentatonic Pos. 3 shows exactly 2 notes per string: low E 5/8, A 5/7, D 5/7, G 5/7, B 5/8, e 5/8. In chord mode (Amaj7) only chord tones inside the window show (Pos. 1 frets 2,4,5: A, C#, E, G#). The picker Position chips start in sync with the panel (pos2 selected), tapping picker-position-4 updates the fretboard and the panel, and changing the root in the picker updates both rows. In landscape, picker-position-5 scrolls to the end, so frets 9–13 are fully in view. Regressions pass: notes are uniform gray, the tonic is red, the 3ce toggle colors E notes blue, and tapping a note fills the info bar ('E4 · 3ce (3) · Corde 3 · Case 9 · 329.6 Hz'). No console errors. Deprecated packages detected: none (expo-audio is used).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Fretboard scroll on position-all", "issue": "Choosing 'Tout le manche' after a position keeps the old scroll offset (e.g. 559) instead of going back to fret 0. All notes are restored but the view stays mid-neck. Possibly intended.", "testID": "position-all", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fretboard tab", "issues": [
+        "Position numbering is sorted by fret, so the box with the root on the low E string gets a different number in each key (A minor pentatonic 5–8 = Pos. 3, C major 7–10 = Pos. 4). Most guitar courses call that box Position 1 and number the others from it. The comment in theory.ts:132 ('position 1 = root on low E') contradicts the sort at theory.ts:166.",
+        "For 7-note scales the window comes from the parent pentatonic, so some scale notes just outside it are cut (e.g. C major Pos. 3 5–8 drops B at fret 4 on the G string). Acceptable, but worth a note or a ±1 fret extension for diatonic scales.",
+        "Chips are 36px high (Chip.tsx:60), below the 44px minimum touch target.",
+        "Chips do not expose accessibilityState={{selected}}, so the selected position is not exposed to assistive tech (aria-selected is null).",
+        "Long titles such as 'A Pentatonique mineure' wrap to 2 lines in the portrait header and push the fretboard down by about 34px.",
+        "Portrait: the picker sheet covers the fretboard, so the user cannot see the effect of a position change until the sheet is closed."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [".screenshots/pos3_cmaj.jpg", ".screenshots/amin_pos3.jpg", ".screenshots/picker_pos4.jpg", ".screenshots/land_pos5.jpg"],
+  "action_items": [
+    "Optional: reset the fretboard scroll to 0 when position-all is selected.",
+    "Consider numbering positions from the box with the root on the low E string, and fix the comment at theory.ts:132 either way.",
+    "Add accessibilityState={{ selected }} to Chip and consider raising the chip height to 44px."
+  ],
+  "critical_code_review_comments": [
+    "theory.ts scaleBoxes: the doc comment says position 1 = root on low E, but the result is sorted by min fret. The comment is wrong for most keys.",
+    "Fretboard.tsx: windowRange is memoized through boxes (index.tsx:77-78), so the auto-scroll effect only fires on a real change. Good.",
+    "Fretboard.tsx:168: with 'toggle-neutral' on, notes outside the window still render as neutral bubbles. Probably intended, but out-of-box neutral notes may confuse users."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% of requested flows (7/7)"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "A note is visible when the Pressable note-s{s}-f{f} has non-empty textContent. The selected chip has borderTopColor rgb(245,158,11) (there is no aria-selected). Strings run s0 = high e to s5 = low E. Fretboard scroll element: [data-testid=fretboard-scroll] (scrollLeft).",
+  "rca_of_issue": ""
+}

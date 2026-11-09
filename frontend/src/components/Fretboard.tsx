@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useEffect, useMemo, useRef } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import {
@@ -43,6 +43,8 @@ type Props = {
   onNotePress: (midi: number, stringIdx: number, fret: number) => void;
   fretScale?: number;
   rowH?: number;
+  /** Scale box: only notes within these frets are shown, and the window is highlighted. */
+  windowRange?: { min: number; max: number } | null;
 };
 
 function FretboardImpl({
@@ -57,15 +59,30 @@ function FretboardImpl({
   onNotePress,
   fretScale = 1,
   rowH = 34,
+  windowRange = null,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const boardH = rowH * 6;
   const widths = useMemo(() => FRETS.map((f) => fretWidth(f, fretScale)), [fretScale]);
   const totalW = useMemo(() => widths.reduce((s, w) => s + w, 0), [widths]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scrollRef = useRef<any>(null);
+  const inWindow = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
+
+  useEffect(() => {
+    if (!windowRange) {
+      scrollRef.current?.scrollTo({ x: 0, animated: true });
+      return;
+    }
+    let x = 0;
+    for (let f = 0; f < windowRange.min; f++) x += widths[f];
+    scrollRef.current?.scrollTo({ x: Math.max(0, x - widths[0]), animated: true });
+  }, [windowRange, widths]);
 
   return (
     <ScrollView
+      ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       testID="fretboard-scroll"
@@ -82,6 +99,7 @@ function FretboardImpl({
                 style={[
                   { width: widths[f], height: boardH },
                   f === 0 ? styles.openCell : f % 2 ? styles.wood : styles.woodAlt,
+                  windowRange && inWindow(f) && styles.boxCell,
                   f === 0 ? styles.nut : styles.fretWire,
                 ]}
               >
@@ -121,7 +139,7 @@ function FretboardImpl({
                   const pc = pcOf(midi);
                   const iv = degreeMap.get(pc);
                   const key = iv ? degreeKeyFromNum(iv.num) : null;
-                  const inOct = octave === null || octaveOf(midi) === octave;
+                  const inOct = (octave === null || octaveOf(midi) === octave) && inWindow(f);
                   const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
                   const isActive = activeMidi?.string === s && activeMidi?.fret === f;
                   const meta = key ? DEGREE_META[key] : null;
@@ -193,6 +211,7 @@ const useStyles = makeStyles((c) => ({
   openCell: { backgroundColor: c.surface },
   wood: { backgroundColor: c.fretboardWood },
   woodAlt: { backgroundColor: c.fretboardWoodAlt },
+  boxCell: { backgroundColor: c.boxHighlight },
   nut: { borderRightWidth: 6, borderRightColor: c.nut },
   fretWire: { borderRightWidth: 2, borderRightColor: c.fretWire },
   marker: {
