@@ -41,8 +41,7 @@ export default function FretboardScreen() {
   const [scaleId, setScaleId] = useState("major");
   const [chordId, setChordId] = useState("maj7");
   const [octave, setOctave] = useState<number | null>(null);
-  const [hidden, setHidden] = useState<Set<DegreeKey>>(new Set());
-  // Scale mode: all notes share one color; selected degrees get their own color (tonic by default)
+  // All notes share one color; selected degrees get their own color (tonic by default)
   const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -70,11 +69,8 @@ export default function FretboardScreen() {
   );
   const degreeMap = useMemo(() => buildDegreeMap(rootPc, formula), [rootPc, formula]);
   const degrees = useMemo(() => formulaDegrees(formula), [formula]);
-  const visibleLayers = useMemo(
-    () => (mode === "scale" ? new Set(degrees) : new Set(degrees.filter((d) => !hidden.has(d)))),
-    [degrees, hidden, mode],
-  );
-  const coloredLayers = mode === "scale" ? colored : undefined;
+  const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
+  const coloredLayers = colored;
 
   const onNotePress = useCallback(
     (midi: number, s: number, f: number) => {
@@ -86,8 +82,7 @@ export default function FretboardScreen() {
   );
 
   const toggleLayer = (d: DegreeKey) => {
-    const setter = mode === "scale" ? setColored : setHidden;
-    setter((prev) => {
+    setColored((prev) => {
       const next = new Set(prev);
       if (next.has(d)) next.delete(d);
       else next.add(d);
@@ -206,8 +201,7 @@ export default function FretboardScreen() {
             testID={`layer-toggle-${d}`}
             label={DEGREE_META[d].label}
             dotColor={colors[DEGREE_META[d].color]}
-            selected={mode === "scale" ? colored.has(d) : !hidden.has(d)}
-            dim={mode === "scale" ? false : hidden.has(d)}
+            selected={colored.has(d)}
             onPress={() => toggleLayer(d)}
           />
         ))}
