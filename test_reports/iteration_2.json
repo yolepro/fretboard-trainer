@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 2 frontend-only test (375x667 web preview). The single mic control works: no 'Autoriser le micro' button anymore, only mic-toggle-button (240x240). Tap -> 'Joue une note…' + hint 'Touchez le cercle pour arrêter l’écoute'; tap again -> 'Touchez pour démarrer l’écoute'. Mic stops when leaving the tab. Simulated NotAllowedError -> mic-blocked-card + retry-mic-button; simulated NotFoundError -> mic-error shown, no crash. replay/reveal/skip/new-question and the 3 quiz modes work. Settings: no setting-note-length, test-sound-button works. Fretboard: quick note taps update note-info-bar; scale picker opens. No page errors. Real iPhone audio (session pause/resume, 48 kHz) can't be tested on web.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Ear dial on mic error", "issue": "When getUserMedia/stream.start fails with a non-denied error (e.g. NotFoundError), 'listening' stays true. The dial still shows the active orange ring with 'Joue une note…' and the hint 'Touchez le cercle pour arrêter l’écoute' while mic-error says 'Micro indisponible'. This is misleading. Reference: app/(tabs)/ear.tsx:216-221 (only the 'denied' case resets listening) and 378-388", "testID": "dial-status", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Settings", "issues": ["test-sound-button is 69x36, below the 44pt minimum touch target height"]},
+      {"screen": "Ear (blocked state)", "issues": ["When perm is blocked, dial-status still says 'Touchez pour autoriser le micro' while mic-blocked-card is shown. Text could say 'Micro bloqué' to match the card."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [".screenshots/ear_idle.jpeg", ".screenshots/ear_listening.jpeg", ".screenshots/ear_denied.jpeg", ".screenshots/ear_notfound.jpeg", ".screenshots/settings.jpeg", ".screenshots/fretboard.jpeg", ".screenshots/picker.jpeg"],
+  "action_items": [
+    "ear.tsx: when status==='error' (any error), call setListening(false), or show an error label in dial-status instead of 'Joue une note…'",
+    "ear.tsx playTarget: keep a ref to the pending stopAll timeout and clear it on each new playTarget call. Today a stale stopAll fires 1.8s after the first tap, which cuts off a reference note replayed within 1.8s. If the user switches to the Fretboard tab within 1.8s, it also cuts the note they play there.",
+    "ear.tsx: remove the unused styles micBtn/micBtnActive/micText/micTextActive (left over from the removed button)",
+    "Settings: increase test-sound-button height to >=44",
+    "On a real iPhone, verify the reference note is audible while listening (suspend at 300ms → playNote). The detector cleanup calls setAudioModeAsync({allowsRecording:false}) without awaiting it, so this is racy: if the mode switch takes more than 300ms the note may still be muted. Consider awaiting the mode change before playNote."
+  ],
+  "critical_code_review_comments": [
+    "usePitchDetector.ts: cleanup setAudioModeAsync is not awaited, but playTarget relies on a fixed 300ms delay before playNote on iOS. Possible race.",
+    "playTarget non-listening path: the later(() => stopAll(), 1800) timer is never cancelled when the question changes or is replayed.",
+    "Native errors from stream.start never map to 'denied', so mic-blocked-card on native only appears from the permission request path. This is acceptable."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% of requested flows pass (one MEDIUM UX issue in the mic-error state)"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Playwright browser auto-grants fake mic, so clear_permissions does not deny. To simulate errors, override navigator.mediaDevices.getUserMedia via page.evaluate to throw DOMException NotAllowedError/NotFoundError. Fretboard note testIDs are 0-indexed: note-s0..s5 (s5 = Corde 6 low E); note-s6-* does not exist.",
+  "rca_of_issue": "Original user report (duplicate mic button): fixed. The dial is now the only control. iOS mute issue: the code now pauses the mic during reference playback; it needs on-device verification."
+}

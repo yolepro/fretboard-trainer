@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
 import { ArrowClockwise, Eye, Fire, Microphone, SkipForward, SpeakerHigh, Stop, Trophy } from "phosphor-react-native";
 
 import { Chip, ChipRow } from "@/src/components/Chip";
@@ -77,11 +77,42 @@ export default function EarScreen() {
     timers.current.push(setTimeout(fn, ms));
   };
 
+  const listeningRef = useRef(false);
+  const suspendToken = useRef(0);
+  const [suspended, setSuspended] = useState(false);
+
+  const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const playTarget = useCallback((midi: number) => {
-    const len = Math.max(settingsRef.current.noteLength, 800);
-    playNote(midi, settingsRef.current.volume, len);
-    ignoreUntil.current = Date.now() + len + 400;
-    later(() => stopAll(), len + 200);
+    const vol = settingsRef.current.volume;
+    ignoreUntil.current = Date.now() + 2300;
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    if (listeningRef.current && Platform.OS !== "web") {
+      // iOS: the mic stream switches the audio session to record-only, which mutes playback.
+      // Pause the mic, restore playback mode, play the reference note, then resume listening.
+      const token = ++suspendToken.current;
+      setSuspended(true);
+      later(async () => {
+        try {
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        } catch {
+          // keep going, playback may still work
+        }
+        if (token === suspendToken.current) playNote(midi, vol);
+      }, 150);
+      stopTimer.current = setTimeout(() => {
+        if (token !== suspendToken.current) return;
+        stopAll();
+        setSuspended(false);
+      }, 2100);
+    } else {
+      playNote(midi, vol);
+      stopTimer.current = setTimeout(() => stopAll(), 1800);
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (stopTimer.current) clearTimeout(stopTimer.current);
   }, []);
 
   const makeQuestion = useCallback(
@@ -183,7 +214,8 @@ export default function EarScreen() {
     else if (!match && stable.current.count === 6) onWrong(midi);
   };
 
-  const { status, error } = usePitchDetector(listening, onFrame);
+  listeningRef.current = listening;
+  const { status, error } = usePitchDetector(listening && !suspended, onFrame);
 
   // Stop the mic when leaving the Ear tab
   useFocusEffect(
@@ -196,10 +228,9 @@ export default function EarScreen() {
   );
 
   useEffect(() => {
-    if (error === "denied") {
-      setListening(false);
-      setPerm("blocked");
-    }
+    if (!error) return;
+    setListening(false);
+    if (error === "denied") setPerm("blocked");
   }, [error]);
 
   const requestMic = async () => {
@@ -208,11 +239,15 @@ export default function EarScreen() {
       setListening(true);
       return;
     }
-    const r = await requestRecordingPermissionsAsync();
-    if (r.granted) {
-      setPerm("granted");
-      setListening(true);
-    } else setPerm(r.canAskAgain ? "ask" : "blocked");
+    try {
+      const r = await requestRecordingPermissionsAsync();
+      if (r.granted) {
+        setPerm("granted");
+        setListening(true);
+      } else setPerm(r.canAskAgain ? "ask" : "blocked");
+    } catch {
+      setPerm("blocked");
+    }
   };
 
   const toggleMic = () => {
@@ -335,10 +370,10 @@ export default function EarScreen() {
           </Glass>
         ) : null}
 
-        <View style={styles.dialWrap} testID="tuner-dial">
+        <Pressable testID="mic-toggle-button" onPress={toggleMic} style={({ pressed }) => [styles.dialWrap, pressed && styles.pressed]}>
           <Animated.View style={[styles.ring, { borderColor: accent }, ringStyle]} />
-          <View style={[styles.dial, { borderColor: accent }]}>
-            {detected ? (
+          <View style={[styles.dial, { borderColor: accent }]} testID="tuner-dial">
+            {detected && !suspended ? (
               <>
                 <Text style={[styles.dialNote, { color: feedback?.kind === "correct" ? accent : colors.onSurface }]} testID="detected-note">
                   {nameOf(pcOf(detected.midi))}
@@ -348,13 +383,33 @@ export default function EarScreen() {
               </>
             ) : (
               <>
-                <Microphone size={40} color={listening ? colors.brandPrimary : colors.muted} weight={listening ? "fill" : "regular"} />
+                {listening ? (
+                  <Microphone size={40} color={colors.brandPrimary} weight="fill" />
+                ) : (
+                  <Microphone size={40} color={colors.muted} />
+                )}
                 <Text style={styles.dialIdle} testID="dial-status">
-                  {status === "starting" ? "Connexion au micro…" : listening ? "Joue une note…" : "Touchez le micro pour démarrer"}
+                  {suspended
+                    ? "Écoute la note…"
+                    : status === "starting"
+                      ? "Connexion au micro…"
+                      : listening
+                        ? "Joue une note…"
+                        : perm === "granted"
+                          ? "Touchez pour démarrer l’écoute"
+                          : perm === "blocked"
+                            ? "Micro bloqué, voir ci-dessous"
+                            : "Touchez pour autoriser le micro"}
                 </Text>
               </>
             )}
           </View>
+        </Pressable>
+        <View style={styles.dialHintRow}>
+          {listening ? <Stop size={14} color={colors.muted} weight="fill" /> : null}
+          <Text style={styles.dialHint} testID="dial-hint">
+            {listening ? "Touchez le cercle pour arrêter l’écoute" : "Le cercle démarre et arrête l’écoute"}
+          </Text>
         </View>
 
         <View style={styles.meter} testID="cents-meter">
@@ -400,20 +455,9 @@ export default function EarScreen() {
           </View>
         ) : null}
 
-        {status === "error" && error !== "denied" ? (
+        {error && error !== "denied" ? (
           <Text style={styles.errorText} testID="mic-error">Micro indisponible : {error}</Text>
         ) : null}
-
-        <Pressable
-          testID="mic-toggle-button"
-          onPress={toggleMic}
-          style={({ pressed }) => [styles.micBtn, listening && styles.micBtnActive, pressed && styles.pressed]}
-        >
-          {listening ? <Stop size={24} color={colors.onSurface} weight="fill" /> : <Microphone size={24} color={colors.onBrandPrimary} weight="fill" />}
-          <Text style={[styles.micText, listening && styles.micTextActive]}>
-            {listening ? "Arrêter l’écoute" : perm === "granted" ? "Démarrer l’écoute" : "Autoriser le micro"}
-          </Text>
-        </Pressable>
 
         <Pressable testID="new-question-button" onPress={() => next()} style={styles.newQ}>
           <ArrowClockwise size={16} color={colors.muted} />
@@ -473,6 +517,8 @@ const useStyles = makeStyles((c) => ({
   dialOct: { fontSize: 22, color: c.muted },
   dialFreq: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   dialIdle: { fontFamily: fonts.text, fontSize: 13, color: c.muted, textAlign: "center", marginTop: spacing.sm },
+  dialHintRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: spacing.xs },
+  dialHint: { fontFamily: fonts.text, fontSize: 12, color: c.muted },
   meter: { height: 44, marginTop: spacing.sm, marginHorizontal: spacing.lg },
   meterTrack: { position: "absolute", top: 10, left: 0, right: 0, height: 4, borderRadius: 2, backgroundColor: c.surfaceTertiary },
   meterCenter: { position: "absolute", top: 4, left: "50%", width: 2, marginLeft: -1, height: 16, backgroundColor: c.onSurfaceTertiary },
@@ -484,22 +530,9 @@ const useStyles = makeStyles((c) => ({
   permCard: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: c.brandTertiary },
   permTitle: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onBrandTertiary },
   permText: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, marginTop: 4 },
-  permBtn: { marginTop: spacing.sm, height: 40, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  permBtn: { marginTop: spacing.sm, height: 44, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   permBtnText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.onBrandPrimary },
   errorText: { fontFamily: fonts.text, fontSize: 12, color: c.error, marginTop: spacing.sm, textAlign: "center" },
-  micBtn: {
-    marginTop: spacing.lg,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: c.brandPrimary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-  },
-  micBtnActive: { backgroundColor: c.surfaceTertiary, borderWidth: 1, borderColor: c.error },
-  micText: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onBrandPrimary },
-  micTextActive: { color: c.onSurface },
   newQ: { flexDirection: "row", alignSelf: "center", alignItems: "center", gap: 6, height: 44, marginTop: spacing.sm },
   newQText: { fontFamily: fonts.text, fontSize: 13, color: c.muted },
 }));

@@ -12,7 +12,6 @@ import {
   Stack,
   Target,
   TextAa,
-  Timer,
   Trash,
   Waveform,
 } from "phosphor-react-native";
@@ -105,25 +104,13 @@ export default function SettingsScreen() {
             ))}
           </View>
           <View style={styles.sep} />
-          <Row testID="setting-note-length" icon={Timer} title="Durée des notes" subtitle="Coupe la résonance après ce délai" />
-          <View style={styles.inlineChips}>
-            {[
-              { v: 400, l: "Très courte" },
-              { v: 800, l: "Courte" },
-              { v: 1500, l: "Moyenne" },
-              { v: 3000, l: "Longue" },
-            ].map(({ v, l }) => (
-              <Chip key={v} testID={`note-length-${v}`} label={l} selected={settings.noteLength === v} onPress={() => update({ noteLength: v })} />
-            ))}
-          </View>
-          <View style={styles.sep} />
           <Row
             testID="setting-test-sound"
             icon={MusicNotes}
             title="Tester le son"
             subtitle="La 3 (A3, 220 Hz)"
             right={
-              <Pressable testID="test-sound-button" onPress={() => playNote(57, settings.volume, settings.noteLength)} style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}>
+              <Pressable testID="test-sound-button" onPress={() => playNote(57, settings.volume)} style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}>
                 <Text style={styles.smallBtnText}>Jouer</Text>
               </Pressable>
             }
@@ -236,7 +223,7 @@ const useStyles = makeStyles((c) => ({
   rowSub: { fontFamily: fonts.text, fontSize: 12, color: c.muted, marginTop: 2 },
   sep: { height: 1, backgroundColor: c.border, marginLeft: 60 },
   inlineChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingLeft: 60, paddingRight: spacing.md, paddingBottom: spacing.md },
-  smallBtn: { height: 36, paddingHorizontal: spacing.lg, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  smallBtn: { height: 44, paddingHorizontal: spacing.lg, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   smallBtnText: { fontFamily: fonts.display, fontSize: 13, fontWeight: "700", color: c.onBrandPrimary },
   dangerBtn: { backgroundColor: c.surfaceTertiary, borderWidth: 1, borderColor: c.error },
   dangerText: { color: c.error },

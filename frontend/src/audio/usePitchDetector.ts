@@ -16,7 +16,7 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => v
   const [error, setError] = useState<string | null>(null);
 
   const { stream } = useAudioStream({
-    sampleRate: 44100,
+    sampleRate: 48000,
     channels: 1,
     encoding: "float32",
     onBuffer: (b) => {
