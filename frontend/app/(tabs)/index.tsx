@@ -42,6 +42,8 @@ export default function FretboardScreen() {
   const [chordId, setChordId] = useState("maj7");
   const [octave, setOctave] = useState<number | null>(null);
   const [hidden, setHidden] = useState<Set<DegreeKey>>(new Set());
+  // Scale mode: all notes share one color; selected degrees get their own color (tonic by default)
+  const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -68,7 +70,11 @@ export default function FretboardScreen() {
   );
   const degreeMap = useMemo(() => buildDegreeMap(rootPc, formula), [rootPc, formula]);
   const degrees = useMemo(() => formulaDegrees(formula), [formula]);
-  const visibleLayers = useMemo(() => new Set(degrees.filter((d) => !hidden.has(d))), [degrees, hidden]);
+  const visibleLayers = useMemo(
+    () => (mode === "scale" ? new Set(degrees) : new Set(degrees.filter((d) => !hidden.has(d)))),
+    [degrees, hidden, mode],
+  );
+  const coloredLayers = mode === "scale" ? colored : undefined;
 
   const onNotePress = useCallback(
     (midi: number, s: number, f: number) => {
@@ -80,7 +86,8 @@ export default function FretboardScreen() {
   );
 
   const toggleLayer = (d: DegreeKey) => {
-    setHidden((prev) => {
+    const setter = mode === "scale" ? setColored : setHidden;
+    setter((prev) => {
       const next = new Set(prev);
       if (next.has(d)) next.delete(d);
       else next.add(d);
@@ -114,7 +121,18 @@ export default function FretboardScreen() {
 
   const infoContent = active ? (
     <>
-      <View style={[styles.infoDot, { backgroundColor: activeKey ? colors[DEGREE_META[activeKey].color] : colors.degreeNeutral }]} />
+      <View
+        style={[
+          styles.infoDot,
+          {
+            backgroundColor: !activeKey
+              ? colors.degreeNeutral
+              : coloredLayers && !coloredLayers.has(activeKey)
+                ? colors.degreeUniform
+                : colors[DEGREE_META[activeKey].color],
+          },
+        ]}
+      />
       <Text style={styles.infoNote} testID="active-note-name">
         {nameOf(pcOf(active.midi))}
         {octaveOf(active.midi)}
@@ -172,6 +190,7 @@ export default function FretboardScreen() {
         rowH={rowH}
         degreeMap={degreeMap}
         visibleLayers={visibleLayers}
+        coloredLayers={coloredLayers}
         octave={octave}
         labelMode={settings.labelMode}
         showNeutral={settings.showNeutral}
@@ -187,8 +206,8 @@ export default function FretboardScreen() {
             testID={`layer-toggle-${d}`}
             label={DEGREE_META[d].label}
             dotColor={colors[DEGREE_META[d].color]}
-            selected={!hidden.has(d)}
-            dim={hidden.has(d)}
+            selected={mode === "scale" ? colored.has(d) : !hidden.has(d)}
+            dim={mode === "scale" ? false : hidden.has(d)}
             onPress={() => toggleLayer(d)}
           />
         ))}

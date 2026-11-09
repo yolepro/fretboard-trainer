@@ -56,6 +56,8 @@ const dark = {
   onDegree13th: "#083344",
   degreeNeutral: "#52525B",
   onDegreeNeutral: "#E4E4E7",
+  degreeUniform: "#D4D4D8",
+  onDegreeUniform: "#101114",
 
   // Fretboard
   fretboardWood: "#1A1715",

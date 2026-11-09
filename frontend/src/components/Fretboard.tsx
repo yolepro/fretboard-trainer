@@ -33,6 +33,8 @@ export function fitScale(available: number, lastFret: number) {
 type Props = {
   degreeMap: Map<number, IntervalDef>;
   visibleLayers: Set<DegreeKey>;
+  /** If set, only these degrees use their degree color; other visible notes use one uniform color. */
+  coloredLayers?: Set<DegreeKey>;
   octave: number | null;
   labelMode: "note" | "degree";
   showNeutral: boolean;
@@ -46,6 +48,7 @@ type Props = {
 function FretboardImpl({
   degreeMap,
   visibleLayers,
+  coloredLayers,
   octave,
   labelMode,
   showNeutral,
@@ -123,6 +126,9 @@ function FretboardImpl({
                   const isActive = activeMidi?.string === s && activeMidi?.fret === f;
                   const meta = key ? DEGREE_META[key] : null;
                   const node = Math.min(NODE, rowH - 2);
+                  const uniform = !!(coloredLayers && key && !coloredLayers.has(key));
+                  const bg = meta ? (uniform ? colors.degreeUniform : colors[meta.color]) : undefined;
+                  const fg = meta ? (uniform ? colors.onDegreeUniform : colors[meta.on]) : undefined;
                   return (
                     <Pressable
                       key={s}
@@ -135,12 +141,12 @@ function FretboardImpl({
                         <View
                           style={[
                             styles.node,
-                            { backgroundColor: colors[meta.color], width: node, height: node, borderRadius: node / 2 },
-                            key === "root" && styles.rootNode,
+                            { backgroundColor: bg, width: node, height: node, borderRadius: node / 2 },
+                            key === "root" && !uniform && styles.rootNode,
                             isActive && styles.activeNode,
                           ]}
                         >
-                          <Text style={[styles.nodeText, { color: colors[meta.on] }]} numberOfLines={1}>
+                          <Text style={[styles.nodeText, { color: fg }]} numberOfLines={1}>
                             {labelMode === "degree" ? iv!.label : nameOf(pc)}
                           </Text>
                         </View>
