@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { setAudioModeAsync, useAudioStream } from "expo-audio";
 
 import { detectPitch, type PitchFrame } from "@/src/music/yin";
+import { restorePlaybackMode } from "@/src/audio/sampler";
 
 export type DetectorStatus = "idle" | "starting" | "listening" | "error";
 const WINDOW = 3072;
@@ -42,7 +43,12 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => v
     setError(null);
     (async () => {
       try {
-        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true, shouldRouteThroughEarpiece: false });
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+          shouldRouteThroughEarpiece: false,
+          interruptionMode: "doNotMix",
+        });
         await stream.start();
         if (!cancelled) setStatus("listening");
       } catch (e: any) {
@@ -59,7 +65,7 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => v
       } catch {
         // already stopped
       }
-      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+      restorePlaybackMode().catch(() => {});
       setStatus("idle");
     };
   }, [enabled, stream]);

@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 3, frontend only, tested on the web preview at 375x667. To fake the mic, navigator.mediaDevices.getUserMedia was replaced by an AudioContext OscillatorNode (sine wave) whose frequency can be changed during the test. Every requested feature works. Visual mode: question-target shows note+octave (G3, C#5, B3, C5). Reveal shows question-answer plus note-hint-card, and every hint-pos-sX-fY satisfies TUNING[X]+Y == target midi. Mic flow (visual, target B3): wrong D4 -> 'Tu joues D4 — essaie encore' + hint-soon; wrong F#3 -> note-hint-card (hint-soon gone); B2 -> 'Bonne note, mauvaise octave (B2) — vise 1 octave plus haut'; exact 246.9 Hz -> 'Bravo ! Bonne note', score 0->1, next question about 1.4s later. Listen mode: target hidden as '?', input ignored during the ~2.3s window, D#5 vs D#4 -> 'vise 1 octave plus bas', exact -> Bravo, score +1. Degree mode: hint positions use the pitch class only, frets 0-12, all correct. Latin notation shows 'Si3'. Settings: switch-strict-octave is gone, setting-octave-info is present, A4 stepper, volume and notation all work. Regression: fretboard note tap -> note-info-bar 'E2 · Corde 6 · Case 0'; scale picker opens; mic dial starts and stops. No console errors. Two logic bugs found: a stale auto-next timer after switching mode, and reveal still giving a point. iOS loudspeaker routing was only code-reviewed because it cannot be tested on web.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Ear quiz auto-next after a correct answer", "issue": "onCorrect schedules later(() => next(), 1400) using the `next` closure from that render, which still holds the old `mode`. Pending timers are not cleared when the mode changes. Reproduced: correct answer in 'Trouve la note', then tap quiz-mode-degree within 1.4s. The Degree chip stays selected, but 1.4s later the question becomes a visual one ('Joue la note à la bonne octave', A#3). Reference: /app/frontend/app/(tabs)/ear.tsx:190 and :152-166", "testID": "quiz-mode-degree", "priority": "MEDIUM"},
+      {"component": "Scoring after reveal", "issue": "After tapping reveal-button (penalizedRef=true, streak reset), playing the revealed note still runs onCorrect: score +1 and streak +1 (seen: score 1->2, streak 1). onCorrect never checks penalizedRef. A revealed answer probably should not score or start a streak. Reference: /app/frontend/app/(tabs)/ear.tsx:173-191", "testID": "score-counter", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ear - note-hint-card", "issues": [
+        "For high targets (for example C5 -> case 8/13/17/22, or C#5 up to case 23), the mini fretboard stretches to frets 0-22/23 inside a 343px card. Fret numbers 18-22 overlap and become unreadable. Suggest capping positions at about fret 15-17, or scrolling the board horizontally.",
+        "Positions such as 'Corde 4 (D) · case 22/23' are hard to play. Consider listing only playable positions (fret <= 17)."
+      ]},
+      {"screen": "Ear - quiz mode chips", "issues": ["quiz-mode-visual, quiz-mode-listen and quiz-mode-degree are 36px tall, below the 44px minimum touch target."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/tmp/b_hint.png", "/tmp/b_bravo.png", "/tmp/hint_high.png"],
+  "action_items": [
+    "Fix the stale auto-next: keep the current mode in a ref (modeRef) and use it inside next()/onCorrect, or clear the pending timers in next() and on every mode change (ear.tsx:190).",
+    "Decide on scoring after reveal: in onCorrect, if penalizedRef.current is set, skip the score/streak increment (or show a non-scoring 'Bonne note' message).",
+    "NoteHint: limit positions and lastFret to playable frets (for example <= 15) so the mini fretboard stays readable on a 375px screen.",
+    "Optional: make the quiz mode chips 44px tall."
+  ],
+  "critical_code_review_comments": [
+    "iOS speaker fix (code review only): playTarget pauses the mic, calls restorePlaybackMode (allowsRecording:false, doNotMix, no earpiece), plays the note, then resumes after 2.1s. The detector cleanup also calls restorePlaybackMode. The logic looks right but can only be confirmed on a real iOS build.",
+    "The timers array (`later`) is never cleared, so it keeps growing during a long session. Clearing it in next() would also fix the stale-mode bug.",
+    "Degree mode shows chord symbols such as 'A#9' (A# dominant 9th). Now that visual mode shows 'A#3' style note+octave, this can be confused with a note and an octave number."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "92%"},
+  "seed_data_creation": "None. The Settings notation was set back to English (C D E), and A4 back to 440 Hz.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To fake the mic, use page.add_init_script to replace navigator.mediaDevices.getUserMedia with an OscillatorNode -> MediaStreamDestination stream, and expose window.__setFreq(f) to change the frequency during the test. Detection needs 3 stable frames for a correct note and 6 for a wrong note (70ms per frame), so hold each note at least 1s. Use freq 30 Hz as 'silence'. Reveal/listen playback sets a 2.3s ignore window. The streak-counter and score-counter inner_text includes the label ('1\\nScore').",
+  "rca_of_issue": "Stale mode: the `later` setTimeout callback captures the `next` function from the render where onCorrect ran. That `next` closes over the old `mode` state, so it builds a question for the previous mode."
+}

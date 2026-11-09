@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
 import { ArrowClockwise, Eye, Fire, Microphone, SkipForward, SpeakerHigh, Stop, Trophy } from "phosphor-react-native";
 
 import { Chip, ChipRow } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
-import { playNote, stopAll } from "@/src/audio/sampler";
+import { NoteHint } from "@/src/components/NoteHint";
+import { playNote, restorePlaybackMode, stopAll } from "@/src/audio/sampler";
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import type { PitchFrame } from "@/src/music/yin";
 import { CHORDS, DEGREE_META, degreeKeyFromNum, freqToMidiFloat, octaveOf, pcOf, type DegreeKey } from "@/src/music/theory";
@@ -51,6 +52,12 @@ export default function EarScreen() {
   const [best, setBest] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [detected, setDetected] = useState<{ midi: number; cents: number; freq: number } | null>(null);
+  const [wrongCount, setWrongCount] = useState(0);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const revealedRef = useRef(false);
+  const autoNext = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { width: winW } = useWindowDimensions();
 
   const qRef = useRef<Question | null>(null);
   const answeredRef = useRef(false);
@@ -94,7 +101,7 @@ export default function EarScreen() {
       setSuspended(true);
       later(async () => {
         try {
-          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+          await restorePlaybackMode();
         } catch {
           // keep going, playback may still work
         }
@@ -117,7 +124,6 @@ export default function EarScreen() {
 
   const makeQuestion = useCallback(
     (m: QuizMode): Question => {
-      const s = settingsRef.current;
       const name = nameRef.current;
       if (m === "degree") {
         const root = rand(0, 11);
@@ -136,11 +142,12 @@ export default function EarScreen() {
         };
       }
       const midi = m === "listen" ? rand(40, 72) : rand(40, 76);
+      const n = `${name(pcOf(midi))}${octaveOf(midi)}`;
       return {
         targetMidi: midi,
-        pitchClassOnly: !s.strictOctave,
-        prompt: m === "listen" ? "Écoute et rejoue cette note" : "Joue la note",
-        big: `${name(pcOf(midi))}${s.strictOctave ? octaveOf(midi) : ""}`,
+        pitchClassOnly: false,
+        prompt: m === "listen" ? "Écoute et rejoue cette note (bonne octave)" : "Joue la note à la bonne octave",
+        big: n,
       };
     },
     [],
@@ -148,6 +155,9 @@ export default function EarScreen() {
 
   const next = useCallback(
     (m: QuizMode = mode) => {
+      if (autoNext.current) clearTimeout(autoNext.current);
+      autoNext.current = null;
+      revealedRef.current = false;
       const q = makeQuestion(m);
       qRef.current = q;
       answeredRef.current = false;
@@ -156,6 +166,7 @@ export default function EarScreen() {
       setQuestion(q);
       setRevealed(false);
       setFeedback(null);
+      setWrongCount(0);
       if (m === "listen") playTarget(q.targetMidi);
     },
     [mode, makeQuestion, playTarget],
@@ -164,10 +175,16 @@ export default function EarScreen() {
   useEffect(() => {
     next(mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, settings.strictOctave, settings.notation, settings.accidental]);
+  }, [mode, settings.notation, settings.accidental]);
 
   const onCorrect = () => {
     answeredRef.current = true;
+    if (revealedRef.current) {
+      setFeedback({ kind: "correct", text: "Bonne note ! (réponse révélée, pas de point)" });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      autoNext.current = setTimeout(() => next(modeRef.current), 1400);
+      return;
+    }
     setScore((v) => v + 1);
     setStreak((v) => {
       const n = v + 1;
@@ -183,7 +200,7 @@ export default function EarScreen() {
     setRevealed(true);
     setFeedback({ kind: "correct", text: "Bravo ! Bonne note" });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    later(() => next(), 1400);
+    autoNext.current = setTimeout(() => next(modeRef.current), 1400);
   };
 
   const onWrong = (midi: number) => {
@@ -191,7 +208,15 @@ export default function EarScreen() {
       penalizedRef.current = true;
       setStreak(0);
     }
-    setFeedback({ kind: "wrong", text: `Tu joues ${nameRef.current(pcOf(midi))}${octaveOf(midi)} — essaie encore` });
+    setWrongCount((v) => v + 1);
+    const q = qRef.current;
+    const played = `${nameRef.current(pcOf(midi))}${octaveOf(midi)}`;
+    let text = `Tu joues ${played} — essaie encore`;
+    if (q && !q.pitchClassOnly && pcOf(midi) === pcOf(q.targetMidi)) {
+      const diff = octaveOf(q.targetMidi) - octaveOf(midi);
+      text = `Bonne note, mauvaise octave (${played}) — vise ${Math.abs(diff)} octave${Math.abs(diff) > 1 ? "s" : ""} plus ${diff > 0 ? "haut" : "bas"}`;
+    }
+    setFeedback({ kind: "wrong", text });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   };
 
@@ -268,6 +293,7 @@ export default function EarScreen() {
   const reveal = () => {
     if (!question) return;
     setRevealed(true);
+    revealedRef.current = true;
     penalizedRef.current = true;
     setStreak(0);
     playTarget(question.targetMidi);
@@ -434,6 +460,19 @@ export default function EarScreen() {
           </View>
         ) : null}
 
+        {question && (wrongCount >= 2 || revealed) ? (
+          <NoteHint
+            targetMidi={question.targetMidi}
+            pitchClassOnly={question.pitchClassOnly}
+            degree={question.degree}
+            degreeLabel={question.degreeLabel}
+            nameOf={nameOf}
+            width={winW - spacing.lg * 2 - 8}
+          />
+        ) : wrongCount === 1 ? (
+          <Text style={styles.hintSoon} testID="hint-soon">Encore une erreur et je te montre où jouer la note</Text>
+        ) : null}
+
         {perm === "blocked" ? (
           <View style={styles.permCard} testID="mic-blocked-card">
             <Text style={styles.permTitle}>Micro bloqué</Text>
@@ -533,6 +572,7 @@ const useStyles = makeStyles((c) => ({
   permBtn: { marginTop: spacing.sm, height: 44, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   permBtnText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.onBrandPrimary },
   errorText: { fontFamily: fonts.text, fontSize: 12, color: c.error, marginTop: spacing.sm, textAlign: "center" },
+  hintSoon: { fontFamily: fonts.text, fontSize: 12, color: c.muted, textAlign: "center", marginTop: spacing.sm },
   newQ: { flexDirection: "row", alignSelf: "center", alignItems: "center", gap: 6, height: 44, marginTop: spacing.sm },
   newQText: { fontFamily: fonts.text, fontSize: 13, color: c.muted },
 }));

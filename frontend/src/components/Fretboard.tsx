@@ -122,6 +122,7 @@ function FretboardImpl({
                   const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
                   const isActive = activeMidi?.string === s && activeMidi?.fret === f;
                   const meta = key ? DEGREE_META[key] : null;
+                  const node = Math.min(NODE, rowH - 2);
                   return (
                     <Pressable
                       key={s}
@@ -134,7 +135,7 @@ function FretboardImpl({
                         <View
                           style={[
                             styles.node,
-                            { backgroundColor: colors[meta.color] },
+                            { backgroundColor: colors[meta.color], width: node, height: node, borderRadius: node / 2 },
                             key === "root" && styles.rootNode,
                             isActive && styles.activeNode,
                           ]}

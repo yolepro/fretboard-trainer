@@ -151,11 +151,10 @@ export default function SettingsScreen() {
 
         <Group title="Entraînement">
           <Row
-            testID="setting-strict-octave"
+            testID="setting-octave-info"
             icon={Target}
-            title="Octave stricte"
-            subtitle="La note jouée doit être à la bonne octave"
-            right={sw(settings.strictOctave, (v) => update({ strictOctave: v }), "switch-strict-octave")}
+            title="Octave exacte"
+            subtitle="Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs"
           />
           <View style={styles.sep} />
           <Row

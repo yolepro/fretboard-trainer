@@ -63,11 +63,22 @@ function resolve(midi: number): { base: number; rate: number } {
   return { base: MIN, rate: Math.max(0.5, Math.pow(2, (midi - MIN) / 12)) };
 }
 
+// iOS: "doNotMix" makes expo-audio reset the session mode to .default (the mic stream
+// leaves it in .measurement, which lowers the output) and routes playback to the loudspeaker.
+export function restorePlaybackMode() {
+  return setAudioModeAsync({
+    playsInSilentMode: true,
+    allowsRecording: false,
+    shouldRouteThroughEarpiece: false,
+    interruptionMode: "doNotMix",
+  });
+}
+
 export async function initAudio() {
   if (modeReady) return;
   modeReady = true;
   try {
-    await setAudioModeAsync({ playsInSilentMode: true });
+    await restorePlaybackMode();
   } catch {
     modeReady = false;
   }

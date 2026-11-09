@@ -13,6 +13,8 @@ Follow-ups: menu de choix de gamme ; rotation paysage montrant au moins jusqu'à
 - Components: Fretboard (fretScale/rowH props), ScalePicker (bottom sheet), Chip, Glass, StudioBackground
 
 ## Implemented (2026-06)
+- Ear quiz v2: exact octave required (Note & Écoute modes), octave-specific feedback, dynamic hint after 2 errors (string + fret list + mini fretboard); iOS speaker routing fix (doNotMix → session mode reset, defaultToSpeaker), mic paused during reference playback
+- Single mic control (dial), monophonic playback (new note stops previous)
 - Manche interactif + calques togglables + filtre octave + étiquettes notes/degrés + lecture gamme/arpège
 - Menu "Gamme/Accord" (sheet groupé avec intervalles colorés)
 - Paysage : panneau masqué, manche redimensionné (cases 0→16 visibles)

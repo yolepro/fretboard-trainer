@@ -11,7 +11,6 @@ export type Settings = {
   soundOnTap: boolean;
   volume: number;
   a4: number;
-  strictOctave: boolean;
 };
 
 const DEFAULTS: Settings = {
@@ -22,7 +21,6 @@ const DEFAULTS: Settings = {
   soundOnTap: true,
   volume: 0.8,
   a4: 440,
-  strictOctave: false,
 };
 
 const KEY = "fretstudio_settings_v2";

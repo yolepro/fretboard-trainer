@@ -1,0 +1,27 @@
+{
+  "summary": "Iteration 4, frontend only (web preview, 375x667). The mic was faked by replacing getUserMedia with an OscillatorNode MediaStream. BUG 1 (stale auto-next) is FIXED. In 3 trials (visual->degree twice, visual->listen once), a correct answer was followed by a mode switch within about 0.3s. Each time, 2.5s later the question still belonged to the new mode: degree prompts 'Joue la tierce (3) de' C#maj7 and 'Joue la septième (b7) de' E9, listen prompt 'Écoute et rejoue...' with target '?'. BUG 2 (reveal scoring) is FIXED. Before reveal: score 4, streak 4. After reveal: streak 0, question-answer shown, note-hint-card shown. Playing the revealed note C#3 gave feedback 'Bonne note ! (réponse révélée, pas de point)', with score still 4 and streak still 0. The next question (G4) followed and the feedback was cleared. DESIGN is FIXED. For target C5, the hint positions are s0-f8, s1-f13 and s2-f17. All are <= 17 and all match the target midi. The mini fretboard shows frets 0-17 and is readable. By code review, C#5 gives f9/f14 only. REGRESSION passes (target B4): wrong C#5 -> 'Tu joues C#5 — essaie encore' plus hint-soon; wrong E5 -> note-hint-card (hint-soon removed) with positions s0-f7, s1-f12, s2-f16; B3 -> 'Bonne note, mauvaise octave (B3) — vise 1 octave plus haut'; exact B4 -> 'Bravo ! Bonne note' and score 4->5. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ear - note-hint-card", "issues": ["Minor: when lastFret=17, the dot for fret 17 and the fret-number row touch the right edge of the card, and a partial '18' label is clipped. It is still readable. Optionally add a little right padding or end the board at lastFret."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/tmp/r_bravo.png", "/tmp/err.png (note-hint-card for C5)"],
+  "action_items": ["Optional: add small right padding to the NoteHint mini fretboard so the last fret dot and label are not clipped."],
+  "critical_code_review_comments": [
+    "next() now clears autoNext and is called with modeRef.current. The mode effect calls next(mode), which also clears the pending timer. This is correct.",
+    "onCorrect checks revealedRef: no score or streak increment, and it shows a non-scoring message. reveal() also sets penalizedRef and resets the streak. This is correct.",
+    "NoteHint: when pitchClassOnly=false, positions are filtered to fret <= 17. There is a fallback to all positions if none qualify, which cannot happen for the 40-76 range.",
+    "iOS speaker routing was not testable on web."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Same mic mock as iteration 3: use add_init_script to override getUserMedia with an OscillatorNode, and call window.__setFreq(f) to change pitch. Use 30 Hz as silence. Hold each note about 1s. Wait 2.3s after reveal or listen playback before playing. Use element.screenshot without the quality option, or with type=jpeg.",
+  "rca_of_issue": "Both previous bugs were verified fixed: modeRef plus clearing autoNext in next(), and a revealedRef guard in onCorrect."
+}
