@@ -14,6 +14,7 @@ Follow-ups: menu de choix de gamme ; rotation paysage montrant au moins jusqu'à
 
 ## Implemented (2026-06)
 - Scale boxes: 5 positions (parent pentatonic, 2 notes/string chaining) in panel + picker; window highlight + auto-scroll
+- Positions: scroll only if box off-screen, other scale notes faded outside the box, position chips in landscape legend row
 - Scale & chord modes: uniform-color dots by default; degree chips recolor their notes (tonic selected by default) instead of hiding them.
 - Ear quiz v2: exact octave required (Note & Écoute modes), octave-specific feedback, dynamic hint after 2 errors (string + fret list + mini fretboard); iOS speaker routing fix (doNotMix → session mode reset, defaultToSpeaker), mic paused during reference playback
 - Single mic control (dial), monophonic playback (new note stops previous)

@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 6, frontend only (Playwright on the Expo web preview, landscape 844x390 and portrait 390x844). All 5 requested features pass. (1) Landscape layer-legend holds the 7 degree chips, a divider, then landscape-position-all ('Tout') and landscape-position-1..5 with correct C major labels (0–3, 2–5, 5–8, 7–10, 9–13) and B major labels (1–4, 4–7, 6–9, 8–12, 11–14). (2) Scroll only when needed: in landscape, Pos. 3 at scrollLeft 0 stays at 0. At a manual scrollLeft of 250, Pos. 3 and Pos. 5 stay at 250 and Pos. 2 (partly off-screen) scrolls to 60. At a manual scrollLeft of 300, Pos. 1 scrolls back to 0. Changing the root to B with Pos. 5 selected keeps the scroll because the new box 11–14 is visible. (3) Fade: notes outside the window have opacity 0.22, notes inside 1, and 'Tout' brings everything back to 1. The box highlight shows. (4) Portrait position-1..5 work: Pos. 1 stays at 0. Pos. 2 scrolls to 76, which is correct because fret 5 ends at about 408px, wider than the 390px screen. Pos. 4 goes to 429 and Pos. 5 to 559. Pos. 1 goes back to 0. The fade matches landscape. (5) Regressions pass: in the scale picker, picker-position-3 syncs to the panel (amber border) and scrolls to 293. Note tap fills the info bar (B4 · Tonique (1) · Corde 2 · Case 12 · 493.9 Hz). Toggling the 5te chip colors fifths green (rgb 16,185,129), other notes stay uniform grey and the tonic stays red. Rotating portrait↔landscape with a position selected works. No deprecated Expo packages found in package.json.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fretboard (landscape)", "issues": [
+        "Position chips come after 7 degree chips and a divider in one horizontal ChipRow. At 844px wide, only 'Tout' and Pos. 1–2 show at the right edge on first load, so Pos. 3–5 are hard to find without scrolling the row. When a position chip is tapped, the row scrolls and the degree chips (Tonique, 3ce...) slide off the left.",
+        "Legend chips are 36px tall, below the 44px minimum touch target (probably not new in this iteration)."
+      ]},
+      {"screen": "Fretboard (rotation)", "issues": [
+        "Minor: select Pos. 5 in portrait (scrollLeft 559), then rotate to landscape. scrollLeft ends at 303, the maximum scroll, because the box is still 'visible' there. Frets 0–~5 stay hidden even though landscape is meant to fit frets 0–16. Option: reset scroll to 0 in landscape when the whole 0–16 range fits."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: make landscape position chips easier to find (put them first, on their own row, or scroll the legend so they show).",
+    "Optional: on rotation to landscape, reset the fretboard scroll to 0, since frets 0–16 fit.",
+    "Optional: raise chip height to 44px for the touch target."
+  ],
+  "critical_code_review_comments": [
+    "Fretboard.tsx:76-85 compares scrollX/viewW refs taken from onScroll/onLayout. On rotation the effect can run with an old viewW (from before the resize). It works in practice, but the scroll position after rotation depends on the old scroll value.",
+    "Fretboard.tsx:84 scrolls to start - widths[0], which leaves one open-string column of margin. For Pos. 2 the fret before the box shows partly, which is fine.",
+    "Fade is only applied to highlighted nodes. Neutral notes (showNeutral) outside the window are not faded, which matches the spec."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Landscape 844x390 fits frets 0–16 in the viewport (fret 16 ends at about 836px, scrollWidth 1147). All scale boxes have min ≤ 11 and max ≤ 16, so in landscape no box is off-screen at scrollLeft 0. To test the off-screen scroll, set document.querySelector('[data-testid=fretboard-scroll]').scrollLeft = N (scrollTo({left}) did not work). Opacity is on the note Pressable's firstElementChild. Picker position testIDs are picker-position-*. Root is changed in landscape through open-scale-picker → picker-root-N → scale-picker-close."
+}

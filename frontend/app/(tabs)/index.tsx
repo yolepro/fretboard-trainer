@@ -211,6 +211,21 @@ export default function FretboardScreen() {
             onPress={() => toggleLayer(d)}
           />
         ))}
+        {isLandscape ? (
+          <>
+            <View style={styles.legendDivider} />
+            <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => setPosition(null)} />
+            {boxes.map((b, i) => (
+              <Chip
+                key={`p${i}`}
+                testID={`landscape-position-${i + 1}`}
+                label={`Pos. ${i + 1} · ${b.min}–${b.max}`}
+                selected={position === i}
+                onPress={() => setPosition(i)}
+              />
+            ))}
+          </>
+        ) : null}
       </ChipRow>
 
       <ScalePicker
@@ -319,6 +334,7 @@ const useStyles = makeStyles((c) => ({
     gap: spacing.md,
   },
   headerText: { flex: 1 },
+  legendDivider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
   headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   titleCompact: { fontSize: 20 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },

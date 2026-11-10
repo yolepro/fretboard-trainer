@@ -43,7 +43,7 @@ type Props = {
   onNotePress: (midi: number, stringIdx: number, fret: number) => void;
   fretScale?: number;
   rowH?: number;
-  /** Scale box: only notes within these frets are shown, and the window is highlighted. */
+  /** Scale box: notes outside these frets are faded, and the window is highlighted. */
   windowRange?: { min: number; max: number } | null;
 };
 
@@ -68,21 +68,37 @@ function FretboardImpl({
   const totalW = useMemo(() => widths.reduce((s, w) => s + w, 0), [widths]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scrollRef = useRef<any>(null);
+  const scrollX = useRef(0);
+  const viewW = useRef(0);
   const inWindow = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
 
+  // Landscape fits frets 0→16: reset any scroll left over from portrait.
   useEffect(() => {
-    if (!windowRange) {
-      scrollRef.current?.scrollTo({ x: 0, animated: true });
-      return;
-    }
-    let x = 0;
-    for (let f = 0; f < windowRange.min; f++) x += widths[f];
-    scrollRef.current?.scrollTo({ x: Math.max(0, x - widths[0]), animated: true });
+    if (fretScale < 1) scrollRef.current?.scrollTo({ x: 0, animated: false });
+  }, [fretScale]);
+
+  // Only scroll when the selected position is (partly) off-screen.
+  useEffect(() => {
+    if (!windowRange) return;
+    let start = 0;
+    for (let f = 0; f < windowRange.min; f++) start += widths[f];
+    let end = start;
+    for (let f = windowRange.min; f <= windowRange.max; f++) end += widths[f];
+    const visible = start >= scrollX.current && end <= scrollX.current + viewW.current;
+    if (visible && viewW.current > 0) return;
+    scrollRef.current?.scrollTo({ x: Math.max(0, start - widths[0]), animated: true });
   }, [windowRange, widths]);
 
   return (
     <ScrollView
       ref={scrollRef}
+      onScroll={(e) => {
+        scrollX.current = e.nativeEvent.contentOffset.x;
+      }}
+      scrollEventThrottle={32}
+      onLayout={(e) => {
+        viewW.current = e.nativeEvent.layout.width;
+      }}
       horizontal
       showsHorizontalScrollIndicator={false}
       testID="fretboard-scroll"
@@ -139,8 +155,9 @@ function FretboardImpl({
                   const pc = pcOf(midi);
                   const iv = degreeMap.get(pc);
                   const key = iv ? degreeKeyFromNum(iv.num) : null;
-                  const inOct = (octave === null || octaveOf(midi) === octave) && inWindow(f);
+                  const inOct = octave === null || octaveOf(midi) === octave;
                   const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
+                  const faded = highlighted && !inWindow(f);
                   const isActive = activeMidi?.string === s && activeMidi?.fret === f;
                   const meta = key ? DEGREE_META[key] : null;
                   const node = Math.min(NODE, rowH - 2);
@@ -162,6 +179,7 @@ function FretboardImpl({
                             { backgroundColor: bg, width: node, height: node, borderRadius: node / 2 },
                             key === "root" && !uniform && styles.rootNode,
                             isActive && styles.activeNode,
+                            faded && !isActive && styles.faded,
                           ]}
                         >
                           <Text style={[styles.nodeText, { color: fg }]} numberOfLines={1}>
@@ -212,6 +230,7 @@ const useStyles = makeStyles((c) => ({
   wood: { backgroundColor: c.fretboardWood },
   woodAlt: { backgroundColor: c.fretboardWoodAlt },
   boxCell: { backgroundColor: c.boxHighlight },
+  faded: { opacity: 0.22 },
   nut: { borderRightWidth: 6, borderRightColor: c.nut },
   fretWire: { borderRightWidth: 2, borderRightColor: c.fretWire },
   marker: {
