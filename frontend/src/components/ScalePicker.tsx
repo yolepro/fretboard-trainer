@@ -74,6 +74,13 @@ export function ScalePicker({
             </Pressable>
           </View>
 
+          <ScrollView
+            testID="scale-picker-scroll"
+            style={styles.list}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled
+          >
           <View style={styles.segment}>
             {(["scale", "chord"] as PickerMode[]).map((m) => (
               <Pressable key={m} testID={`picker-mode-${m}`} onPress={() => onModeChange(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
@@ -92,7 +99,7 @@ export function ScalePicker({
           <SectionLabel>Position</SectionLabel>
           <PositionChips boxes={positions} selected={selectedPosition} onChange={onPositionChange} prefix="picker-position" />
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.listContent}>
             {groups.map((g) => (
               <View key={g.title}>
                 <Text style={styles.groupTitle}>{g.title}</Text>
@@ -130,6 +137,7 @@ export function ScalePicker({
                 })}
               </View>
             ))}
+          </View>
           </ScrollView>
         </View>
       </View>
@@ -159,7 +167,8 @@ const useStyles = makeStyles((c) => ({
   segBtnActive: { backgroundColor: c.brandPrimary },
   segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   segTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
-  list: { flexGrow: 0 },
+  list: { flexShrink: 1 },
+  scrollContent: { paddingBottom: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   groupTitle: {
     fontFamily: fonts.display,
