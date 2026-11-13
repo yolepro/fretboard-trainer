@@ -7,9 +7,11 @@ import {
   FRET_COUNT,
   SINGLE_MARKERS,
   TUNING,
+  cellKey,
   degreeKeyFromNum,
   octaveOf,
   pcOf,
+  type BoxWindow,
   type DegreeKey,
   type IntervalDef,
 } from "@/src/music/theory";
@@ -46,8 +48,8 @@ type Props = {
   onNotePress: (midi: number, stringIdx: number, fret: number) => void;
   fretScale?: number;
   rowH?: number;
-  /** Scale box: notes outside these frets are faded, and the window is highlighted. */
-  windowRange?: { min: number; max: number } | null;
+  /** Scale position: notes outside it are faded and its frets are highlighted. With `cells`, membership is per note. */
+  windowRange?: BoxWindow | null;
 };
 
 function FretboardImpl({
@@ -88,7 +90,9 @@ function FretboardImpl({
   const scrollRef = useRef<any>(null);
   const scrollX = useRef(0);
   const viewW = useRef(0);
-  const inWindow = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
+  const inColumn = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
+  const inPosition = (string: number, f: number) =>
+    !windowRange || (windowRange.cells ? windowRange.cells.has(cellKey(string, f)) : inColumn(f));
 
   // Landscape fits frets 0→16: reset any scroll left over from portrait.
   useEffect(() => {
@@ -133,7 +137,7 @@ function FretboardImpl({
                 style={[
                   { width: widths[f], height: boardH },
                   { backgroundColor: f === 0 ? palette.open : f % 2 ? palette.wood : palette.woodAlt },
-                  windowRange && inWindow(f) && { backgroundColor: palette.boxHighlight },
+                  windowRange && inColumn(f) && { backgroundColor: palette.boxHighlight },
                   f === 0
                     ? { borderRightWidth: 6, borderRightColor: palette.nut }
                     : { borderRightWidth: 2, borderRightColor: palette.fretWire },
@@ -177,7 +181,7 @@ function FretboardImpl({
                   const key = iv ? degreeKeyFromNum(iv.num) : null;
                   const inOct = octave === null || octaveOf(midi) === octave;
                   const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
-                  const faded = highlighted && !inWindow(f);
+                  const faded = highlighted && !inPosition(s, f);
                   const isActive = activeMidi?.string === s && activeMidi?.fret === f;
                   const meta = key ? DEGREE_META[key] : null;
                   const node = Math.min(NODE, rowH - 2);
