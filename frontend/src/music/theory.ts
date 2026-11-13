@@ -175,3 +175,63 @@ export function boxVariant(box: BoxWindow, variant: number): BoxWindow {
   if (variant !== 1) return box;
   return { min: box.min + 12, max: Math.min(box.max + 12, FRET_COUNT) };
 }
+
+// ---- Listening path ----
+export type FretLoc = { string: number; fret: number };
+export type PathStep = { midi: number; loc: FretLoc | null };
+
+/** Every place on the neck where `midi` sounds. */
+function locationsOf(midi: number): FretLoc[] {
+  const out: FretLoc[] = [];
+  TUNING.forEach((open, string) => {
+    const fret = midi - open;
+    if (fret >= 0 && fret <= FRET_COUNT) out.push({ string, fret });
+  });
+  return out;
+}
+
+/**
+ * Notes played by "Écouter", each with the single place on the neck that is highlighted while it sounds.
+ * - The path starts on the root and climbs to the root one octave higher (scales), or through the chord tones.
+ * - With a position selected, notes are taken inside its fret window; otherwise anywhere on the neck.
+ * - When a pitch exists in several places, the one closest to the leftmost fret of the position wins
+ *   (closest to fret 1 when no position is selected).
+ */
+export function playbackPath(rootPc: number, formula: Formula, isScale: boolean, range: BoxWindow | null): PathStep[] {
+  const semis = formula.intervals.map((i) => i.semi).sort((a, b) => a - b);
+  if (isScale) semis.push(12);
+  const anchor = range ? range.min : 1;
+  const inWindow = (f: number) => !range || (f >= range.min && f <= range.max);
+  const dist = (l: FretLoc) => Math.abs(l.fret - anchor);
+
+  const pick = (midi: number): FretLoc | null => {
+    const all = locationsOf(midi);
+    const inside = all.filter((l) => inWindow(l.fret));
+    const pool = inside.length ? inside : all;
+    if (!pool.length) return null;
+    return [...pool].sort((a, b) => dist(a) - dist(b) || a.fret - b.fret)[0];
+  };
+
+  const lowest = TUNING[TUNING.length - 1];
+  const highest = TUNING[0] + FRET_COUNT;
+  const roots: number[] = [];
+  for (let m = lowest; m <= highest; m++) if (pcOf(m) === pcOf(rootPc)) roots.push(m);
+
+  const rank = (m: number) => {
+    const l = pick(m);
+    return [l && inWindow(l.fret) ? 0 : 1, l ? dist(l) : 99, m];
+  };
+  roots.sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    return ra[0] - rb[0] || ra[1] - rb[1] || ra[2] - rb[2];
+  });
+
+  let fallback: PathStep[] | null = null;
+  for (const start of roots) {
+    const steps = semis.map((s) => ({ midi: start + s, loc: pick(start + s) }));
+    if (steps.every((s) => s.loc)) return steps;
+    if (!fallback) fallback = steps;
+  }
+  return fallback ?? [];
+}

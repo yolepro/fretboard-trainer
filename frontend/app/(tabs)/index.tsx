@@ -10,11 +10,10 @@ import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { playNote, playSequence, initAudio } from "@/src/audio/sampler";
+import { playNote, initAudio } from "@/src/audio/sampler";
 import {
   CHORDS,
   DEGREE_META,
-  OCTAVES,
   SCALES,
   buildDegreeMap,
   degreeKeyFromNum,
@@ -23,6 +22,7 @@ import {
   octaveOf,
   pcOf,
   boxVariant,
+  playbackPath,
   scaleBoxes,
   type DegreeKey,
 } from "@/src/music/theory";
@@ -44,7 +44,6 @@ export default function FretboardScreen() {
   const [rootPc, setRootPc] = useState(0);
   const [scaleId, setScaleId] = useState("major");
   const [chordId, setChordId] = useState("maj7");
-  const [octave, setOctave] = useState<number | null>(null);
   // All notes share one color; selected degrees get their own color (tonic by default)
   const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
   const [position, setPosition] = useState<number | null>(null);
@@ -120,24 +119,32 @@ export default function FretboardScreen() {
     });
   };
 
+  // "Écouter": climbs from the root (inside the selected position) to the root one octave above, then stops.
+  // Each note is highlighted on the neck while it sounds, at the place closest to the left of the position.
   const playFormula = () => {
     if (playing) {
       cancelRef.current?.();
       setPlaying(false);
+      setActive(null);
       return;
     }
-    const baseOct = octave ?? 3;
-    const start = Math.max(40, (baseOct + 1) * 12 + rootPc);
-    const notes = formula.intervals.map((i) => start + i.semi);
-    if (mode === "scale") notes.push(start + 12);
-    cancelRef.current = playSequence(notes, settings.volume);
+    const path = playbackPath(rootPc, formula, mode === "scale", windowRange);
+    if (!path.length) return;
+    const GAP_MS = 380;
+    const timers: ReturnType<typeof setTimeout>[] = path.map((step, i) =>
+      setTimeout(() => {
+        playNote(step.midi, settings.volume);
+        setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
+      }, i * GAP_MS),
+    );
+    timers.push(
+      setTimeout(() => {
+        setPlaying(false);
+        setActive(null);
+      }, (path.length - 1) * GAP_MS + 700),
+    );
+    cancelRef.current = () => timers.forEach(clearTimeout);
     setPlaying(true);
-    const t = setTimeout(() => setPlaying(false), notes.length * 380 + 200);
-    const prevCancel = cancelRef.current;
-    cancelRef.current = () => {
-      prevCancel();
-      clearTimeout(t);
-    };
   };
 
   const activeIv = active ? degreeMap.get(pcOf(active.midi)) : undefined;
@@ -217,7 +224,6 @@ export default function FretboardScreen() {
         visibleLayers={visibleLayers}
         coloredLayers={coloredLayers}
         windowRange={windowRange}
-        octave={octave}
         labelMode={settings.labelMode}
         showNeutral={settings.showNeutral}
         nameOf={nameOf}
@@ -304,14 +310,6 @@ export default function FretboardScreen() {
 
           <SectionLabel>Position (boîte de gamme)</SectionLabel>
           <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} />
-
-          <SectionLabel>Octave</SectionLabel>
-          <ChipRow testID="octave-selector">
-            <Chip testID="octave-all" label="Toutes" selected={octave === null} onPress={() => setOctave(null)} />
-            {OCTAVES.map((o) => (
-              <Chip key={o} testID={`octave-${o}`} label={`Oct. ${o}`} selected={octave === o} onPress={() => setOctave(o)} />
-            ))}
-          </ChipRow>
 
           <SectionLabel>{mode === "scale" ? "Gamme" : "Accord"}</SectionLabel>
           <ChipRow testID="formula-selector">

@@ -37,7 +37,8 @@ type Props = {
   visibleLayers: Set<DegreeKey>;
   /** If set, only these degrees use their degree color; other visible notes use one uniform color. */
   coloredLayers?: Set<DegreeKey>;
-  octave: number | null;
+  /** Optional filter used by the ear-training hint only; the scale screen no longer filters by octave. */
+  octave?: number | null;
   labelMode: "note" | "degree";
   showNeutral: boolean;
   nameOf: (pc: number) => string;
@@ -53,7 +54,7 @@ function FretboardImpl({
   degreeMap,
   visibleLayers,
   coloredLayers,
-  octave,
+  octave = null,
   labelMode,
   showNeutral,
   nameOf,
