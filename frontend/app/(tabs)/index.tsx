@@ -28,6 +28,7 @@ import {
 } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
+import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Mode = "scale" | "chord";
@@ -175,7 +176,7 @@ export default function FretboardScreen() {
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          {!isLandscape ? <Text style={styles.brand}>FRETSTUDIO</Text> : null}
+          {!isLandscape ? <Text style={styles.brand} testID="app-version">FRETSTUDIO · v{APP_VERSION}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{formula.name}</Text>
           </Text>

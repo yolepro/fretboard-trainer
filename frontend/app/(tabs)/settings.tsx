@@ -21,6 +21,7 @@ import { playNote } from "@/src/audio/sampler";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
+import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type IconType = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
@@ -199,7 +200,7 @@ export default function SettingsScreen() {
           />
         </Group>
 
-        <Text style={styles.footer}>FretStudio · v1.0 · Détection 100 % locale</Text>
+        <Text style={styles.footer} testID="settings-version">FretStudio · v{APP_VERSION} · Détection 100 % locale</Text>
       </ScrollView>
     </View>
   );
