@@ -192,7 +192,8 @@ function locationsOf(midi: number): FretLoc[] {
 
 /**
  * Notes played by "Écouter", each with the single place on the neck that is highlighted while it sounds.
- * - The path starts on the root and climbs to the root one octave higher (scales), or through the chord tones.
+ * - The path starts on the lowest root of the position and climbs to the root one octave higher (scales),
+ *   or through the chord tones.
  * - With a position selected, notes are taken inside its fret window; otherwise anywhere on the neck.
  * - When a pitch exists in several places, the one closest to the leftmost fret of the position wins
  *   (closest to fret 1 when no position is selected).
@@ -217,15 +218,13 @@ export function playbackPath(rootPc: number, formula: Formula, isScale: boolean,
   const roots: number[] = [];
   for (let m = lowest; m <= highest; m++) if (pcOf(m) === pcOf(rootPc)) roots.push(m);
 
-  const rank = (m: number) => {
+  // Start on the lowest-pitched root inside the position (or on the whole neck when no position is selected).
+  // Roots that only exist outside the position come last, still lowest first.
+  const outside = (m: number) => {
     const l = pick(m);
-    return [l && inWindow(l.fret) ? 0 : 1, l ? dist(l) : 99, m];
+    return l && inWindow(l.fret) ? 0 : 1;
   };
-  roots.sort((a, b) => {
-    const ra = rank(a);
-    const rb = rank(b);
-    return ra[0] - rb[0] || ra[1] - rb[1] || ra[2] - rb[2];
-  });
+  roots.sort((a, b) => outside(a) - outside(b) || a - b);
 
   let fallback: PathStep[] | null = null;
   for (const start of roots) {
