@@ -24,7 +24,9 @@ export function PositionChips({ boxes, selected, variants = [], onChange, prefix
           <Chip
             key={i}
             testID={`${prefix}-${i + 1}`}
-            label={`Pos. ${i + 1} · ${b.min}–${b.max} · ${variant + 1}/2`}
+            label={`Pos. ${i + 1} · ${b.min}–${b.max}`}
+            badge={`${variant + 1}/2`}
+            badgeTone={variant === 1 ? "accent" : "primary"}
             selected={selected === i}
             onPress={() => onChange(i)}
           />

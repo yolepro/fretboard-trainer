@@ -10,9 +10,12 @@ type ChipProps = {
   testID: string;
   dotColor?: string;
   dim?: boolean;
+  /** Small rounded tag inside the chip (e.g. "1/2"). "accent" is drawn in a second, warmer color. */
+  badge?: string;
+  badgeTone?: "primary" | "accent";
 };
 
-export function Chip({ label, selected, onPress, testID, dotColor, dim }: ChipProps) {
+export function Chip({ label, selected, onPress, testID, dotColor, dim, badge, badgeTone = "primary" }: ChipProps) {
   const styles = useStyles();
   return (
     <Pressable
@@ -29,6 +32,13 @@ export function Chip({ label, selected, onPress, testID, dotColor, dim }: ChipPr
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {label}
       </Text>
+      {badge ? (
+        <View style={[styles.badge, badgeTone === "accent" ? styles.badgeAccent : styles.badgePrimary]} testID={`${testID}-badge`}>
+          <Text style={[styles.badgeText, badgeTone === "accent" ? styles.badgeTextAccent : styles.badgeTextPrimary]} numberOfLines={1}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -74,6 +84,20 @@ const useStyles = makeStyles((c) => ({
   dot: { width: 10, height: 10, borderRadius: 5 },
   label: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   labelSelected: { color: c.onBrandTertiary },
+  badge: {
+    height: 22,
+    minWidth: 34,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 2,
+  },
+  badgePrimary: { backgroundColor: c.brandPrimary },
+  badgeAccent: { backgroundColor: c.degree7th },
+  badgeText: { fontFamily: fonts.display, fontSize: 12, fontWeight: "700" },
+  badgeTextPrimary: { color: c.onBrandPrimary },
+  badgeTextAccent: { color: c.onDegree7th },
   section: {
     fontFamily: fonts.display,
     fontSize: 12,

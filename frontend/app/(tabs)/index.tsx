@@ -247,7 +247,9 @@ export default function FretboardScreen() {
                 <Chip
                   key={`p${i}`}
                   testID={`landscape-position-${i + 1}`}
-                  label={`Pos. ${i + 1} · ${b.min}–${b.max} · ${v + 1}/2`}
+                  label={`Pos. ${i + 1} · ${b.min}–${b.max}`}
+                  badge={`${v + 1}/2`}
+                  badgeTone={v === 1 ? "accent" : "primary"}
                   selected={position === i}
                   onPress={() => selectPosition(i)}
                 />
