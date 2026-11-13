@@ -179,12 +179,16 @@ export default function SettingsScreen() {
             testID="setting-reset-best"
             icon={Trash}
             title="Réinitialiser le record"
-            subtitle={resetDone ? "Record remis à zéro" : "Meilleure série du quiz"}
+            subtitle={resetDone ? "Record remis à zéro" : "Records des challenges Oreille"}
             right={
               <Pressable
                 testID="reset-best-button"
                 onPress={async () => {
-                  await storage.setItem("fretstudio_best", 0);
+                  await Promise.all(
+                    ["board", "listen", "degree", "interval"].flatMap((s) =>
+                      [5, 10, 20].map((n) => storage.removeItem(`fretstudio_best_${s}_${n}`)),
+                    ),
+                  );
                   setResetDone(true);
                 }}
                 style={({ pressed }) => [styles.smallBtn, styles.dangerBtn, pressed && styles.pressed]}

@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 7, frontend only, tested on Ear screen redesign at 390x844 with a getUserMedia OscillatorNode mic mock and an HTMLMediaElement.play hook to read which reference note was played. All requested flows pass except one: after the Settings reset, the Ear screen keeps showing the old record (stale state). Setup: 4 section chips. Count 10 is the default and 5/20 work. Strings 6·E/5·A/4·D are selected by default and the last one cannot be removed. Intervals: level 1 = only Quinte juste (major), level 3 = 3/4/5, level 5 = all 6. Scale chips and interval toggles work and at least one interval is always kept. Challenge view fits 390x844 with no scroll (scrollHeight 844, buttons end at 502px). The chrono increments, progress shows n/N, and the big target is 60px. Board targets: 10 sampled were consistent ('Corde N' = TUNING[N-1], fret 0-12, only the selected strings). Correct note: 'Bravo !' detected in about 0.3s and next question after 0.55s. First wrong note: 'Tu joues G3 — encore 1 chance'. Second wrong note: 'Raté — c’était F3 · corde 4 (D), case 3', auto-advance after 1.79s, red dot. Same note in the wrong octave: 'Bonne note, mauvaise octave — vise 1 octave plus bas (encore 1 chance)'. Skip counts a miss. Result screen shows score/time/best and the 'Nouveau record !' badge. Replay restarts and setup returns. The record persists after reload. Stop button and leaving the tab both return to setup. Listen: '?' until answered, auto-plays the target, input ignored during the 2.3s window, then Bravo reveals the name. A miss reveals the answer. Degree: chord + badge + 'n’importe quelle octave', and any octave is accepted. Interval: 'Quinte juste', badge 5, 'au-dessus de G#2 (tonique)', button 'Tonique', the auto-played tonic matches the sub, root+7 = Bravo, root+19 = wrong-octave message. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Ear best record after Settings reset", "issue": "reset-best-button clears storage, but the Ear tab stays mounted and the `best` state is only loaded in useEffect([section]). Result: ear-best still shows 'Record : 3 notes en 0:04.9' after the reset. A following run that scores lower (1/5) is compared to the stale record, so there is no new-record badge, nothing is saved (storage stays null), and result-best still shows the deleted record. It only fixes itself after a reload or a section switch. Reference: /app/frontend/app/(tabs)/ear.tsx:96-104 and finish() at line 156", "testID": "ear-best / new-record-badge / result-best", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Challenge", "issues": ["After a correct note, challenge-progress moves to the next number (e.g. 2/5) at once, while the old target and 'Bravo !' are still shown for 0.55s (index = results.length). The same happens on a miss during its 1.8s reveal. Minor inconsistency."]},
+      {"screen": "Setup (Intervalles)", "issues": ["With level 1 selected, the start button sits at 725-781px, right above the tab bar (starts at about 780). With more chip rows the user must scroll to find it. Consider a sticky start button."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/tests/ear_mock_init.js"],
+  "action_items": [
+    "Reload `best` from storage when the Ear tab gets focus (useFocusEffect), or share it through context, so the Settings reset shows on screen and new records after a reset are saved.",
+    "Blues scale, level 1 '1 · Unique': both 'Quinte diminuée (b5)' and 'Quinte juste (5)' are selected because LEVELS filters by interval number. To make level 1 a single interval, prefer the exact '5' label.",
+    "Records are stored per section only (fretstudio_best_{section}), not per note count. So 6/20 beats a perfect 5/5, and a 20-note run is compared with a 5-note run. Consider keying by section and count, or comparing by ratio.",
+    "Optional: in Degrés d’accord, 'Écouter' plays the target note itself (playMidi = target), which gives away the answer. Consider playing the chord or the root instead."
+  ],
+  "critical_code_review_comments": [
+    "ear.tsx finish(): setIsRecord and storage.setItem are called inside the setBest updater. These side effects run twice under StrictMode and use stale `prev` (root cause of the reset bug). Compute the record outside the updater, from a ref.",
+    "Detection: when a wrong note is held, onWrong fires only once (count === 6). A second wrong attempt needs a different pitch or silence first. That is acceptable, but holding the same wrong note never uses up the second chance.",
+    "Files are well split (ear.tsx 368 lines, components under 200 lines). testIDs are present on all interactive elements."
+  ],
+  "updated_files": ["/app/tests/ear_mock_init.js (new test helper only, no app code changed)"],
+  "success_rate": {"backend": "N/A", "frontend": "95% (all requested flows pass; 1 stale-state bug in record reset)"},
+  "seed_data_creation": "None. Only localStorage records in the test browser.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mic mock and helpers are in /app/tests/ear_mock_init.js. Load it with page.add_init_script(path=...). It provides window.__play(midi), window.__setFreq(30) for silence, __parseNote('G#2') -> midi, __q(testID) -> innerText, and __lastPlayed() (midi of the last sample played through the HTMLMediaElement.play hook, which works for listen/interval auto-play and the replay button). Hold a correct note about 1s and a wrong note about 1.2s, with 300-400ms of silence between attempts. Wait 2.3s after any reference playback. To detect a new question, wait until quiz-feedback == 'Joue la note sur ta guitare' (progress changes before the question does). A selected chip has borderTopColor rgb(245, 158, 11). Interval chip testIDs use labels like ear-interval-b3 / ear-interval-#4.",
+  "rca_of_issue": "Stale record after reset: the tabs stay mounted. EarScreen loads `best` only when `section` changes (ear.tsx:96). Settings removes the storage keys but never notifies EarScreen. To reproduce: score 3/5 → Settings → Effacer → Ear tab → ear-best still shows 3 → score 1/5 → no badge and nothing saved. Fix: useFocusEffect(() => reload best) in ear.tsx."
+}

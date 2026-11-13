@@ -13,6 +13,7 @@ Follow-ups: menu de choix de gamme ; rotation paysage montrant au moins jusqu'à
 - Components: Fretboard (fretScale/rowH props), ScalePicker (bottom sheet), Chip, Glass, StudioBackground
 
 ## Implemented (2026-06)
+- Ear v3: 4 sections (Manche note+corde, Écoute, Degrés, Intervalles from a scale with 5 levels), challenge N notes (5/10/20) with global chrono, 2 chances/note, fast transition, result screen, records per section+count, no-scroll challenge layout
 - Scale boxes: 5 positions (parent pentatonic, 2 notes/string chaining) in panel + picker; window highlight + auto-scroll
 - Positions: scroll only if box off-screen, other scale notes faded outside the box, position chips in landscape legend row
 - Scale & chord modes: uniform-color dots by default; degree chips recolor their notes (tonic selected by default) instead of hiding them.

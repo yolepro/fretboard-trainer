@@ -1,0 +1,29 @@
+{
+  "summary": "Iteration 8 (frontend only), re-tested at 390x844 using the oscillator mic mock (/app/tests/ear_mock_init.js). All 8 requested items pass and there were no page errors. (1) Records are now stored per section and note count (fretstudio_best_{section}_{count}). With 2/5 recorded on board, ear-count-10 and ear-count-20 show 'Pas encore de record', and switching back to 5 shows 'Record : 2 notes en 0:06.8'. The record survives a reload. (2) The iteration 7 stale-record bug is fixed: with an existing 2/5 record, Settings reset-best-button then tab-ear shows 'Pas encore de record' at once, without a reload. The next 1/5 run shows new-record-badge and saves 1/5. Resetting from the result screen also returns to setup with no record. (3) finish() logic: 1/5 against a 2/5 record gives no badge and the record stays 2. 3/5 gives the badge and saves 3. (4) Blues level 1 selects only 'ear-interval-5'. Major and minor level 1 also select only '5'. (5) During the Bravo and Raté pauses, challenge-progress keeps the current question number (1/5 stays 1/5; 2/5 during Raté and 1s later). (6) Degrés d'accord: the replay button reads 'Tonique' and plays the chord root. Over 3 questions the pitch class played matched the root: C6->48, A#m7->58, D11->50. (7) Interval setup at level 5 with the Blues scale, scrolled to the bottom: start-challenge-button spans y=676-732 and the tab bar starts at about 786, so there is no overlap. (8) Regression: a correct note gives Bravo. Two wrong notes give 'Raté — c’était D#3 · corde 6 (E), case 11'. Wrong octave gives the 'Bonne note, mauvaise octave' message. Skip advances. The result screen shows score, time and best. Listen hides the note as '?' and reveals it on Bravo. Interval auto-plays the tonic and tonic+7 gives Bravo. Rejouer restarts at 1/5. Leaving the tab returns to setup.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SetupPanel ear-best", "issue": "Plural agreement: a score of 1 shows 'Record : 1 notes en 0:03.1'. It should read '1 note'. Reference: /app/frontend/src/ear/SetupPanel.tsx:66", "testID": "ear-best", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/tests/ear_mock_init.js"],
+  "action_items": [
+    "LOW: Fix the singular in ear-best: show '1 note' when best.score === 1.",
+    "LOW: settings.tsx reset hardcodes the section list ['board','listen','degree','interval'] and the counts [5,10,20], and builds the key string by hand. Use SECTIONS and bestKey() from src/ear/questions.ts so that a new section or count is not missed by the reset. Optionally also remove the legacy keys fretstudio_best_{section} left over from the previous key format.",
+    "LOW (optional): Blues level 2 'Facile' includes b5 (tritone) as well as 4 and 5, because LEVELS matches on the interval number. Consider excluding altered intervals at level 2 too."
+  ],
+  "critical_code_review_comments": [
+    "ear.tsx loadBest(): there is no guard against out-of-order async results when section or count is switched quickly. A stale response could set `best` for the wrong key. Not reproduced. A request token or a key check before setBest would remove the risk.",
+    "The record logic in finish() is correct: score > 0 and (no previous record, a higher score, or the same score with a lower time). It writes to bestKey(section, count)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% (8/8 requested items)"},
+  "seed_data_creation": "None. Records live only in the browser storage of the test browser contexts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use /app/tests/ear_mock_init.js (page.add_init_script). It provides helpers: __play(midi), __setFreq(30) for silence, __parseNote, __q(testID), and __lastPlayed(). Python f-strings cannot contain backslashes: precompile any regex outside the f-string. Tab testIDs: tab-fretboard, tab-ear, tab-settings. Record text format: 'Record : N notes en m:ss.d' or 'Pas encore de record'.",
+  "rca_of_issue": "The iteration 7 stale-record bug is fixed: useFocusEffect now calls loadBest() on focus, and the best record is keyed by section and count."
+}
