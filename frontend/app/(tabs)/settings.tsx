@@ -7,6 +7,7 @@ import {
   Lock,
   Minus,
   MusicNotes,
+  Palette,
   Plus,
   SpeakerHigh,
   Stack,
@@ -17,6 +18,7 @@ import {
 } from "phosphor-react-native";
 
 import { Chip } from "@/src/components/Chip";
+import { FretboardStylePicker } from "@/src/components/FretboardStylePicker";
 import { playNote } from "@/src/audio/sampler";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
@@ -133,6 +135,9 @@ export default function SettingsScreen() {
         </Group>
 
         <Group title="Manche">
+          <Row testID="setting-fretboard-style" icon={Palette} title="Style du manche" subtitle="Bois, frettes, cordes et repères" />
+          <FretboardStylePicker value={settings.fretboardStyle} onChange={(id) => update({ fretboardStyle: id })} />
+          <View style={styles.sep} />
           <Row testID="setting-label-mode" icon={Stack} title="Étiquettes des notes" />
           <View style={styles.inlineChips}>
             <Chip testID="settings-label-note" label="Noms" selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />

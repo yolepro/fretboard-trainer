@@ -13,6 +13,8 @@ import {
   type DegreeKey,
   type IntervalDef,
 } from "@/src/music/theory";
+import { MARKER_SIZE, fretboardPalette } from "@/src/fretboardStyles";
+import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
 const OPEN_W = 46;
@@ -63,6 +65,21 @@ function FretboardImpl({
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
+  const { settings } = useSettings();
+  const palette = useMemo(() => fretboardPalette(settings.fretboardStyle, colors), [settings.fretboardStyle, colors]);
+  const markerDims = MARKER_SIZE[palette.markerShape];
+  // Marker centered on a row boundary-free position: `centerRow` is a multiple of rowH (rows 2, 3, 4 of 6).
+  const markerStyle = (centerRow: number) => ({
+    position: "absolute" as const,
+    alignSelf: "center" as const,
+    top: rowH * centerRow - markerDims.h / 2,
+    width: markerDims.w,
+    height: markerDims.h,
+    borderRadius: markerDims.radius,
+    backgroundColor: palette.marker,
+    opacity: 0.9,
+    transform: markerDims.rotate ? [{ rotate: "45deg" }] : undefined,
+  });
   const boardH = rowH * 6;
   const widths = useMemo(() => FRETS.map((f) => fretWidth(f, fretScale)), [fretScale]);
   const totalW = useMemo(() => widths.reduce((s, w) => s + w, 0), [widths]);
@@ -114,16 +131,18 @@ function FretboardImpl({
                 key={`w${f}`}
                 style={[
                   { width: widths[f], height: boardH },
-                  f === 0 ? styles.openCell : f % 2 ? styles.wood : styles.woodAlt,
-                  windowRange && inWindow(f) && styles.boxCell,
-                  f === 0 ? styles.nut : styles.fretWire,
+                  { backgroundColor: f === 0 ? palette.open : f % 2 ? palette.wood : palette.woodAlt },
+                  windowRange && inWindow(f) && { backgroundColor: palette.boxHighlight },
+                  f === 0
+                    ? { borderRightWidth: 6, borderRightColor: palette.nut }
+                    : { borderRightWidth: 2, borderRightColor: palette.fretWire },
                 ]}
               >
-                {SINGLE_MARKERS.includes(f) ? <View testID={`fret-marker-${f}`} style={[styles.marker, { top: rowH * 3 - 6 }]} /> : null}
+                {SINGLE_MARKERS.includes(f) ? <View testID={`fret-marker-${f}`} style={markerStyle(3)} /> : null}
                 {DOUBLE_MARKERS.includes(f) ? (
                   <>
-                    <View testID={`fret-marker-${f}-a`} style={[styles.marker, { top: rowH * 2 - 6 }]} />
-                    <View testID={`fret-marker-${f}-b`} style={[styles.marker, { top: rowH * 4 - 6 }]} />
+                    <View testID={`fret-marker-${f}-a`} style={markerStyle(2)} />
+                    <View testID={`fret-marker-${f}-b`} style={markerStyle(4)} />
                   </>
                 ) : null}
               </View>
@@ -140,7 +159,7 @@ function FretboardImpl({
                 {
                   top: rowH * (s + 0.5) - STRING_THICK[s] / 2,
                   height: STRING_THICK[s],
-                  backgroundColor: s < 2 ? colors.stringPlain : colors.stringWound,
+                  backgroundColor: s < 2 ? palette.stringPlain : palette.stringWound,
                 },
               ]}
             />
@@ -207,7 +226,7 @@ function FretboardImpl({
             const marked = SINGLE_MARKERS.includes(f) || DOUBLE_MARKERS.includes(f);
             return (
               <View key={`fn${f}`} style={[styles.fretNumCell, { width: widths[f] }]}>
-                <Text testID={`fret-number-${f}`} style={[styles.fretNum, marked && styles.fretNumMarked]}>
+                <Text testID={`fret-number-${f}`} style={[styles.fretNum, marked && styles.fretNumMarked, marked && { color: palette.markerText }]}>
                   {f}
                 </Text>
               </View>

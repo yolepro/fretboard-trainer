@@ -2,8 +2,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { storage } from "@/src/utils/storage";
 import { noteName, type Accidental, type Notation } from "@/src/music/theory";
+import { DEFAULT_FRETBOARD_STYLE, isFretboardStyle, type FretboardStyleId } from "@/src/fretboardStyles";
 
 export type Settings = {
+  fretboardStyle: FretboardStyleId;
   notation: Notation;
   accidental: Accidental;
   labelMode: "note" | "degree";
@@ -14,6 +16,7 @@ export type Settings = {
 };
 
 const DEFAULTS: Settings = {
+  fretboardStyle: DEFAULT_FRETBOARD_STYLE,
   notation: "english",
   accidental: "sharp",
   labelMode: "note",
@@ -40,7 +43,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     storage.getItem(KEY, null).then((raw) => {
       if (typeof raw === "string") {
         try {
-          setSettings({ ...DEFAULTS, ...JSON.parse(raw) });
+          const saved = JSON.parse(raw);
+          setSettings({
+            ...DEFAULTS,
+            ...saved,
+            fretboardStyle: isFretboardStyle(saved?.fretboardStyle) ? saved.fretboardStyle : DEFAULT_FRETBOARD_STYLE,
+          });
         } catch {
           // keep defaults
         }
