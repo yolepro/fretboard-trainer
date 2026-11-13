@@ -22,6 +22,7 @@ type Props = {
   nameOf: (pc: number) => string;
   positions: BoxWindow[];
   selectedPosition: number | null;
+  positionVariants?: number[];
   onPositionChange: (i: number | null) => void;
 };
 
@@ -47,6 +48,7 @@ export function ScalePicker({
   nameOf,
   positions,
   selectedPosition,
+  positionVariants,
   onPositionChange,
 }: Props) {
   const styles = useStyles();
@@ -97,7 +99,7 @@ export function ScalePicker({
           </ChipRow>
 
           <SectionLabel>Position</SectionLabel>
-          <PositionChips boxes={positions} selected={selectedPosition} onChange={onPositionChange} prefix="picker-position" />
+          <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" />
 
           <View style={styles.listContent}>
             {groups.map((g) => (

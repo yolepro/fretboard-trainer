@@ -22,6 +22,7 @@ import {
   midiToFreq,
   octaveOf,
   pcOf,
+  boxVariant,
   scaleBoxes,
   type DegreeKey,
 } from "@/src/music/theory";
@@ -46,6 +47,8 @@ export default function FretboardScreen() {
   // All notes share one color; selected degrees get their own color (tonic by default)
   const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
   const [position, setPosition] = useState<number | null>(null);
+  // Per-position variant: 0 = 1/2 (low), 1 = 2/2 (same box 12 frets higher)
+  const [variants, setVariants] = useState<number[]>([]);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -75,7 +78,28 @@ export default function FretboardScreen() {
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
   const boxes = useMemo(() => scaleBoxes(rootPc, formula), [rootPc, formula]);
-  const windowRange = position !== null ? boxes[position] : null;
+  const variant = position !== null ? variants[position] ?? 0 : 0;
+  // Memoized so the Fretboard's scroll effect only fires when the window really changes.
+  const windowRange = useMemo(
+    () => (position !== null && boxes[position] ? boxVariant(boxes[position], variant) : null),
+    [boxes, position, variant],
+  );
+
+  // Tap a position to select it; tap the selected one again to switch between 1/2 and 2/2.
+  const selectPosition = useCallback(
+    (i: number | null) => {
+      if (i !== null && i === position) {
+        setVariants((prev) => {
+          const next = Array.from({ length: boxes.length }, (_, k) => prev[k] ?? 0);
+          next[i] = next[i] === 1 ? 0 : 1;
+          return next;
+        });
+      } else {
+        setPosition(i);
+      }
+    },
+    [position, boxes.length],
+  );
 
   const onNotePress = useCallback(
     (midi: number, s: number, f: number) => {
@@ -214,16 +238,20 @@ export default function FretboardScreen() {
         {isLandscape ? (
           <>
             <View style={styles.legendDivider} />
-            <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => setPosition(null)} />
-            {boxes.map((b, i) => (
-              <Chip
-                key={`p${i}`}
-                testID={`landscape-position-${i + 1}`}
-                label={`Pos. ${i + 1} · ${b.min}–${b.max}`}
-                selected={position === i}
-                onPress={() => setPosition(i)}
-              />
-            ))}
+            <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => selectPosition(null)} />
+            {boxes.map((box, i) => {
+              const v = variants[i] ?? 0;
+              const b = boxVariant(box, v);
+              return (
+                <Chip
+                  key={`p${i}`}
+                  testID={`landscape-position-${i + 1}`}
+                  label={`Pos. ${i + 1} · ${b.min}–${b.max} · ${v + 1}/2`}
+                  selected={position === i}
+                  onPress={() => selectPosition(i)}
+                />
+              );
+            })}
           </>
         ) : null}
       </ChipRow>
@@ -240,7 +268,8 @@ export default function FretboardScreen() {
         nameOf={nameOf}
         positions={boxes}
         selectedPosition={position}
-        onPositionChange={setPosition}
+        positionVariants={variants}
+        onPositionChange={selectPosition}
       />
 
       {!isLandscape ? (
@@ -271,7 +300,7 @@ export default function FretboardScreen() {
           </ChipRow>
 
           <SectionLabel>Position (boîte de gamme)</SectionLabel>
-          <PositionChips boxes={boxes} selected={position} onChange={setPosition} />
+          <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} />
 
           <SectionLabel>Octave</SectionLabel>
           <ChipRow testID="octave-selector">

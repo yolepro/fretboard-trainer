@@ -129,8 +129,10 @@ export type BoxWindow = { min: number; max: number };
 /**
  * 5 positions derived from the parent pentatonic (major if the formula has a major 3rd, else minor).
  * Each box chains 2 pentatonic notes per string from low E to high e, starting on a pentatonic note
- * of the low E string. Boxes are folded into frets 0–12 when possible and numbered by fret (Pos. 1 = lowest).
+ * of the low E string. Boxes are folded into frets 0–12 when possible and sorted by fret, then the list is
+ * rotated by one: the second box by fret is Pos. 1 and the lowest box becomes Pos. 5.
  * Every note of the selected scale/chord inside the box's fret window [min, max] is shown.
+ * Each box also exists one octave higher (see boxVariant): variant 0 = 1/2 (as computed), variant 1 = 2/2 (+12 frets).
  */
 export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
   const semis = new Set(formula.intervals.map((i) => pcOf(i.semi)));
@@ -142,7 +144,7 @@ export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
     return x;
   };
   const rootFret = pcOf(rootPc - 4);
-  return penta.map((s) => {
+  const sorted = penta.map((s) => {
     let current = TUNING[5] + rootFret + s;
     let min = Infinity;
     let max = -Infinity;
@@ -164,4 +166,12 @@ export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
     }
     return { min, max: Math.min(max, FRET_COUNT) };
   }).sort((a, b) => a.min - b.min);
+  // Shift by one: the former Pos. 2 becomes Pos. 1, the former Pos. 1 goes last.
+  return [...sorted.slice(1), sorted[0]];
+}
+
+/** Homologous position: variant 0 = the box as computed (1/2), variant 1 = same box 12 frets higher (2/2). */
+export function boxVariant(box: BoxWindow, variant: number): BoxWindow {
+  if (variant !== 1) return box;
+  return { min: box.min + 12, max: Math.min(box.max + 12, FRET_COUNT) };
 }
