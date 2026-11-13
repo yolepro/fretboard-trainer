@@ -77,7 +77,8 @@ export default function FretboardScreen() {
   const degrees = useMemo(() => formulaDegrees(formula), [formula]);
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
-  const boxes = useMemo(() => scaleBoxes(rootPc, formula), [rootPc, formula]);
+  // For scales, windows are widened so the visible notes form an unbroken run of the scale (chords keep the raw box).
+  const boxes = useMemo(() => scaleBoxes(rootPc, formula, mode === "scale"), [rootPc, formula, mode]);
   const variant = position !== null ? variants[position] ?? 0 : 0;
   // Memoized so the Fretboard's scroll effect only fires when the window really changes.
   const windowRange = useMemo(

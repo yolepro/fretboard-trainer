@@ -133,8 +133,10 @@ export type BoxWindow = { min: number; max: number };
  * rotated by one: the second box by fret is Pos. 1 and the lowest box becomes Pos. 5.
  * Every note of the selected scale/chord inside the box's fret window [min, max] is shown.
  * Each box also exists one octave higher (see boxVariant): variant 0 = 1/2 (as computed), variant 1 = 2/2 (+12 frets).
+ * With `fillGaps` (scales only), each window is widened just enough that the visible notes form an unbroken run of
+ * the scale (see fillScaleGaps); the pentatonic window alone often leaves out the 4th/7th degrees at its edges.
  */
-export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
+export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): BoxWindow[] {
   const semis = new Set(formula.intervals.map((i) => pcOf(i.semi)));
   const penta = semis.has(4) ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10];
   const pcs = new Set(penta.map((s) => pcOf(rootPc + s)));
@@ -167,7 +169,44 @@ export function scaleBoxes(rootPc: number, formula: Formula): BoxWindow[] {
     return { min, max: Math.min(max, FRET_COUNT) };
   }).sort((a, b) => a.min - b.min);
   // Shift by one: the former Pos. 2 becomes Pos. 1, the former Pos. 1 goes last.
-  return [...sorted.slice(1), sorted[0]];
+  const rotated = [...sorted.slice(1), sorted[0]];
+  return fillGaps ? rotated.map((b) => fillScaleGaps(rootPc, formula, b)) : rotated;
+}
+
+/**
+ * Widens a window until the scale notes it shows are consecutive: going up in pitch from the lowest to the
+ * highest visible note, no scale note may be skipped (e.g. C major Pos. 2 at frets 5–8 jumped from A3 to C4;
+ * B3 sits on fret 4 of the G string, so the window becomes 4–8).
+ * A missing note is taken at the place closest to the window; when it is equally close on both sides,
+ * the window grows to the left (lower frets).
+ */
+function fillScaleGaps(rootPc: number, formula: Formula, box: BoxWindow): BoxWindow {
+  const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
+  let { min, max } = box;
+  for (let guard = 0; guard < 12; guard++) {
+    const seen = new Set<number>();
+    TUNING.forEach((open) => {
+      for (let f = min; f <= max; f++) if (pcs.has(pcOf(open + f))) seen.add(open + f);
+    });
+    if (seen.size < 2) break;
+    const pitches = [...seen].sort((a, b) => a - b);
+    let missing: number | null = null;
+    for (let m = pitches[0] + 1; m < pitches[pitches.length - 1]; m++) {
+      if (pcs.has(pcOf(m)) && !seen.has(m)) {
+        missing = m;
+        break;
+      }
+    }
+    if (missing === null) break;
+    const target = missing;
+    const frets = TUNING.map((open) => target - open).filter((f) => f >= 0 && f <= FRET_COUNT);
+    if (!frets.length) break;
+    const away = (f: number) => (f < min ? min - f : f > max ? f - max : 0);
+    frets.sort((a, b) => away(a) - away(b) || a - b);
+    min = Math.min(min, frets[0]);
+    max = Math.max(max, frets[0]);
+  }
+  return { min, max };
 }
 
 /** Homologous position: variant 0 = the box as computed (1/2), variant 1 = same box 12 frets higher (2/2). */
