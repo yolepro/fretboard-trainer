@@ -266,5 +266,5 @@ const useStyles = makeStyles((c) => ({
   neutralText: { fontFamily: fonts.display, fontSize: 8, color: c.onDegreeNeutral },
   fretNumCell: { height: 22, alignItems: "center", justifyContent: "center" },
   fretNum: { fontFamily: fonts.display, fontSize: 11, color: c.muted },
-  fretNumMarked: { color: c.fretMarker, fontWeight: "700" },
+  fretNumMarked: { color: c.fretMarkerText, fontWeight: "700" },
 }));

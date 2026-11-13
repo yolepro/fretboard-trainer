@@ -64,7 +64,8 @@ const dark = {
   fretboardWood: "#1A1715",
   fretboardWoodAlt: "#211C19",
   fretWire: "#52525B",
-  fretMarker: "#E5E7EB",
+  fretMarker: "#9A6B43", // brown inlays: distinct from the (light grey / colored) notes
+  fretMarkerText: "#C79A6B", // lighter brown so the marked fret numbers stay readable
   nut: "#D6D3D1",
   stringPlain: "#C4C4CC",
   stringWound: "#B08D57",
