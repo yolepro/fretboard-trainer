@@ -234,6 +234,7 @@ function locationsOf(midi: number): FretLoc[] {
  * - The path starts on the lowest root of the position and climbs to the root one octave higher (scales),
  *   or through the chord tones.
  * - With a position selected, notes are taken inside its fret window; otherwise anywhere on the neck.
+ *   If the window is cut short by the end of the neck, only the displayed notes are played.
  * - When a pitch exists in several places, the one closest to the leftmost fret of the position wins
  *   (closest to fret 1 when no position is selected).
  */
@@ -264,6 +265,22 @@ export function playbackPath(rootPc: number, formula: Formula, isScale: boolean,
     return l && inWindow(l.fret) ? 0 : 1;
   };
   roots.sort((a, b) => outside(a) - outside(b) || a - b);
+
+  // With a position selected: if the whole path (root → octave above) fits inside the window, play it.
+  // Otherwise the window is cut short by the end of the neck (e.g. the 2/2 version of the highest position):
+  // play only the notes that are displayed, from the lowest root of the window upward.
+  if (range && roots.length && outside(roots[0]) === 0) {
+    const start = roots[0];
+    const full = semis.map((s) => ({ midi: start + s, loc: pick(start + s) }));
+    if (full.every((s) => s.loc && inWindow(s.loc.fret))) return full;
+    const shown: PathStep[] = [];
+    for (const s of semis) {
+      const loc = pick(start + s);
+      if (!loc || !inWindow(loc.fret)) break;
+      shown.push({ midi: start + s, loc });
+    }
+    return shown;
+  }
 
   let fallback: PathStep[] | null = null;
   for (const start of roots) {
