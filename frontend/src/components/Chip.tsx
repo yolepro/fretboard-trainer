@@ -93,10 +93,10 @@ const useStyles = makeStyles((c) => ({
     justifyContent: "center",
     marginLeft: 2,
   },
-  badgePrimary: { backgroundColor: c.brandPrimary },
+  badgePrimary: { backgroundColor: c.degree3rd },
   badgeAccent: { backgroundColor: c.degree7th },
   badgeText: { fontFamily: fonts.display, fontSize: 12, fontWeight: "700" },
-  badgeTextPrimary: { color: c.onBrandPrimary },
+  badgeTextPrimary: { color: c.onDegree3rd },
   badgeTextAccent: { color: c.onDegree7th },
   section: {
     fontFamily: fonts.display,
