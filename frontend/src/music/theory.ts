@@ -128,7 +128,7 @@ export function formulaDegrees(formula: Formula): DegreeKey[] {
  * A position. `min`/`max` are the first and last fret it uses. For scales, `cells` lists exactly which
  * notes belong to it ("string:fret" keys); without `cells` (chords) every note inside [min, max] belongs to it.
  */
-export type BoxWindow = { min: number; max: number; cells?: Set<string> };
+export type BoxWindow = { min: number; max: number; cells?: Set<string>; second?: BoxWindow };
 
 export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
 
@@ -174,20 +174,70 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
     while (raw.min + delta < 0) delta += 12;
     while (raw.min + delta >= 12) delta -= 12;
     if (!raw.cells) return { min: raw.min + delta, max: Math.min(raw.max + delta, FRET_COUNT) };
-    const cells = new Set<string>();
-    let lo = Infinity;
-    let hi = -Infinity;
-    raw.cells.forEach((key) => {
-      const [string, fret] = key.split(":").map(Number);
-      const f = fret + delta;
-      if (f > FRET_COUNT) return;
-      cells.add(cellKey(string, f));
-      lo = Math.min(lo, f);
-      hi = Math.max(hi, f);
-    });
-    return { min: lo, max: hi, cells };
+    const shifted = (d: number) => {
+      const cells = new Map<string, number>();
+      raw.cells!.forEach((key) => {
+        const [string, fret] = key.split(":").map(Number);
+        const f = fret + d;
+        if (f >= 0 && f <= FRET_COUNT) cells.set(cellKey(string, f), TUNING[string] + f);
+      });
+      return cells;
+    };
+    const toBox = (cells: Map<string, number>): BoxWindow => {
+      const frets = [...cells.keys()].map(fretOfKey);
+      return { min: Math.min(...frets), max: Math.max(...frets), cells: new Set(cells.keys()) };
+    };
+    const first = shifted(delta);
+    const up = shifted(delta + 12);
+    // 2/2 = same shape one octave higher; if the end of the neck would cut it, the octave below is used instead
+    // when it can be completed (a note falling before the nut is re-placed at the smallest gap).
+    let second: Map<string, number> = up;
+    if (up.size < first.size) {
+      const down = shifted(delta - 12);
+      const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
+      fillMissingNotes(down, pcs, 0, FRET_COUNT);
+      if (down.size >= first.size && new Set(down.values()).size === new Set(first.values()).size) second = down;
+    }
+    return { ...toBox(first), second: second.size ? toBox(second) : undefined };
   });
 }
+
+const fretOfKey = (k: string) => Number(k.split(":")[1]);
+
+/**
+ * Gap filling shared by the 1/2 build and the lower 2/2 form: going up in pitch, every missing scale note is added
+ * on its own at the place closest to the notes already there (smaller gaps first). Ties: the fret column holding
+ * fewer scale notes, then the lower fret. Only frets in [lo, hi] are allowed.
+ */
+function fillMissingNotes(cells: Map<string, number>, pcs: Set<number>, lo: number, hi: number) {
+  const span = () => {
+    const frets = [...cells.keys()].map(fretOfKey);
+    return { min: Math.min(...frets), max: Math.max(...frets) };
+  };
+  const columnSize = (fret: number) => TUNING.filter((open) => pcs.has(pcOf(open + fret))).length;
+  for (let guard = 0; guard < 12 && cells.size > 1; guard++) {
+    const seen = new Set(cells.values());
+    const pitches = [...seen].sort((a, b) => a - b);
+    let missing: number | null = null;
+    for (let m = pitches[0] + 1; m < pitches[pitches.length - 1]; m++) {
+      if (pcs.has(pcOf(m)) && !seen.has(m)) {
+        missing = m;
+        break;
+      }
+    }
+    if (missing === null) break;
+    const target = missing;
+    const { min, max } = span();
+    const places = TUNING.map((open, string) => ({ string, fret: target - open })).filter(
+      (l) => l.fret >= lo && l.fret <= hi,
+    );
+    if (!places.length) break;
+    const away = (f: number) => (f < min ? min - f : f > max ? f - max : 0);
+    places.sort((x, y) => away(x.fret) - away(y.fret) || columnSize(x.fret) - columnSize(y.fret) || x.fret - y.fret);
+    cells.set(cellKey(places[0].string, places[0].fret), target);
+  }
+}
+
 
 /**
  * Builds the exact set of notes of a scale position from its pentatonic box.
@@ -219,43 +269,17 @@ function buildScalePosition(rootPc: number, formula: Formula, raw: BoxWindow): B
     keys.forEach((k) => k !== keep && cells.delete(k));
   });
 
-  const fretOf = (k: string) => Number(k.split(":")[1]);
-  const span = () => {
-    const frets = [...cells.keys()].map(fretOf);
-    return { min: Math.min(...frets), max: Math.max(...frets) };
-  };
-  const columnSize = (fret: number) => TUNING.filter((open) => pcs.has(pcOf(open + fret))).length;
-
-  // 3. Fill gaps one note at a time.
-  for (let guard = 0; guard < 12 && cells.size > 1; guard++) {
-    const seen = new Set(cells.values());
-    const pitches = [...seen].sort((a, b) => a - b);
-    let missing: number | null = null;
-    for (let m = pitches[0] + 1; m < pitches[pitches.length - 1]; m++) {
-      if (pcs.has(pcOf(m)) && !seen.has(m)) {
-        missing = m;
-        break;
-      }
-    }
-    if (missing === null) break;
-    const target = missing;
-    const { min, max } = span();
-    const places = TUNING.map((open, string) => ({ string, fret: target - open })).filter(
-      (l) => l.fret >= -12 && l.fret <= FRET_COUNT + 24,
-    );
-    if (!places.length) break;
-    const away = (f: number) => (f < min ? min - f : f > max ? f - max : 0);
-    places.sort((a, b) => away(a.fret) - away(b.fret) || columnSize(a.fret) - columnSize(b.fret) || a.fret - b.fret);
-    cells.set(cellKey(places[0].string, places[0].fret), target);
-  }
+  fillMissingNotes(cells, pcs, -12, FRET_COUNT + 24);
 
   if (!cells.size) return raw;
-  return { ...span(), cells: new Set(cells.keys()) };
+  const frets = [...cells.keys()].map(fretOfKey);
+  return { min: Math.min(...frets), max: Math.max(...frets), cells: new Set(cells.keys()) };
 }
 
 /** Homologous position: variant 0 = the box as computed (1/2), variant 1 = same box 12 frets higher (2/2). */
 export function boxVariant(box: BoxWindow, variant: number): BoxWindow {
   if (variant !== 1) return box;
+  if (box.second) return box.second;
   if (!box.cells) return { min: box.min + 12, max: Math.min(box.max + 12, FRET_COUNT) };
   const cells = new Set<string>();
   let min = Infinity;
