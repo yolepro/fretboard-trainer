@@ -39,7 +39,8 @@ export function degreeKeyFromNum(n: number): DegreeKey {
 }
 
 export type IntervalDef = { semi: number; num: number; label: string };
-export type Formula = { id: string; name: string; symbol: string; group: string; intervals: IntervalDef[] };
+/** `special`: symmetric / non-heptatonic scale — no position boxes (full neck only) and not used in ear training. */
+export type Formula = { id: string; name: string; symbol: string; group: string; intervals: IntervalDef[]; special?: boolean };
 
 const iv = (semi: number, num: number, label: string): IntervalDef => ({ semi, num, label });
 
@@ -56,6 +57,10 @@ export const SCALES: Formula[] = [
   { id: "lydian", name: "Lydien", symbol: "lyd", group: "Modes", intervals: [iv(0, 1, "1"), iv(2, 2, "2"), iv(4, 3, "3"), iv(6, 4, "#4"), iv(7, 5, "5"), iv(9, 6, "6"), iv(11, 7, "7")] },
   { id: "mixolydian", name: "Mixolydien", symbol: "mixo", group: "Modes", intervals: [iv(0, 1, "1"), iv(2, 2, "2"), iv(4, 3, "3"), iv(5, 4, "4"), iv(7, 5, "5"), iv(9, 6, "6"), iv(10, 7, "b7")] },
   { id: "locrian", name: "Locrien", symbol: "loc", group: "Modes", intervals: [iv(0, 1, "1"), iv(1, 2, "b2"), iv(3, 3, "b3"), iv(5, 4, "4"), iv(6, 5, "b5"), iv(8, 6, "b6"), iv(10, 7, "b7")] },
+  { id: "chromatic", name: "Chromatique", symbol: "chrom", group: "Spéciales", special: true, intervals: [iv(0, 1, "1"), iv(1, 2, "b2"), iv(2, 2, "2"), iv(3, 3, "b3"), iv(4, 3, "3"), iv(5, 4, "4"), iv(6, 5, "b5"), iv(7, 5, "5"), iv(8, 6, "b6"), iv(9, 6, "6"), iv(10, 7, "b7"), iv(11, 7, "7")] },
+  { id: "wholetone", name: "Tons entiers", symbol: "tons", group: "Spéciales", special: true, intervals: [iv(0, 1, "1"), iv(2, 2, "2"), iv(4, 3, "3"), iv(6, 4, "#4"), iv(8, 5, "#5"), iv(10, 7, "b7")] },
+  { id: "halfwhole", name: "Demi-ton / ton", symbol: "½-1", group: "Spéciales", special: true, intervals: [iv(0, 1, "1"), iv(1, 2, "b2"), iv(3, 3, "b3"), iv(4, 3, "3"), iv(6, 5, "#4"), iv(7, 5, "5"), iv(9, 6, "6"), iv(10, 7, "b7")] },
+  { id: "wholehalf", name: "Ton / demi-ton", symbol: "1-½", group: "Spéciales", special: true, intervals: [iv(0, 1, "1"), iv(2, 2, "2"), iv(3, 3, "b3"), iv(5, 4, "4"), iv(6, 5, "b5"), iv(8, 6, "b6"), iv(9, 6, "6"), iv(11, 7, "7")] },
 ];
 
 export const CHORDS: Formula[] = [

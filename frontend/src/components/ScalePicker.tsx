@@ -102,8 +102,12 @@ export function ScalePicker({
             ))}
           </ChipRow>
 
-          <SectionLabel>Position</SectionLabel>
-          <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" />
+          {positions.length > 0 ? (
+            <>
+              <SectionLabel>Position</SectionLabel>
+              <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" />
+            </>
+          ) : null}
 
           <SectionLabel>Étiquettes</SectionLabel>
           <ChipRow testID="picker-label-selector">

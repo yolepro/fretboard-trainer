@@ -78,7 +78,14 @@ export default function FretboardScreen() {
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
   // For scales, windows are widened so the visible notes form an unbroken run of the scale (chords keep the raw box).
-  const boxes = useMemo(() => scaleBoxes(rootPc, formula, mode === "scale"), [rootPc, formula, mode]);
+  const boxes = useMemo(() => (formula.special ? [] : scaleBoxes(rootPc, formula, mode === "scale")), [rootPc, formula, mode]);
+  // Special scales (chromatic, whole tone, diminished) have no position boxes: back to the full neck.
+  useEffect(() => {
+    if (formula.special) {
+      setPosition(null);
+      setVariants([]);
+    }
+  }, [formula]);
   const variant = position !== null ? variants[position] ?? 0 : 0;
   // Memoized so the Fretboard's scroll effect only fires when the window really changes.
   const windowRange = useMemo(
@@ -245,7 +252,7 @@ export default function FretboardScreen() {
             onPress={() => toggleLayer(d)}
           />
         ))}
-        {isLandscape ? (
+        {isLandscape && boxes.length > 0 ? (
           <>
             <View style={styles.legendDivider} />
             <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => selectPosition(null)} />
@@ -312,8 +319,12 @@ export default function FretboardScreen() {
             ))}
           </ChipRow>
 
-          <SectionLabel>Position (boîte de gamme)</SectionLabel>
-          <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} />
+          {boxes.length > 0 ? (
+            <>
+              <SectionLabel>Position (boîte de gamme)</SectionLabel>
+              <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} />
+            </>
+          ) : null}
 
           <SectionLabel>{mode === "scale" ? "Gamme" : "Accord"}</SectionLabel>
           <ChipRow testID="formula-selector">

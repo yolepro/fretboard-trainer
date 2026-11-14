@@ -89,7 +89,7 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
           <>
             <SectionLabel>Gamme</SectionLabel>
             <ChipRow testID="ear-scale-selector">
-              {SCALES.map((s) => (
+              {SCALES.filter((s) => !s.special).map((s) => (
                 <Chip
                   key={s.id}
                   testID={`ear-scale-${s.id}`}
