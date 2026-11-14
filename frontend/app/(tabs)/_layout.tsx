@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
-import { Ear, GearSix, Guitar } from "phosphor-react-native";
+import { Ear, GearSix, Guitar, MusicNotes } from "phosphor-react-native";
 
 import { usesNativeTabs } from "@/src/navigation";
 import { fonts, useTheme } from "@/src/theme";
@@ -15,6 +15,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Icon sf="guitars.fill" />
           <NativeTabs.Trigger.Label>Manche</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="doigte">
+          <NativeTabs.Trigger.Icon sf="music.note.list" />
+          <NativeTabs.Trigger.Label>Doigté</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="ear">
           <NativeTabs.Trigger.Icon sf="ear.fill" />
@@ -49,6 +53,14 @@ export default function TabsLayout() {
           title: "Manche",
           tabBarButtonTestID: "tab-fretboard",
           tabBarIcon: ({ color, focused }) => <Guitar color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
+        }}
+      />
+      <Tabs.Screen
+        name="doigte"
+        options={{
+          title: "Doigté",
+          tabBarButtonTestID: "tab-fingering",
+          tabBarIcon: ({ color, focused }) => <MusicNotes color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
         }}
       />
       <Tabs.Screen

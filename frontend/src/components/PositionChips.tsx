@@ -11,12 +11,16 @@ type Props = {
   /** Tapping a position selects it; tapping the selected one again switches its variant (handled by the parent). */
   onChange: (i: number | null) => void;
   prefix?: string;
+  /** Hide the "Tout le manche" chip (a position is always selected). */
+  hideAll?: boolean;
 };
 
-export function PositionChips({ boxes, selected, variants = [], onChange, prefix = "position" }: Props) {
+export function PositionChips({ boxes, selected, variants = [], onChange, prefix = "position", hideAll = false }: Props) {
   return (
     <ChipRow testID={`${prefix}-selector`}>
-      <Chip testID={`${prefix}-all`} label="Tout le manche" selected={selected === null} onPress={() => onChange(null)} />
+      {hideAll ? null : (
+        <Chip testID={`${prefix}-all`} label="Tout le manche" selected={selected === null} onPress={() => onChange(null)} />
+      )}
       {boxes.map((_, i) => {
         const variant = variants[i] ?? 0;
         return (
