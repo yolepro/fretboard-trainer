@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Play, Stop } from "phosphor-react-native";
+import { CaretDown, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
+import { ScalePicker } from "@/src/components/ScalePicker";
 import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
@@ -30,6 +31,7 @@ import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 const TEMPOS = [50, 70, 90, 120, 160];
 const PILL_W = 40;
 const PILL_GAP = 6;
+const STRIP_H_LANDSCAPE = 38;
 
 export default function FingeringScreen() {
   const insets = useSafeAreaInsets();
@@ -49,6 +51,7 @@ export default function FingeringScreen() {
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
   const stripRef = useRef<ScrollView>(null);
   const stripW = useRef(0);
@@ -59,7 +62,7 @@ export default function FingeringScreen() {
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
   const rowH = isLandscape
-    ? Math.max(26, Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8) / 6)))
+    ? Math.max(26, Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - STRIP_H_LANDSCAPE) / 6)))
     : 34;
 
   useEffect(() => {
@@ -198,42 +201,57 @@ export default function FingeringScreen() {
     );
   });
 
+  const infoContent = active ? (
+    <>
+      <Text style={styles.infoNote}>
+        {nameOf(pcOf(active.midi))}
+        {octaveOf(active.midi)}
+      </Text>
+      <Text style={styles.infoMeta} numberOfLines={1}>
+        Corde {active.string + 1} · Case {active.fret}
+        {stepIdx !== null ? ` · Note ${stepIdx + 1}/${sequence.length}` : ""}
+      </Text>
+    </>
+  ) : (
+    <Text style={styles.infoMeta} numberOfLines={1}>
+      {empty ? "Position trop courte : essayez 1/2." : `${exercise.name} · ${sequence.length} notes`}
+    </Text>
+  );
+
   const positionBadge = `Pos. ${pos + 1} · ${variant + 1}/2`;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
-        <View style={styles.headerText}>
+        <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           {!isLandscape ? <Text style={styles.brand}>FRETSTUDIO · DOIGTÉ</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{formula.name} · {positionBadge}</Text>
           </Text>
         </View>
+        {isLandscape ? (
+          <View style={styles.infoInline} testID="fingering-info">
+            {infoContent}
+          </View>
+        ) : null}
+        {isLandscape ? (
+          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
+            <Text style={styles.pickerText}>Gamme</Text>
+            <CaretDown size={16} color={colors.onSurface} weight="bold" />
+          </Pressable>
+        ) : null}
         <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, pressed && styles.pressed, empty && styles.dim]}>
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
           {!isLandscape ? <Text style={styles.playText}>{playing ? "Stop" : "Jouer"}</Text> : null}
         </Pressable>
       </View>
 
-      <View style={styles.infoBar} testID="fingering-info">
-        {active ? (
-          <>
-            <Text style={styles.infoNote}>
-              {nameOf(pcOf(active.midi))}
-              {octaveOf(active.midi)}
-            </Text>
-            <Text style={styles.infoMeta} numberOfLines={1}>
-              Corde {active.string + 1} · Case {active.fret}
-              {stepIdx !== null ? ` · Note ${stepIdx + 1}/${sequence.length}` : ""}
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.infoMeta} numberOfLines={1}>
-            {empty ? "Position trop courte pour cet exercice : essayez 1/2." : `${exercise.name} · ${sequence.length} notes — touchez Jouer`}
-          </Text>
-        )}
-      </View>
+      {!isLandscape ? (
+        <View style={styles.infoBar} testID="fingering-info">
+          {infoContent}
+        </View>
+      ) : null}
 
       <Fretboard
         fretScale={fretScale}
@@ -254,7 +272,7 @@ export default function FingeringScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         testID="sequence-strip"
-        style={styles.strip}
+        style={[styles.strip, isLandscape && { height: STRIP_H_LANDSCAPE }]}
         contentContainerStyle={styles.stripContent}
         onLayout={(e) => {
           stripW.current = e.nativeEvent.layout.width;
@@ -274,6 +292,26 @@ export default function FingeringScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      <ScalePicker
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        mode="scale"
+        onModeChange={() => {}}
+        scalesOnly
+        hideAllPosition
+        rootPc={rootPc}
+        onRootChange={setRootPc}
+        selectedId={scaleId}
+        onSelect={setScaleId}
+        nameOf={nameOf}
+        positions={boxes}
+        selectedPosition={pos}
+        positionVariants={variants}
+        onPositionChange={selectPosition}
+        labelMode={settings.labelMode}
+        onLabelModeChange={(m) => update({ labelMode: m })}
+      />
 
       {isLandscape ? (
         <ChipRow testID="fingering-landscape-row">
@@ -349,6 +387,20 @@ const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
   headerText: { flex: 1 },
+  headerTextCompact: { flexShrink: 0, maxWidth: 260 },
+  infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
+  pickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: c.borderStrong,
+    backgroundColor: c.surfaceTertiary,
+  },
+  pickerText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.onSurface },
   brand: { fontFamily: fonts.display, fontSize: 12, letterSpacing: 3, color: c.brandPrimary },
   title: { fontFamily: fonts.display, fontSize: 26, fontWeight: "700", color: c.onSurface },
   titleCompact: { fontSize: 20 },

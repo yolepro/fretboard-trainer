@@ -26,6 +26,10 @@ type Props = {
   onPositionChange: (i: number | null) => void;
   labelMode: "note" | "degree";
   onLabelModeChange: (m: "note" | "degree") => void;
+  /** Scales only: hides the Gammes / Accords switch. */
+  scalesOnly?: boolean;
+  /** Hides the "Tout le manche" position chip (a position is always selected). */
+  hideAllPosition?: boolean;
 };
 
 function groupBy(list: Formula[]) {
@@ -54,6 +58,8 @@ export function ScalePicker({
   onPositionChange,
   labelMode,
   onLabelModeChange,
+  scalesOnly = false,
+  hideAllPosition = false,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -87,13 +93,15 @@ export function ScalePicker({
             showsVerticalScrollIndicator
             nestedScrollEnabled
           >
-          <View style={styles.segment}>
-            {(["scale", "chord"] as PickerMode[]).map((m) => (
-              <Pressable key={m} testID={`picker-mode-${m}`} onPress={() => onModeChange(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
-                <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? "Gammes" : "Accords / Triades"}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {scalesOnly ? null : (
+            <View style={styles.segment}>
+              {(["scale", "chord"] as PickerMode[]).map((m) => (
+                <Pressable key={m} testID={`picker-mode-${m}`} onPress={() => onModeChange(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
+                  <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? "Gammes" : "Accords / Triades"}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           <SectionLabel>Tonalité</SectionLabel>
           <ChipRow testID="picker-root-selector">
@@ -105,7 +113,7 @@ export function ScalePicker({
           {positions.length > 0 ? (
             <>
               <SectionLabel>Position</SectionLabel>
-              <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" />
+              <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" hideAll={hideAllPosition} />
             </>
           ) : null}
 
