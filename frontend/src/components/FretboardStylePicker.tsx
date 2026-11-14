@@ -46,7 +46,7 @@ function Preview({ p, rootColor }: { p: FretboardPalette; rootColor: string }) {
                 borderRadius: m.radius,
                 backgroundColor: p.marker,
                 opacity: 0.9,
-                transform: m.rotate ? [{ rotate: "45deg" }] : undefined,
+                transform: m.rotate ? [{ rotate: "45deg" }] : [],
               }}
             />
           ) : null}

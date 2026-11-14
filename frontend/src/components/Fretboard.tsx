@@ -81,7 +81,7 @@ function FretboardImpl({
     borderRadius: markerDims.radius,
     backgroundColor: palette.marker,
     opacity: 0.9,
-    transform: markerDims.rotate ? [{ rotate: "45deg" }] : undefined,
+    transform: markerDims.rotate ? [{ rotate: "45deg" }] : [],
   });
   const boardH = rowH * 6;
   const widths = useMemo(() => FRETS.map((f) => fretWidth(f, fretScale)), [fretScale]);
