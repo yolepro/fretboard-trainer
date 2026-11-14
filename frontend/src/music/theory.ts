@@ -135,8 +135,9 @@ export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
 /**
  * 5 positions derived from the parent pentatonic (major if the formula has a major 3rd, else minor).
  * Each box chains 2 pentatonic notes per string from low E to high e, starting on a pentatonic note
- * of the low E string. Boxes are folded into frets 0–12 when possible and sorted by fret, then the list is
- * rotated by one: the second box by fret is Pos. 1 and the lowest box becomes Pos. 5.
+ * of the low E string. Numbering is anchored on the root: Pos. 1 is the box whose first low-E note is the root
+ * (the major scale then shows the root as 2nd note of string 6: G = frets 2–5, C = 7–10), Pos. 2–5 follow in
+ * pentatonic order. Each position has the same shape in every key; it starts within frets 0–11.
  * Every note of the selected scale/chord inside the box's fret window [min, max] is shown.
  * Each box also exists one octave higher (see boxVariant): variant 0 = 1/2 (as computed), variant 1 = 2/2 (+12 frets).
  * With `fillGaps` (scales only), each box becomes an exact set of notes (see buildScalePosition): read string by
@@ -151,9 +152,12 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
     while (!pcs.has(pcOf(x))) x++;
     return x;
   };
+  // Every shape is built once in a "virtual" frame placed 12 frets above the real root fret (so the nut never
+  // interferes), then shifted back down: the shape of a position is therefore identical in all 12 keys.
   const rootFret = pcOf(rootPc - 4);
-  const sorted = penta.map((s) => {
-    let current = TUNING[5] + rootFret + s;
+  const SHIFT = 12;
+  return penta.map((s) => {
+    let current = TUNING[5] + rootFret + SHIFT + s;
     let min = Infinity;
     let max = -Infinity;
     for (let str = 5; str >= 0; str--) {
@@ -164,19 +168,25 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
         max = Math.max(max, fret);
       }
     }
-    while (min < 0) {
-      min += 12;
-      max += 12;
-    }
-    while (min - 12 >= 0) {
-      min -= 12;
-      max -= 12;
-    }
-    return { min, max: Math.min(max, FRET_COUNT) };
-  }).sort((a, b) => a.min - b.min);
-  // Shift by one: the former Pos. 2 becomes Pos. 1, the former Pos. 1 goes last.
-  const rotated = [...sorted.slice(1), sorted[0]];
-  return fillGaps ? rotated.map((b) => buildScalePosition(rootPc, formula, b)) : rotated;
+    const raw: BoxWindow = fillGaps ? buildScalePosition(rootPc, formula, { min, max }) : { min, max };
+    // Back to the real neck: shift down, then fold so the position starts within frets 0–11.
+    let delta = -SHIFT;
+    while (raw.min + delta < 0) delta += 12;
+    while (raw.min + delta >= 12) delta -= 12;
+    if (!raw.cells) return { min: raw.min + delta, max: Math.min(raw.max + delta, FRET_COUNT) };
+    const cells = new Set<string>();
+    let lo = Infinity;
+    let hi = -Infinity;
+    raw.cells.forEach((key) => {
+      const [string, fret] = key.split(":").map(Number);
+      const f = fret + delta;
+      if (f > FRET_COUNT) return;
+      cells.add(cellKey(string, f));
+      lo = Math.min(lo, f);
+      hi = Math.max(hi, f);
+    });
+    return { min: lo, max: hi, cells };
+  });
 }
 
 /**
@@ -231,7 +241,7 @@ function buildScalePosition(rootPc: number, formula: Formula, raw: BoxWindow): B
     const target = missing;
     const { min, max } = span();
     const places = TUNING.map((open, string) => ({ string, fret: target - open })).filter(
-      (l) => l.fret >= 0 && l.fret <= FRET_COUNT,
+      (l) => l.fret >= -12 && l.fret <= FRET_COUNT + 24,
     );
     if (!places.length) break;
     const away = (f: number) => (f < min ? min - f : f > max ? f - max : 0);
