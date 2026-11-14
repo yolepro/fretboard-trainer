@@ -140,6 +140,7 @@ export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
 /**
  * Positions of the special scales: fixed-width fret windows anchored on the root (first window starts at the root
  * fret of the low E string), identical in every key. Every scale note inside the window belongs to the position.
+ * The window is then completed note by note like any scale position (no missing note; ties extend to the right).
  *   chromatic: 3 windows of 4 frets (root, +4, +8) · whole tone: 3 windows of 5 frets (root, +4, +8)
  *   diminished (both): 4 windows of 4 frets (root, +3, +6, +9) — the same fingering moved by minor thirds.
  */
@@ -150,13 +151,9 @@ const SPECIAL_LAYOUT: Record<string, { width: number; starts: number[] }> = {
   wholehalf: { width: 4, starts: [0, 3, 6, 9] },
 };
 
-function specialBoxes(rootPc: number, id: string): BoxWindow[] {
+function specialWindows(rootFretVirtual: number, id: string): BoxWindow[] {
   const layout = SPECIAL_LAYOUT[id] ?? { width: 4, starts: [0, 4, 8] };
-  const rootFret = pcOf(rootPc - 4);
-  return layout.starts.map((start) => {
-    const min = (rootFret + start) % 12;
-    return { min, max: Math.min(min + layout.width - 1, FRET_COUNT) };
-  });
+  return layout.starts.map((start) => ({ min: rootFretVirtual + start, max: rootFretVirtual + start + layout.width - 1 }));
 }
 
 /**
@@ -171,7 +168,6 @@ function specialBoxes(rootPc: number, id: string): BoxWindow[] {
  * string, from low E to high e, the notes follow the scale with no gap and no note repeated.
  */
 export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): BoxWindow[] {
-  if (formula.special) return specialBoxes(rootPc, formula.id);
   const semis = new Set(formula.intervals.map((i) => pcOf(i.semi)));
   const penta = semis.has(4) ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10];
   const pcs = new Set(penta.map((s) => pcOf(rootPc + s)));
@@ -184,7 +180,9 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
   // interferes), then shifted back down: the shape of a position is therefore identical in all 12 keys.
   const rootFret = pcOf(rootPc - 4);
   const SHIFT = 12;
-  return penta.map((s) => {
+  const windows: BoxWindow[] = formula.special
+    ? specialWindows(rootFret + SHIFT, formula.id)
+    : penta.map((s) => {
     let current = TUNING[5] + rootFret + SHIFT + s;
     let min = Infinity;
     let max = -Infinity;
@@ -196,7 +194,10 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
         max = Math.max(max, fret);
       }
     }
-    const raw: BoxWindow = fillGaps ? buildScalePosition(rootPc, formula, { min, max }) : { min, max };
+    return { min, max };
+  });
+  return windows.map(({ min, max }) => {
+    const raw: BoxWindow = fillGaps || formula.special ? buildScalePosition(rootPc, formula, { min, max }) : { min, max };
     // Back to the real neck: shift down, then fold so the position starts within frets 0–11.
     let delta = -SHIFT;
     while (raw.min + delta < 0) delta += 12;
@@ -223,7 +224,7 @@ export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): 
     if (up.size < first.size) {
       const down = shifted(delta - 12);
       const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
-      fillMissingNotes(down, pcs, 0, FRET_COUNT);
+      fillMissingNotes(down, pcs, 0, FRET_COUNT, !!formula.special);
       if (down.size >= first.size && new Set(down.values()).size === new Set(first.values()).size) second = down;
     }
     return { ...toBox(first), second: second.size ? toBox(second) : undefined };
@@ -237,7 +238,7 @@ const fretOfKey = (k: string) => Number(k.split(":")[1]);
  * on its own at the place closest to the notes already there (smaller gaps first). Ties: the fret column holding
  * fewer scale notes, then the lower fret. Only frets in [lo, hi] are allowed.
  */
-function fillMissingNotes(cells: Map<string, number>, pcs: Set<number>, lo: number, hi: number) {
+function fillMissingNotes(cells: Map<string, number>, pcs: Set<number>, lo: number, hi: number, preferHigh = false) {
   const span = () => {
     const frets = [...cells.keys()].map(fretOfKey);
     return { min: Math.min(...frets), max: Math.max(...frets) };
@@ -261,7 +262,11 @@ function fillMissingNotes(cells: Map<string, number>, pcs: Set<number>, lo: numb
     );
     if (!places.length) break;
     const away = (f: number) => (f < min ? min - f : f > max ? f - max : 0);
-    places.sort((x, y) => away(x.fret) - away(y.fret) || columnSize(x.fret) - columnSize(y.fret) || x.fret - y.fret);
+    places.sort(
+      (x, y) =>
+        away(x.fret) - away(y.fret) ||
+        (preferHigh ? y.fret - x.fret : columnSize(x.fret) - columnSize(y.fret) || x.fret - y.fret),
+    );
     cells.set(cellKey(places[0].string, places[0].fret), target);
   }
 }
@@ -297,7 +302,7 @@ function buildScalePosition(rootPc: number, formula: Formula, raw: BoxWindow): B
     keys.forEach((k) => k !== keep && cells.delete(k));
   });
 
-  fillMissingNotes(cells, pcs, -12, FRET_COUNT + 24);
+  fillMissingNotes(cells, pcs, -12, FRET_COUNT + 24, !!formula.special);
 
   if (!cells.size) return raw;
   const frets = [...cells.keys()].map(fretOfKey);
@@ -351,14 +356,14 @@ export function playbackPath(rootPc: number, formula: Formula, isScale: boolean,
   const semis = formula.intervals.map((i) => i.semi).sort((a, b) => a - b);
   if (isScale) semis.push(12);
   const anchor = range ? range.min : 1;
-  if (formula.special && range && !range.cells) {
+  if (formula.special && range) {
     // Special scales: play every displayed note of the window, from the lowest to the highest pitch.
     const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
     const byPitch = new Map<number, FretLoc>();
     TUNING.forEach((open, string) => {
       for (let fret = range.min; fret <= range.max; fret++) {
         const midi = open + fret;
-        if (!pcs.has(pcOf(midi))) continue;
+        if (!pcs.has(pcOf(midi)) || (range.cells && !range.cells.has(cellKey(string, fret)))) continue;
         const prev = byPitch.get(midi);
         if (!prev || Math.abs(fret - anchor) < Math.abs(prev.fret - anchor)) byPitch.set(midi, { string, fret });
       }
