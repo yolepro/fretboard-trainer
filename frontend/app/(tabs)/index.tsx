@@ -249,14 +249,13 @@ export default function FretboardScreen() {
           <>
             <View style={styles.legendDivider} />
             <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => selectPosition(null)} />
-            {boxes.map((box, i) => {
+            {boxes.map((_, i) => {
               const v = variants[i] ?? 0;
-              const b = boxVariant(box, v);
               return (
                 <Chip
                   key={`p${i}`}
                   testID={`landscape-position-${i + 1}`}
-                  label={`Pos. ${i + 1} · ${b.min}–${b.max}`}
+                  label={`Pos. ${i + 1}`}
                   badge={`${v + 1}/2`}
                   badgeTone={v === 1 ? "accent" : "primary"}
                   selected={position === i}
@@ -282,6 +281,8 @@ export default function FretboardScreen() {
         selectedPosition={position}
         positionVariants={variants}
         onPositionChange={selectPosition}
+        labelMode={settings.labelMode}
+        onLabelModeChange={(m) => update({ labelMode: m })}
       />
 
       {!isLandscape ? (

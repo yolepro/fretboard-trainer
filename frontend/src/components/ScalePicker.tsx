@@ -24,6 +24,8 @@ type Props = {
   selectedPosition: number | null;
   positionVariants?: number[];
   onPositionChange: (i: number | null) => void;
+  labelMode: "note" | "degree";
+  onLabelModeChange: (m: "note" | "degree") => void;
 };
 
 function groupBy(list: Formula[]) {
@@ -50,6 +52,8 @@ export function ScalePicker({
   selectedPosition,
   positionVariants,
   onPositionChange,
+  labelMode,
+  onLabelModeChange,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -100,6 +104,12 @@ export function ScalePicker({
 
           <SectionLabel>Position</SectionLabel>
           <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" />
+
+          <SectionLabel>Étiquettes</SectionLabel>
+          <ChipRow testID="picker-label-selector">
+            <Chip testID="picker-label-note" label="Noms des notes" selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
+            <Chip testID="picker-label-degree" label="Degrés" selected={labelMode === "degree"} onPress={() => onLabelModeChange("degree")} />
+          </ChipRow>
 
           <View style={styles.listContent}>
             {groups.map((g) => (
