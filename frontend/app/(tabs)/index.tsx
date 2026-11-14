@@ -87,6 +87,7 @@ export default function FretboardScreen() {
   );
 
   // Tap a position to select it; tap the selected one again to switch between 1/2 and 2/2.
+  // Changing position (or going back to "Tout le manche") puts every position back on 1/2.
   const selectPosition = useCallback(
     (i: number | null) => {
       if (i !== null && i === position) {
@@ -96,6 +97,7 @@ export default function FretboardScreen() {
           return next;
         });
       } else {
+        setVariants([]);
         setPosition(i);
       }
     },
