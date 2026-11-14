@@ -138,6 +138,28 @@ export type BoxWindow = { min: number; max: number; cells?: Set<string>; second?
 export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
 
 /**
+ * Positions of the special scales: fixed-width fret windows anchored on the root (first window starts at the root
+ * fret of the low E string), identical in every key. Every scale note inside the window belongs to the position.
+ *   chromatic: 3 windows of 4 frets (root, +4, +8) · whole tone: 3 windows of 5 frets (root, +4, +8)
+ *   diminished (both): 4 windows of 4 frets (root, +3, +6, +9) — the same fingering moved by minor thirds.
+ */
+const SPECIAL_LAYOUT: Record<string, { width: number; starts: number[] }> = {
+  chromatic: { width: 4, starts: [0, 4, 8] },
+  wholetone: { width: 5, starts: [0, 4, 8] },
+  halfwhole: { width: 4, starts: [0, 3, 6, 9] },
+  wholehalf: { width: 4, starts: [0, 3, 6, 9] },
+};
+
+function specialBoxes(rootPc: number, id: string): BoxWindow[] {
+  const layout = SPECIAL_LAYOUT[id] ?? { width: 4, starts: [0, 4, 8] };
+  const rootFret = pcOf(rootPc - 4);
+  return layout.starts.map((start) => {
+    const min = (rootFret + start) % 12;
+    return { min, max: Math.min(min + layout.width - 1, FRET_COUNT) };
+  });
+}
+
+/**
  * 5 positions derived from the parent pentatonic (major if the formula has a major 3rd, else minor).
  * Each box chains 2 pentatonic notes per string from low E to high e, starting on a pentatonic note
  * of the low E string. Numbering is anchored on the root: Pos. 1 is the box whose first low-E note is the root
@@ -149,6 +171,7 @@ export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
  * string, from low E to high e, the notes follow the scale with no gap and no note repeated.
  */
 export function scaleBoxes(rootPc: number, formula: Formula, fillGaps = false): BoxWindow[] {
+  if (formula.special) return specialBoxes(rootPc, formula.id);
   const semis = new Set(formula.intervals.map((i) => pcOf(i.semi)));
   const penta = semis.has(4) ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10];
   const pcs = new Set(penta.map((s) => pcOf(rootPc + s)));
@@ -328,6 +351,20 @@ export function playbackPath(rootPc: number, formula: Formula, isScale: boolean,
   const semis = formula.intervals.map((i) => i.semi).sort((a, b) => a - b);
   if (isScale) semis.push(12);
   const anchor = range ? range.min : 1;
+  if (formula.special && range && !range.cells) {
+    // Special scales: play every displayed note of the window, from the lowest to the highest pitch.
+    const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
+    const byPitch = new Map<number, FretLoc>();
+    TUNING.forEach((open, string) => {
+      for (let fret = range.min; fret <= range.max; fret++) {
+        const midi = open + fret;
+        if (!pcs.has(pcOf(midi))) continue;
+        const prev = byPitch.get(midi);
+        if (!prev || Math.abs(fret - anchor) < Math.abs(prev.fret - anchor)) byPitch.set(midi, { string, fret });
+      }
+    });
+    return [...byPitch.entries()].sort((a, b) => a[0] - b[0]).map(([midi, loc]) => ({ midi, loc }));
+  }
   const inWindow = (l: FretLoc) =>
     !range || (range.cells ? range.cells.has(cellKey(l.string, l.fret)) : l.fret >= range.min && l.fret <= range.max);
   const dist = (l: FretLoc) => Math.abs(l.fret - anchor);

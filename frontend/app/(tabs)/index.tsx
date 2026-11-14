@@ -78,14 +78,14 @@ export default function FretboardScreen() {
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
   // For scales, windows are widened so the visible notes form an unbroken run of the scale (chords keep the raw box).
-  const boxes = useMemo(() => (formula.special ? [] : scaleBoxes(rootPc, formula, mode === "scale")), [rootPc, formula, mode]);
-  // Special scales (chromatic, whole tone, diminished) have no position boxes: back to the full neck.
+  const boxes = useMemo(() => scaleBoxes(rootPc, formula, mode === "scale"), [rootPc, formula, mode]);
+  // Scales don't have the same number of positions: drop a selection that no longer exists.
   useEffect(() => {
-    if (formula.special) {
+    if (position !== null && position >= boxes.length) {
       setPosition(null);
       setVariants([]);
     }
-  }, [formula]);
+  }, [boxes.length, position]);
   const variant = position !== null ? variants[position] ?? 0 : 0;
   // Memoized so the Fretboard's scroll effect only fires when the window really changes.
   const windowRange = useMemo(
