@@ -21,6 +21,7 @@ import { Chip } from "@/src/components/Chip";
 import { FretboardStylePicker } from "@/src/components/FretboardStylePicker";
 import { playNote } from "@/src/audio/sampler";
 import { usesNativeTabs } from "@/src/navigation";
+import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { APP_VERSION } from "@/src/version";
@@ -87,6 +88,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.screen} testID="settings-screen">
+      <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.title}>Réglages</Text>
       </View>

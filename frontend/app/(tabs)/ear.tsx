@@ -25,6 +25,7 @@ import {
 import type { PitchFrame } from "@/src/music/yin";
 import { freqToMidiFloat, octaveOf, pcOf } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
+import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { fonts, makeStyles, spacing } from "@/src/theme";
@@ -317,6 +318,7 @@ export default function EarScreen() {
 
   return (
     <View style={styles.screen} testID="ear-screen">
+      <StudioBackground />
       {phase === "running" && question ? (
         <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: bottomChrome }]}>
           <ChallengeView
