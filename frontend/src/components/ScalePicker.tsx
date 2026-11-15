@@ -75,7 +75,7 @@ export function ScalePicker({
           testID="scale-picker-sheet"
           style={[
             styles.sheet,
-            { maxHeight: height * 0.88, paddingBottom: insets.bottom + spacing.md, paddingLeft: insets.left, paddingRight: insets.right },
+            { maxHeight: height * 0.88, paddingLeft: insets.left, paddingRight: insets.right },
           ]}
         >
           <View style={styles.handle} />
@@ -89,7 +89,7 @@ export function ScalePicker({
           <ScrollView
             testID="scale-picker-scroll"
             style={styles.list}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.lg }]}
             showsVerticalScrollIndicator
             nestedScrollEnabled
           >

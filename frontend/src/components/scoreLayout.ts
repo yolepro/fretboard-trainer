@@ -160,7 +160,8 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
     else if (s.t === "ellipse") grow(s.cy - 6, s.cy + 6);
     else if (s.t === "text") grow(s.y - 14, s.y + 4);
   });
-  const CHORD_H = 22;
+  // No chord / interval symbol above the staff (plain scales, listening): don't reserve the row.
+  const CHORD_H = groups.some((g) => g.label) ? 22 : 2;
   const y0 = CHORD_H + 6 - minY; // y of the staff bottom line in the final picture
   const staffBottom = y0 + maxY + 4;
   const tabTop = staffBottom + 8;
