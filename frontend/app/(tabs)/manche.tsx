@@ -8,6 +8,8 @@ import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
 import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
+import { Score, useScore } from "@/src/components/Score";
+import { runSequence } from "@/src/audio/sequencer";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playNote, initAudio } from "@/src/audio/sampler";
@@ -51,6 +53,7 @@ export default function FretboardScreen() {
   const [variants, setVariants] = useState<number[]>([]);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -60,10 +63,6 @@ export default function FretboardScreen() {
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
-  const rowH = isLandscape
-    ? Math.max(26, Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8) / 6)))
-    : 34;
-
   useEffect(() => {
     initAudio();
     return () => cancelRef.current?.();
@@ -92,6 +91,20 @@ export default function FretboardScreen() {
     () => (position !== null && boxes[position] ? boxVariant(boxes[position], variant) : null),
     [boxes, position, variant],
   );
+
+  // The notes "Écouter" plays: also what the score under the neck shows.
+  const path = useMemo(() => playbackPath(rootPc, formula, mode === "scale", windowRange), [rootPc, formula, mode, windowRange]);
+  useEffect(() => {
+    setStepIdx(null);
+  }, [path]);
+  const showScore = !isLandscape || settings.showScoreLandscape;
+  const { layout } = useScore(path, "path", 2, rootPc, formula, settings.showTab && !isLandscape);
+  const rowH = isLandscape
+    ? Math.max(
+        showScore ? 22 : 26,
+        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
+      )
+    : 34;
 
   // Tap a position to select it; tap the selected one again to switch between 1/2 and 2/2.
   // Changing position (or going back to "Tout le manche") puts every position back on 1/2.
@@ -134,28 +147,48 @@ export default function FretboardScreen() {
   const playFormula = () => {
     if (playing) {
       cancelRef.current?.();
+      cancelRef.current = null;
       setPlaying(false);
       setActive(null);
+      setStepIdx(null);
       return;
     }
-    const path = playbackPath(rootPc, formula, mode === "scale", windowRange);
     if (!path.length) return;
-    const GAP_MS = 380;
-    const timers: ReturnType<typeof setTimeout>[] = path.map((step, i) =>
-      setTimeout(() => {
+    cancelRef.current = runSequence({
+      length: path.length,
+      noteMs: 380,
+      beatMs: 760,
+      beats: 0,
+      loop: false,
+      leadMs: 30,
+      onBeat: () => {},
+      onNote: (i) => {
+        const step = path[i];
         playNote(step.midi, settings.volume);
+        setStepIdx(i);
         setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
-      }, i * GAP_MS),
-    );
-    timers.push(
-      setTimeout(() => {
+      },
+      onEnd: () => {
+        cancelRef.current = null;
         setPlaying(false);
         setActive(null);
-      }, (path.length - 1) * GAP_MS + 700),
-    );
-    cancelRef.current = () => timers.forEach(clearTimeout);
+        setStepIdx(null);
+      },
+    });
     setPlaying(true);
   };
+
+  const tapScoreNote = useCallback(
+    (i: number) => {
+      if (playing) return;
+      const step = path[i];
+      if (!step) return;
+      playNote(step.midi, settings.volume);
+      setStepIdx(i);
+      setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
+    },
+    [playing, path, settings.volume],
+  );
 
   const activeIv = active ? degreeMap.get(pcOf(active.midi)) : undefined;
   const activeKey = activeIv ? degreeKeyFromNum(activeIv.num) : null;
@@ -241,6 +274,8 @@ export default function FretboardScreen() {
         onNotePress={onNotePress}
       />
 
+      {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapScoreNote} testID="manche-score" /> : null}
+
       <ChipRow testID="layer-legend">
         {degrees.map((d) => (
           <Chip
@@ -252,6 +287,9 @@ export default function FretboardScreen() {
             onPress={() => toggleLayer(d)}
           />
         ))}
+        {isLandscape ? (
+          <Chip testID="manche-score-toggle" label={settings.showScoreLandscape ? "Partition : oui" : "Partition : non"} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
+        ) : null}
         {isLandscape && boxes.length > 0 ? (
           <>
             <View style={styles.legendDivider} />
@@ -349,6 +387,12 @@ export default function FretboardScreen() {
               selected={settings.showNeutral}
               onPress={() => update({ showNeutral: !settings.showNeutral })}
             />
+          </ChipRow>
+
+          <SectionLabel>Partition</SectionLabel>
+          <ChipRow testID="manche-tab-selector">
+            <Chip testID="manche-tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
+            <Chip testID="manche-tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
           </ChipRow>
 
           <View style={styles.formulaRow} testID="formula-intervals">

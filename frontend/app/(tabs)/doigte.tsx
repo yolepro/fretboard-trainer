@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Keyboard, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { CaretDown, Play, Stop } from "phosphor-react-native";
@@ -9,10 +9,11 @@ import { ScalePicker } from "@/src/components/ScalePicker";
 import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
+import { Score, useScore } from "@/src/components/Score";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { runSequence } from "@/src/audio/sequencer";
-import { EXERCISES, buildExercise, exerciseAllowed, positionLadder, type ExerciseId } from "@/src/music/exercises";
+import { EXERCISES, MIN_BPM, buildExercise, exerciseAllowed, maxBpmFor, positionLadder, type ExerciseId } from "@/src/music/exercises";
 import {
   DEGREE_META,
   SCALES,
@@ -29,34 +30,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
-const TEMPOS = [50, 70, 90, 120, 160];
-const PILL_W = 40;
-const PILL_GAP = 6;
-const STRIP_H_LANDSCAPE = 38;
-
-// Memoized: moving the highlight only re-renders two pills, not the whole strip.
-const SequencePill = React.memo(function SequencePill({
-  index,
-  label,
-  active,
-  onPress,
-  styles,
-}: {
-  index: number;
-  label: string;
-  active: boolean;
-  onPress: (i: number) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  styles: any;
-}) {
-  return (
-    <Pressable onPress={() => onPress(index)} style={[styles.pill, active && styles.pillActive]}>
-      <Text style={[styles.pillText, active && styles.pillTextActive]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-});
+const LANDSCAPE_ROW_MIN = 22;
 
 export default function FingeringScreen() {
   const insets = useSafeAreaInsets();
@@ -71,7 +45,9 @@ export default function FingeringScreen() {
   const [variants, setVariants] = useState<number[]>([]);
   const [exerciseId, setExerciseId] = useState<ExerciseId>("scale");
   const [startOnRoot, setStartOnRoot] = useState(false);
-  const [bpm, setBpm] = useState(90);
+  const [bpm, setBpm] = useState(80);
+  const [bpmText, setBpmText] = useState("80");
+  const [metronome, setMetronome] = useState(false);
   const [loop, setLoop] = useState(false);
   const [countIn, setCountIn] = useState(true);
   const [beat, setBeat] = useState<number | null>(null);
@@ -80,17 +56,12 @@ export default function FingeringScreen() {
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
-  const stripRef = useRef<ScrollView>(null);
-  const stripW = useRef(0);
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
-  const rowH = isLandscape
-    ? Math.max(26, Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - STRIP_H_LANDSCAPE) / 6)))
-    : 34;
 
   useEffect(() => {
     initAudio();
@@ -120,6 +91,32 @@ export default function FingeringScreen() {
   );
   const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
 
+  // Score under the fretboard: portrait always; landscape on request (staff only, to save height).
+  const showScore = !isLandscape || settings.showScoreLandscape;
+  const tabOn = settings.showTab && !isLandscape;
+  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn);
+  const rowH = isLandscape
+    ? Math.max(
+        showScore ? LANDSCAPE_ROW_MIN : 26,
+        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
+      )
+    : 34;
+
+  // Tempo is in beats (quarter notes) per minute; each exercise has its own ceiling (its fastest notes stay playable).
+  const maxBpm = maxBpmFor(exerciseId);
+  const commitBpm = useCallback(
+    (text: string) => {
+      const n = parseInt(text, 10);
+      const v = Math.max(MIN_BPM, Math.min(maxBpm, Number.isFinite(n) ? n : 80));
+      setBpm(v);
+      setBpmText(String(v));
+    },
+    [maxBpm],
+  );
+  useEffect(() => {
+    if (bpm > maxBpm) commitBpm(String(maxBpm));
+  }, [bpm, maxBpm, commitBpm]);
+
   // Load the audio players of every note of the exercise ahead of time: no delay when it starts.
   useEffect(() => {
     preloadNotes(sequence.map((st) => st.midi));
@@ -137,7 +134,7 @@ export default function FingeringScreen() {
   // Any change of the exercise stops what is playing.
   useEffect(() => {
     stop();
-  }, [sequence, bpm, loop, countIn, stop]);
+  }, [sequence, bpm, loop, countIn, metronome, stop]);
 
   const selectPosition = useCallback(
     (i: number | null) => {
@@ -182,8 +179,8 @@ export default function FingeringScreen() {
     };
     cancelRef.current = runSequence({
       length: sequence.length,
-      noteMs: 30000 / bpm, // notes are eighth notes
-      beatMs: 60000 / bpm, // count-in beats are quarter notes
+      noteMs: 60000 / bpm / exercise.perBeat, // one group of notes per beat
+      beatMs: 60000 / bpm, // a beat = a quarter note
       beats: countIn ? 4 : 0,
       loop,
       onBeat: (b) => {
@@ -194,6 +191,7 @@ export default function FingeringScreen() {
         if (n === 0) setBeat(null);
         showStep(n);
       },
+      onClick: metronome ? (k) => playClick(k % 4, settings.volume * 0.8) : undefined,
       onEnd: finish,
     });
     setPlaying(true);
@@ -208,23 +206,13 @@ export default function FingeringScreen() {
     [settings.soundOnTap, settings.volume],
   );
 
-  // Keep the current note of the sequence strip in view.
-  useEffect(() => {
-    if (stepIdx === null) return;
-    stripRef.current?.scrollTo({ x: Math.max(0, stepIdx * (PILL_W + PILL_GAP) - stripW.current / 2), animated: true });
-  }, [stepIdx]);
-
-  const tapPill = useCallback(
+  const tapNote = useCallback(
     (i: number) => {
       if (!playing) showStep(i);
     },
     [playing, showStep],
   );
 
-  const labelOf = (midi: number) => {
-    const pc = pcOf(midi);
-    return settings.labelMode === "degree" ? degreeMap.get(pc)?.label ?? nameOf(pc) : nameOf(pc);
-  };
   const title = `${nameOf(rootPc)}`;
   const empty = sequence.length === 0;
 
@@ -308,21 +296,7 @@ export default function FingeringScreen() {
         onNotePress={onNotePress}
       />
 
-      <ScrollView
-        ref={stripRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        testID="sequence-strip"
-        style={[styles.strip, isLandscape && { height: STRIP_H_LANDSCAPE }]}
-        contentContainerStyle={styles.stripContent}
-        onLayout={(e) => {
-          stripW.current = e.nativeEvent.layout.width;
-        }}
-      >
-        {sequence.map((s, i) => (
-          <SequencePill key={i} index={i} label={labelOf(s.midi)} active={stepIdx === i} onPress={tapPill} styles={styles} />
-        ))}
-      </ScrollView>
+      {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapNote} testID="fingering-score" /> : null}
 
       <ScalePicker
         visible={pickerOpen}
@@ -347,6 +321,7 @@ export default function FingeringScreen() {
       {isLandscape ? (
         <ChipRow testID="fingering-landscape-row">
           {exerciseChips}
+          <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? "Partition : oui" : "Partition : non"} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
           <View style={styles.divider} />
           {boxes.map((_, i) => (
             <Chip
@@ -365,6 +340,7 @@ export default function FingeringScreen() {
           style={styles.panelScroll}
           contentContainerStyle={[styles.panelContent, { paddingBottom: bottomChrome + spacing.xl }]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <Glass style={styles.panel} testID="fingering-panel">
             <SectionLabel>Exercice</SectionLabel>
@@ -394,13 +370,50 @@ export default function FingeringScreen() {
               <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
             </ChipRow>
 
-            <SectionLabel>Tempo (croches)</SectionLabel>
-            <ChipRow testID="tempo-selector">
-              {TEMPOS.map((t) => (
-                <Chip key={t} testID={`tempo-${t}`} label={`${t}`} selected={bpm === t} onPress={() => setBpm(t)} />
-              ))}
+            <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
+            <View style={styles.bpmRow}>
+              <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+                <Text style={styles.stepText}>−</Text>
+              </Pressable>
+              <TextInput
+                testID="bpm-input"
+                value={bpmText}
+                onChangeText={setBpmText}
+                onEndEditing={() => commitBpm(bpmText)}
+                onSubmitEditing={() => commitBpm(bpmText)}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                maxLength={3}
+                selectTextOnFocus
+                style={styles.bpmInput}
+              />
+              <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+                <Text style={styles.stepText}>+</Text>
+              </Pressable>
+              <Pressable
+                testID="bpm-ok"
+                onPress={() => {
+                  commitBpm(bpmText);
+                  Keyboard.dismiss();
+                }}
+                style={({ pressed }) => [styles.stepBtn, styles.okBtn, pressed && styles.pressed]}
+              >
+                <Text style={styles.stepText}>OK</Text>
+              </Pressable>
+              <Text style={styles.bpmHint}>max {maxBpm} pour cet exercice</Text>
+            </View>
+
+            <SectionLabel>Lecture</SectionLabel>
+            <ChipRow testID="play-options">
               <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
               <Chip testID="countin-toggle" label={countIn ? "Décompte : 4 temps" : "Décompte : non"} selected={countIn} onPress={() => setCountIn(!countIn)} />
+              <Chip testID="metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
+            </ChipRow>
+
+            <SectionLabel>Partition</SectionLabel>
+            <ChipRow testID="tab-selector">
+              <Chip testID="tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
+              <Chip testID="tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
             </ChipRow>
 
             <SectionLabel>Étiquettes</SectionLabel>
@@ -452,21 +465,12 @@ const useStyles = makeStyles((c) => ({
   infoBar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, height: 40, paddingHorizontal: spacing.lg },
   infoNote: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   infoMeta: { flex: 1, fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
-  strip: { flexGrow: 0, flexShrink: 0, height: 46 },
-  stripContent: { alignItems: "center", gap: PILL_GAP, paddingHorizontal: spacing.lg },
-  pill: {
-    width: PILL_W,
-    height: 32,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surfaceTertiary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pillActive: { backgroundColor: c.brandPrimary, borderColor: c.brandPrimary },
-  pillText: { fontFamily: fonts.display, fontSize: 12, color: c.onSurfaceTertiary },
-  pillTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
+  bpmRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.sm },
+  stepBtn: { minWidth: 44, height: 40, paddingHorizontal: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
+  okBtn: { borderColor: c.brandPrimary },
+  stepText: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
+  bpmInput: { width: 72, height: 40, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, textAlign: "center", fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
+  bpmHint: { flex: 1, fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
   divider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
   panelScroll: { flex: 1 },
   panelContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },

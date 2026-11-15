@@ -7,14 +7,16 @@ export type ExerciseDef = {
   name: string;
   /** Scale steps (0 = first note of the group) stacked on each degree of the position. */
   offsets: number[];
+  /** Notes played per beat (quarter note): the group size, so one group = one beat in the score. */
+  perBeat: number;
   description: string;
 };
 
 export const EXERCISES: ExerciseDef[] = [
-  { id: "scale", name: "Gamme", offsets: [0], description: "Toutes les notes de la position, de la plus grave à la plus aiguë, puis retour." },
-  { id: "thirds", name: "Tierces", offsets: [0, 2], description: "1-3, 2-4, 3-5… en montant, puis retour en descendant." },
-  { id: "triads", name: "Triades", offsets: [0, 2, 4], description: "1-3-5, 2-4-6, 3-5-7… (arpèges de triades sur chaque degré), montée puis descente." },
-  { id: "sevenths", name: "Triades 7e", offsets: [0, 2, 4, 6], description: "1-3-5-7, 2-4-6-8… (arpèges de septième sur chaque degré), montée puis descente." },
+  { id: "scale", name: "Gamme", offsets: [0], perBeat: 2, description: "Toutes les notes de la position, de la plus grave à la plus aiguë, puis retour (2 notes par temps)." },
+  { id: "thirds", name: "Tierces", offsets: [0, 2], perBeat: 2, description: "1-3, 2-4, 3-5… en montant, puis retour en descendant (2 notes par temps)." },
+  { id: "triads", name: "Triades", offsets: [0, 2, 4], perBeat: 3, description: "1-3-5, 2-4-6, 3-5-7… (arpèges de triades sur chaque degré), en triolets : 3 notes par temps." },
+  { id: "sevenths", name: "Triades 7e", offsets: [0, 2, 4, 6], perBeat: 4, description: "1-3-5-7, 2-4-6-8… (arpèges de septième sur chaque degré), en doubles croches : 4 notes par temps." },
 ];
 
 /** Which exercises make sense for a scale: stacked thirds need a 7-note scale for triads / sevenths. */
@@ -56,16 +58,29 @@ export function positionLadder(rootPc: number, formula: Formula, window: BoxWind
   return out;
 }
 
+/** Fastest note allowed (ms): below this the samples blur and the display can't follow. */
+const MIN_NOTE_MS = 110;
+export const MAX_BPM = 200;
+export const MIN_BPM = 30;
+
+/** Highest tempo (beats per minute, quarter notes) for an exercise: its fastest notes stay playable. */
+export function maxBpmFor(id: ExerciseId): number {
+  const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
+  return Math.min(MAX_BPM, Math.floor(60000 / (def.perBeat * MIN_NOTE_MS)));
+}
+
 /**
- * The full exercise: up through the position, then back down (the reverse, without repeating the top note).
+ * The full exercise as a list of groups (one group = one beat): up through the position, then back down.
+ * The descent is the same groups in reverse order, each played backwards, starting just below the top group
+ * (so the top group is played once and the groups stay aligned on the beat).
  * `startOnRoot` starts (and ends) on the lowest root of the position instead of its lowest note.
  */
-export function buildExercise(
+export function buildExerciseGroups(
   ladderIn: PathStep[],
   id: ExerciseId,
   rootPc: number,
   startOnRoot: boolean,
-): PathStep[] {
+): PathStep[][] {
   const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
   let ladder = ladderIn;
   if (startOnRoot) {
@@ -73,9 +88,17 @@ export function buildExercise(
     if (r > 0) ladder = ladder.slice(r);
   }
   const span = def.offsets[def.offsets.length - 1];
-  const up: PathStep[] = [];
-  for (let i = 0; i + span < ladder.length; i++) def.offsets.forEach((o) => up.push(ladder[i + o]));
+  const up: PathStep[][] = [];
+  for (let i = 0; i + span < ladder.length; i++) up.push(def.offsets.map((o) => ladder[i + o]));
   if (!up.length) return [];
-  const down = [...up].reverse().slice(1);
+  const down = up
+    .slice(0, -1)
+    .reverse()
+    .map((g) => [...g].reverse());
   return [...up, ...down];
+}
+
+/** Flat list of the notes of the exercise (see buildExerciseGroups). */
+export function buildExercise(ladder: PathStep[], id: ExerciseId, rootPc: number, startOnRoot: boolean): PathStep[] {
+  return buildExerciseGroups(ladder, id, rootPc, startOnRoot).flat();
 }

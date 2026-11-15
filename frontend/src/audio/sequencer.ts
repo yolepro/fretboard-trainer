@@ -15,6 +15,8 @@ export type SequenceOptions = {
   onBeat: (beat: number) => void;
   onNote: (index: number) => void;
   onEnd: () => void;
+  /** Optional metronome during the notes: called on every beat (quarter note) with its index, 0 = first beat. */
+  onClick?: (beatIndex: number) => void;
   now?: () => number;
 };
 
@@ -44,8 +46,25 @@ export function runSequence(o: SequenceOptions): () => void {
   };
 
   timer = setTimeout(run, Math.max(0, t0 - now()));
+
+  // Metronome: its own absolute chain, locked to the same start, one click per beat while the notes last.
+  let clickTimer: ReturnType<typeof setTimeout> | undefined;
+  if (o.onClick) {
+    const notesStart = t0 + o.beats * o.beatMs;
+    const total = o.length * o.noteMs;
+    let k = 0;
+    const click = () => {
+      if (cancelled) return;
+      o.onClick!(k);
+      k += 1;
+      if (!o.loop && k * o.beatMs >= total - 1) return;
+      clickTimer = setTimeout(click, Math.max(0, notesStart + k * o.beatMs - now()));
+    };
+    clickTimer = setTimeout(click, Math.max(0, notesStart - now()));
+  }
   return () => {
     cancelled = true;
     if (timer) clearTimeout(timer);
+    if (clickTimer) clearTimeout(clickTimer);
   };
 }

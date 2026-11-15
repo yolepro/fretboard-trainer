@@ -12,11 +12,11 @@ import { fonts, makeStyles, spacing } from "@/src/theme";
 const FEATURES = [
   {
     title: "Manche",
-    text: "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme.",
+    text: "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme avec partition et tablature.",
   },
   {
     title: "Doigté",
-    text: "Exercez-vous sur une position : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec tempo, boucle et note surlignée.",
+    text: "Exercez-vous sur une position : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, BPM à la noire, décompte, métronome et boucle.",
   },
   {
     title: "Oreille",

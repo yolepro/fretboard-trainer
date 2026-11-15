@@ -9,6 +9,10 @@ export type Settings = {
   notation: Notation;
   accidental: Accidental;
   labelMode: "note" | "degree";
+  /** Score under the fretboard: show the tablature line too. */
+  showTab: boolean;
+  /** Landscape only: show the (staff-only) score under the fretboard. */
+  showScoreLandscape: boolean;
   showNeutral: boolean;
   soundOnTap: boolean;
   volume: number;
@@ -20,6 +24,8 @@ const DEFAULTS: Settings = {
   notation: "english",
   accidental: "sharp",
   labelMode: "note",
+  showTab: true,
+  showScoreLandscape: false,
   showNeutral: false,
   soundOnTap: true,
   volume: 0.8,
