@@ -5,15 +5,15 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { makeStyles, useTheme } from "@/src/theme";
 
-const STUDIO =
-  "https://images.unsplash.com/photo-1683362249825-77b26dcb1330?crop=entropy&cs=srgb&fm=jpg&q=70&w=900";
+// Black & white photo of a music studio (assets/images/studio.jpg, 1408×768).
+const STUDIO = require("../../assets/images/studio.jpg");
 
 export function StudioBackground() {
   const styles = useStyles();
   const { colors } = useTheme();
   return (
     <View style={styles.fill} pointerEvents="none">
-      <Image source={{ uri: STUDIO }} style={styles.img} contentFit="cover" transition={300} />
+      <Image source={STUDIO} style={styles.img} contentFit="cover" contentPosition={{ left: "35%", top: 0 }} transition={300} />
       <LinearGradient colors={[colors.scrimTop, colors.scrimBottom]} locations={[0, 0.55]} style={styles.fill} />
     </View>
   );
