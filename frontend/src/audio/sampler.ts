@@ -42,6 +42,8 @@ const MIN = 40;
 const MAX = 74;
 
 const players = new Map<number, AudioPlayer>();
+// Players that are paused at position 0: the next play() needs no seek, so it starts immediately.
+const fresh = new Set<number>();
 let modeReady = false;
 
 function getPlayer(base: number) {
@@ -49,6 +51,7 @@ function getPlayer(base: number) {
   if (!p) {
     p = createAudioPlayer(SAMPLES[base]);
     players.set(base, p);
+    fresh.add(base);
   }
   return p;
 }
@@ -105,8 +108,13 @@ function fadeOut(base: number) {
     timers.push(
       setTimeout(() => {
         try {
-          if (i === FADE_STEPS) p.pause();
-          else p.volume = start * (1 - i / FADE_STEPS);
+          if (i === FADE_STEPS) {
+            p.pause();
+            // Rewind now, while nothing is playing, so the next use of this note starts without a seek.
+            Promise.resolve(p.seekTo(0))
+              .then(() => fresh.add(base))
+              .catch(() => {});
+          } else p.volume = start * (1 - i / FADE_STEPS);
         } catch {
           // ignore
         }
@@ -128,7 +136,8 @@ export function playNote(midi: number, volume = 1) {
     p.volume = volume;
     p.shouldCorrectPitch = false;
     p.setPlaybackRate(rate);
-    p.seekTo(0);
+    if (!fresh.has(base)) p.seekTo(0);
+    fresh.delete(base);
     p.play();
   } catch {
     // player not ready yet; ignore single tap
@@ -148,4 +157,56 @@ export function stopAll() {
 export function playSequence(midis: number[], volume = 1, gapMs = 380): () => void {
   const timers = midis.map((m, i) => setTimeout(() => playNote(m, volume), i * gapMs));
   return () => timers.forEach(clearTimeout);
+}
+
+/** Creates the players for these notes ahead of time, so the first play of each note has no loading delay. */
+export function preloadNotes(midis: number[]) {
+  initAudio();
+  new Set(midis.map((m) => resolve(m).base)).forEach((base) => {
+    try {
+      getPlayer(base);
+    } catch {
+      // ignore
+    }
+  });
+}
+
+// ---- Count-in bells ----
+const BELLS = {
+  high: require("../../assets/sounds/bell_high.wav"),
+  low: require("../../assets/sounds/bell_low.wav"),
+};
+const bellPlayers: AudioPlayer[] = [];
+
+function bellPlayer(i: number) {
+  if (!bellPlayers[i]) bellPlayers[i] = createAudioPlayer(i === 0 ? BELLS.high : BELLS.low);
+  return bellPlayers[i];
+}
+
+export function preloadBells() {
+  initAudio();
+  try {
+    bellPlayer(0);
+    bellPlayer(1);
+    bellPlayer(2);
+  } catch {
+    // ignore
+  }
+}
+
+/** Count-in click: `beat` 0 is the accented bell, the others alternate on two softer players. */
+export function playBell(beat: number, volume = 1) {
+  initAudio();
+  try {
+    const p = bellPlayer(beat === 0 ? 0 : 1 + (beat % 2));
+    p.volume = volume;
+    try {
+      p.seekTo(0);
+    } catch {
+      // not loaded yet: it starts at 0 anyway
+    }
+    p.play();
+  } catch {
+    // ignore
+  }
 }

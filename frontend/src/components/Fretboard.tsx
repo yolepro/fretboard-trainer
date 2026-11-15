@@ -52,6 +52,93 @@ type Props = {
   windowRange?: BoxWindow | null;
 };
 
+type ColumnProps = {
+  fret: number;
+  width: number;
+  rowH: number;
+  degreeMap: Map<number, IntervalDef>;
+  visibleLayers: Set<DegreeKey>;
+  coloredLayers?: Set<DegreeKey>;
+  octave: number | null;
+  labelMode: "note" | "degree";
+  showNeutral: boolean;
+  nameOf: (pc: number) => string;
+  onNotePress: (midi: number, stringIdx: number, fret: number) => void;
+  windowRange: BoxWindow | null;
+  /** String of the highlighted note when it is on this fret, otherwise -1. */
+  activeString: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  styles: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  colors: any;
+};
+
+const NoteColumn = memo(function NoteColumn({
+  fret: f,
+  width,
+  rowH,
+  degreeMap,
+  visibleLayers,
+  coloredLayers,
+  octave,
+  labelMode,
+  showNeutral,
+  nameOf,
+  onNotePress,
+  windowRange,
+  activeString,
+  styles,
+  colors,
+}: ColumnProps) {
+  const inPosition = (string: number) =>
+    !windowRange ||
+    (windowRange.cells ? windowRange.cells.has(cellKey(string, f)) : f >= windowRange.min && f <= windowRange.max);
+  return (
+    <View style={{ width }}>
+      {TUNING.map((open, s) => {
+        const midi = open + f;
+        const pc = pcOf(midi);
+        const iv = degreeMap.get(pc);
+        const key = iv ? degreeKeyFromNum(iv.num) : null;
+        const inOct = octave === null || octaveOf(midi) === octave;
+        const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
+        const faded = highlighted && !inPosition(s);
+        const isActive = activeString === s;
+        const meta = key ? DEGREE_META[key] : null;
+        const node = Math.min(NODE, rowH - 2);
+        const uniform = !!(coloredLayers && key && !coloredLayers.has(key));
+        const bg = meta ? (uniform ? colors.degreeUniform : colors[meta.color]) : undefined;
+        const fg = meta ? (uniform ? colors.onDegreeUniform : colors[meta.on]) : undefined;
+        return (
+          <Pressable key={s} testID={`note-s${s}-f${f}`} onPress={() => onNotePress(midi, s, f)} style={[styles.slot, { height: rowH }]} hitSlop={2}>
+            {highlighted && meta ? (
+              <View
+                style={[
+                  styles.node,
+                  { backgroundColor: bg, width: node, height: node, borderRadius: node / 2 },
+                  key === "root" && !uniform && styles.rootNode,
+                  isActive && styles.activeNode,
+                  faded && !isActive && styles.faded,
+                ]}
+              >
+                <Text style={[styles.nodeText, { color: fg }]} numberOfLines={1}>
+                  {labelMode === "degree" ? iv!.label : nameOf(pc)}
+                </Text>
+              </View>
+            ) : showNeutral || isActive ? (
+              <View style={[styles.neutral, isActive && styles.activeNode]}>
+                <Text style={styles.neutralText} numberOfLines={1}>
+                  {nameOf(pc)}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+});
+
 function FretboardImpl({
   degreeMap,
   visibleLayers,
@@ -91,8 +178,6 @@ function FretboardImpl({
   const scrollX = useRef(0);
   const viewW = useRef(0);
   const inColumn = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
-  const inPosition = (string: number, f: number) =>
-    !windowRange || (windowRange.cells ? windowRange.cells.has(cellKey(string, f)) : inColumn(f));
 
   // Landscape fits frets 0→16: reset any scroll left over from portrait.
   useEffect(() => {
@@ -170,57 +255,27 @@ function FretboardImpl({
             />
           ))}
 
-          {/* Layer 2: notes */}
+          {/* Layer 2: notes (one memoized column per fret, so a highlight change only re-renders 2 columns) */}
           <View style={[styles.layerRow, styles.abs]}>
             {FRETS.map((f) => (
-              <View key={`n${f}`} style={{ width: widths[f] }}>
-                {TUNING.map((open, s) => {
-                  const midi = open + f;
-                  const pc = pcOf(midi);
-                  const iv = degreeMap.get(pc);
-                  const key = iv ? degreeKeyFromNum(iv.num) : null;
-                  const inOct = octave === null || octaveOf(midi) === octave;
-                  const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
-                  const faded = highlighted && !inPosition(s, f);
-                  const isActive = activeMidi?.string === s && activeMidi?.fret === f;
-                  const meta = key ? DEGREE_META[key] : null;
-                  const node = Math.min(NODE, rowH - 2);
-                  const uniform = !!(coloredLayers && key && !coloredLayers.has(key));
-                  const bg = meta ? (uniform ? colors.degreeUniform : colors[meta.color]) : undefined;
-                  const fg = meta ? (uniform ? colors.onDegreeUniform : colors[meta.on]) : undefined;
-                  return (
-                    <Pressable
-                      key={s}
-                      testID={`note-s${s}-f${f}`}
-                      onPress={() => onNotePress(midi, s, f)}
-                      style={[styles.slot, { height: rowH }]}
-                      hitSlop={2}
-                    >
-                      {highlighted && meta ? (
-                        <View
-                          style={[
-                            styles.node,
-                            { backgroundColor: bg, width: node, height: node, borderRadius: node / 2 },
-                            key === "root" && !uniform && styles.rootNode,
-                            isActive && styles.activeNode,
-                            faded && !isActive && styles.faded,
-                          ]}
-                        >
-                          <Text style={[styles.nodeText, { color: fg }]} numberOfLines={1}>
-                            {labelMode === "degree" ? iv!.label : nameOf(pc)}
-                          </Text>
-                        </View>
-                      ) : showNeutral || isActive ? (
-                        <View style={[styles.neutral, isActive && styles.activeNode]}>
-                          <Text style={styles.neutralText} numberOfLines={1}>
-                            {nameOf(pc)}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <NoteColumn
+                key={`n${f}`}
+                fret={f}
+                width={widths[f]}
+                rowH={rowH}
+                degreeMap={degreeMap}
+                visibleLayers={visibleLayers}
+                coloredLayers={coloredLayers}
+                octave={octave}
+                labelMode={labelMode}
+                showNeutral={showNeutral}
+                nameOf={nameOf}
+                onNotePress={onNotePress}
+                windowRange={windowRange}
+                activeString={activeMidi && activeMidi.fret === f ? activeMidi.string : -1}
+                styles={styles}
+                colors={colors}
+              />
             ))}
           </View>
         </View>

@@ -10,7 +10,7 @@ import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { playNote, initAudio } from "@/src/audio/sampler";
+import { playBell, playNote, preloadBells, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { EXERCISES, buildExercise, exerciseAllowed, positionLadder, type ExerciseId } from "@/src/music/exercises";
 import {
   DEGREE_META,
@@ -33,6 +33,30 @@ const PILL_W = 40;
 const PILL_GAP = 6;
 const STRIP_H_LANDSCAPE = 38;
 
+// Memoized: moving the highlight only re-renders two pills, not the whole strip.
+const SequencePill = React.memo(function SequencePill({
+  index,
+  label,
+  active,
+  onPress,
+  styles,
+}: {
+  index: number;
+  label: string;
+  active: boolean;
+  onPress: (i: number) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  styles: any;
+}) {
+  return (
+    <Pressable onPress={() => onPress(index)} style={[styles.pill, active && styles.pillActive]}>
+      <Text style={[styles.pillText, active && styles.pillTextActive]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
+
 export default function FingeringScreen() {
   const insets = useSafeAreaInsets();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
@@ -48,6 +72,8 @@ export default function FingeringScreen() {
   const [startOnRoot, setStartOnRoot] = useState(false);
   const [bpm, setBpm] = useState(90);
   const [loop, setLoop] = useState(false);
+  const [countIn, setCountIn] = useState(true);
+  const [beat, setBeat] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
@@ -67,6 +93,7 @@ export default function FingeringScreen() {
 
   useEffect(() => {
     initAudio();
+    preloadBells();
     return () => cancelRef.current?.();
   }, []);
 
@@ -92,18 +119,24 @@ export default function FingeringScreen() {
   );
   const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
 
+  // Load the audio players of every note of the exercise ahead of time: no delay when it starts.
+  useEffect(() => {
+    preloadNotes(sequence.map((st) => st.midi));
+  }, [sequence]);
+
   const stop = useCallback(() => {
     cancelRef.current?.();
     cancelRef.current = null;
     setPlaying(false);
     setActive(null);
     setStepIdx(null);
+    setBeat(null);
   }, []);
 
   // Any change of the exercise stops what is playing.
   useEffect(() => {
     stop();
-  }, [sequence, bpm, loop, stop]);
+  }, [sequence, bpm, loop, countIn, stop]);
 
   const selectPosition = useCallback(
     (i: number | null) => {
@@ -138,31 +171,41 @@ export default function FingeringScreen() {
       stop();
       return;
     }
-    if (!sequence.length) return;
-    const ms = Math.round(30000 / bpm); // eighth notes
-    let i = 0;
+    const len = sequence.length;
+    if (!len) return;
+    const noteMs = 30000 / bpm; // eighth notes
+    const beatMs = 60000 / bpm; // one count-in beat = a quarter note
+    const BEATS = countIn ? 4 : 0;
+    // Everything is scheduled against one absolute clock: a late timer never delays the following notes.
+    const t0 = Date.now() + 150;
+    const timeOf = (g: number) => (g < BEATS ? t0 + g * beatMs : t0 + BEATS * beatMs + (g - BEATS) * noteMs);
+    let g = 0; // global event index: count-in beats first, then the notes (wrapping around when looping)
     let timer: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      showStep(i);
-      i += 1;
-      if (i >= sequence.length) {
-        if (loop) {
-          i = 0;
-          timer = setTimeout(tick, ms);
-        } else {
-          timer = setTimeout(() => {
-            setPlaying(false);
-            setActive(null);
-            setStepIdx(null);
-          }, ms + 300);
-        }
+    const finish = () => {
+      setPlaying(false);
+      setActive(null);
+      setStepIdx(null);
+      setBeat(null);
+    };
+    const run = () => {
+      if (g < BEATS) {
+        playBell(g, settings.volume);
+        setBeat(g + 1);
       } else {
-        timer = setTimeout(tick, ms);
+        const n = g - BEATS;
+        if (n === 0) setBeat(null);
+        if (!loop && n >= len) {
+          finish();
+          return;
+        }
+        showStep(n % len);
       }
+      g += 1;
+      timer = setTimeout(run, Math.max(0, timeOf(g) - Date.now()));
     };
     cancelRef.current = () => clearTimeout(timer);
     setPlaying(true);
-    tick();
+    timer = setTimeout(run, Math.max(0, t0 - Date.now()));
   };
 
   const onNotePress = useCallback(
@@ -179,6 +222,13 @@ export default function FingeringScreen() {
     if (stepIdx === null) return;
     stripRef.current?.scrollTo({ x: Math.max(0, stepIdx * (PILL_W + PILL_GAP) - stripW.current / 2), animated: true });
   }, [stepIdx]);
+
+  const tapPill = useCallback(
+    (i: number) => {
+      if (!playing) showStep(i);
+    },
+    [playing, showStep],
+  );
 
   const labelOf = (midi: number) => {
     const pc = pcOf(midi);
@@ -214,7 +264,7 @@ export default function FingeringScreen() {
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {empty ? "Position trop courte : essayez 1/2." : `${exercise.name} · ${sequence.length} notes`}
+      {beat !== null ? `Décompte ${beat}/4…` : empty ? "Position trop courte : essayez 1/2." : `${exercise.name} · ${sequence.length} notes`}
     </Text>
   );
 
@@ -279,17 +329,7 @@ export default function FingeringScreen() {
         }}
       >
         {sequence.map((s, i) => (
-          <Pressable
-            key={i}
-            onPress={() => {
-              if (!playing) showStep(i);
-            }}
-            style={[styles.pill, stepIdx === i && styles.pillActive]}
-          >
-            <Text style={[styles.pillText, stepIdx === i && styles.pillTextActive]} numberOfLines={1}>
-              {labelOf(s.midi)}
-            </Text>
-          </Pressable>
+          <SequencePill key={i} index={i} label={labelOf(s.midi)} active={stepIdx === i} onPress={tapPill} styles={styles} />
         ))}
       </ScrollView>
 
@@ -369,6 +409,7 @@ export default function FingeringScreen() {
                 <Chip key={t} testID={`tempo-${t}`} label={`${t}`} selected={bpm === t} onPress={() => setBpm(t)} />
               ))}
               <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
+              <Chip testID="countin-toggle" label={countIn ? "Décompte : 4 temps" : "Décompte : non"} selected={countIn} onPress={() => setCountIn(!countIn)} />
             </ChipRow>
 
             <SectionLabel>Étiquettes</SectionLabel>
