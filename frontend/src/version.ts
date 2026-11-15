@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.14.0 — description des fonctionnalités sur la page d’accueil
 // 1.13.2 — fond photo de studio aussi sur Oreille et Réglages
 // 1.13.1 — nouveau fond d’écran : photo de studio de musique (noir et blanc), embarquée dans l’app
 // 1.13.0 — page d’accueil (logo + version), nouveau logo FretStudio comme icône / écran de démarrage ; Manche devient le 2e onglet
@@ -25,4 +26,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.13.2";
+export const APP_VERSION = "1.14.0";
