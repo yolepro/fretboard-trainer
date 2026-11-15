@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
-import { Ear, GearSix, Guitar, MusicNotes } from "phosphor-react-native";
+import { Ear, GearSix, Guitar, House, MusicNotes } from "phosphor-react-native";
 
 import { usesNativeTabs } from "@/src/navigation";
 import { fonts, useTheme } from "@/src/theme";
@@ -13,6 +13,10 @@ export default function TabsLayout() {
     return (
       <NativeTabs tintColor={colors.brandPrimary}>
         <NativeTabs.Trigger name="index">
+          <NativeTabs.Trigger.Icon sf="house.fill" />
+          <NativeTabs.Trigger.Label>Accueil</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="manche">
           <NativeTabs.Trigger.Icon sf="guitars.fill" />
           <NativeTabs.Trigger.Label>Manche</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
@@ -49,6 +53,14 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{
+          title: "Accueil",
+          tabBarButtonTestID: "tab-home",
+          tabBarIcon: ({ color, focused }) => <House color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
+        }}
+      />
+      <Tabs.Screen
+        name="manche"
         options={{
           title: "Manche",
           tabBarButtonTestID: "tab-fretboard",
