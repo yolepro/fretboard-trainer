@@ -171,41 +171,60 @@ export function preloadNotes(midis: number[]) {
   });
 }
 
-// ---- Count-in bells ----
-const BELLS = {
-  high: require("../../assets/sounds/bell_high.wav"),
-  low: require("../../assets/sounds/bell_low.wav"),
+// ---- Count-in claves ----
+const CLICKS = {
+  high: require("../../assets/sounds/clave_high.wav"),
+  low: require("../../assets/sounds/clave_low.wav"),
 };
-const bellPlayers: AudioPlayer[] = [];
+const CLICK_COUNT = 4; // one dedicated player per count-in beat: each beat always has its own, ready-to-play sound
+const clickPlayers: AudioPlayer[] = [];
+const clickReady: boolean[] = [];
 
-function bellPlayer(i: number) {
-  if (!bellPlayers[i]) bellPlayers[i] = createAudioPlayer(i === 0 ? BELLS.high : BELLS.low);
-  return bellPlayers[i];
+function clickPlayer(i: number) {
+  if (!clickPlayers[i]) {
+    clickPlayers[i] = createAudioPlayer(i === 0 ? CLICKS.high : CLICKS.low);
+    clickReady[i] = true;
+  }
+  return clickPlayers[i];
 }
 
-export function preloadBells() {
+export function preloadClicks() {
   initAudio();
   try {
-    bellPlayer(0);
-    bellPlayer(1);
-    bellPlayer(2);
+    for (let i = 0; i < CLICK_COUNT; i++) clickPlayer(i);
   } catch {
     // ignore
   }
 }
 
-/** Count-in click: `beat` 0 is the accented bell, the others alternate on two softer players. */
-export function playBell(beat: number, volume = 1) {
+/** Count-in click: beat 0 is the accented (higher) clave, beats 1–3 the softer one. */
+export function playClick(beat: number, volume = 1) {
   initAudio();
+  const i = Math.max(0, Math.min(CLICK_COUNT - 1, beat));
   try {
-    const p = bellPlayer(beat === 0 ? 0 : 1 + (beat % 2));
+    const p = clickPlayer(i);
     p.volume = volume;
-    try {
-      p.seekTo(0);
-    } catch {
-      // not loaded yet: it starts at 0 anyway
+    if (!clickReady[i]) {
+      try {
+        p.seekTo(0);
+      } catch {
+        // not loaded yet: it starts at 0 anyway
+      }
     }
+    clickReady[i] = false;
     p.play();
+    // Rewind once the short sound is over, so the next count-in starts with no seek.
+    setTimeout(() => {
+      try {
+        Promise.resolve(p.seekTo(0))
+          .then(() => {
+            clickReady[i] = true;
+          })
+          .catch(() => {});
+      } catch {
+        // ignore
+      }
+    }, 400);
   } catch {
     // ignore
   }

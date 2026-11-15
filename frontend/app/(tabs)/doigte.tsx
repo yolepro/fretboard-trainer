@@ -10,7 +10,8 @@ import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { playBell, playNote, preloadBells, preloadNotes, initAudio } from "@/src/audio/sampler";
+import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
+import { runSequence } from "@/src/audio/sequencer";
 import { EXERCISES, buildExercise, exerciseAllowed, positionLadder, type ExerciseId } from "@/src/music/exercises";
 import {
   DEGREE_META,
@@ -93,7 +94,7 @@ export default function FingeringScreen() {
 
   useEffect(() => {
     initAudio();
-    preloadBells();
+    preloadClicks();
     return () => cancelRef.current?.();
   }, []);
 
@@ -171,41 +172,31 @@ export default function FingeringScreen() {
       stop();
       return;
     }
-    const len = sequence.length;
-    if (!len) return;
-    const noteMs = 30000 / bpm; // eighth notes
-    const beatMs = 60000 / bpm; // one count-in beat = a quarter note
-    const BEATS = countIn ? 4 : 0;
-    // Everything is scheduled against one absolute clock: a late timer never delays the following notes.
-    const t0 = Date.now() + 150;
-    const timeOf = (g: number) => (g < BEATS ? t0 + g * beatMs : t0 + BEATS * beatMs + (g - BEATS) * noteMs);
-    let g = 0; // global event index: count-in beats first, then the notes (wrapping around when looping)
-    let timer: ReturnType<typeof setTimeout>;
+    if (!sequence.length) return;
     const finish = () => {
+      cancelRef.current = null;
       setPlaying(false);
       setActive(null);
       setStepIdx(null);
       setBeat(null);
     };
-    const run = () => {
-      if (g < BEATS) {
-        playBell(g, settings.volume);
-        setBeat(g + 1);
-      } else {
-        const n = g - BEATS;
+    cancelRef.current = runSequence({
+      length: sequence.length,
+      noteMs: 30000 / bpm, // notes are eighth notes
+      beatMs: 60000 / bpm, // count-in beats are quarter notes
+      beats: countIn ? 4 : 0,
+      loop,
+      onBeat: (b) => {
+        playClick(b, settings.volume);
+        setBeat(b + 1);
+      },
+      onNote: (n) => {
         if (n === 0) setBeat(null);
-        if (!loop && n >= len) {
-          finish();
-          return;
-        }
-        showStep(n % len);
-      }
-      g += 1;
-      timer = setTimeout(run, Math.max(0, timeOf(g) - Date.now()));
-    };
-    cancelRef.current = () => clearTimeout(timer);
+        showStep(n);
+      },
+      onEnd: finish,
+    });
     setPlaying(true);
-    timer = setTimeout(run, Math.max(0, t0 - Date.now()));
   };
 
   const onNotePress = useCallback(
