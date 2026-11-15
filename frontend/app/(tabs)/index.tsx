@@ -69,8 +69,8 @@ const useStyles = makeStyles((c) => ({
   center: { flexGrow: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, paddingVertical: spacing.lg, paddingHorizontal: spacing.lg },
   tagline: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface, textAlign: "center" },
   card: { alignSelf: "center", width: "100%", maxWidth: 560, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.md },
-  feature: { gap: 2, alignItems: "center" },
-  featureTitle: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.brandPrimary, textAlign: "center" },
-  featureText: { fontFamily: fonts.text, fontSize: 13, lineHeight: 18, color: c.onSurfaceSecondary, textAlign: "center" },
+  feature: { gap: 2, alignItems: "flex-start" },
+  featureTitle: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.brandPrimary, textAlign: "left" },
+  featureText: { fontFamily: fonts.text, fontSize: 13, lineHeight: 18, color: c.onSurfaceSecondary, textAlign: "left" },
   version: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 2, color: c.onSurfaceTertiary, textAlign: "center" },
 }));
