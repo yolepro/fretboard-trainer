@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import { Lightbulb } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
-import { DEGREE_META, STRING_LABELS, TUNING, octaveOf, pcOf, type DegreeKey, type IntervalDef } from "@/src/music/theory";
+import { DEGREE_META, FRET_COUNT, STRING_LABELS, TUNING, octaveOf, pcOf, type DegreeKey, type IntervalDef } from "@/src/music/theory";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 const DEGREE_NUM: Record<DegreeKey, number> = { root: 1, third: 3, fifth: 5, seventh: 7, ninth: 9, eleventh: 11, thirteenth: 13 };
@@ -28,7 +28,7 @@ export function NoteHint({ targetMidi, pitchClassOnly, degree, degreeLabel, name
   const positions = useMemo(() => {
     const out: { string: number; fret: number }[] = [];
     TUNING.forEach((open, s) => {
-      for (let f = 0; f <= 24; f++) {
+      for (let f = 0; f <= FRET_COUNT; f++) {
         const m = open + f;
         const ok = pitchClassOnly ? pcOf(m) === pc && f <= HINT_LAST_FRET : m === targetMidi;
         if (ok) out.push({ string: s, fret: f });

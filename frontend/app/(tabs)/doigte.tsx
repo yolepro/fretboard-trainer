@@ -93,7 +93,7 @@ export default function FingeringScreen() {
   const degrees = useMemo(() => formulaDegrees(formula), [formula]);
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const colored = useMemo(() => new Set<DegreeKey>(["root"]), []);
-  const boxes = useMemo(() => scaleBoxes(rootPc, formula, true), [rootPc, formula]);
+  const boxes = useMemo(() => scaleBoxes(rootPc, formula, true), [rootPc, formula, settings.fretCount]);
   const pos = Math.min(position, boxes.length - 1);
   const variant = variants[pos] ?? 0;
   const positionWindow = useMemo(() => boxVariant(boxes[pos], variant), [boxes, pos, variant]);
@@ -121,7 +121,7 @@ export default function FingeringScreen() {
   const setI = Math.min(setIdx, stringSets.length - 1);
   const hGroups = useMemo(
     () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], extent === "all" ? -1 : 0, extent) : []),
-    [horizontal, rootPc, formula, exerciseId, stringSets, setI, extent],
+    [horizontal, rootPc, formula, exerciseId, stringSets, setI, extent, settings.fretCount],
   );
   // Only the notes actually played are lit (no orphan note without its group at the ends of the neck).
   const windowRange = useMemo(() => (horizontal ? routeWindow(hGroups) : positionWindow), [horizontal, hGroups, positionWindow]);

@@ -155,6 +155,24 @@ export default function SettingsScreen() {
           />
           <View style={styles.sep} />
           <Row testID="setting-tuning" icon={Lock} title="Accordage" subtitle="Standard · E A D G B E" />
+          <View style={styles.sep} />
+          <Row
+            testID="setting-frets"
+            icon={Target}
+            title="Nombre de cases du manche"
+            subtitle="De 20 à 24 : le manche, les positions et les exercices s’adaptent"
+            right={
+              <View style={styles.stepper}>
+                <Pressable testID="frets-decrease" onPress={() => update({ fretCount: Math.max(20, settings.fretCount - 1) })} style={styles.stepBtn}>
+                  <Minus size={16} color={colors.onSurface} />
+                </Pressable>
+                <Text style={styles.stepValue} testID="frets-value">{settings.fretCount}</Text>
+                <Pressable testID="frets-increase" onPress={() => update({ fretCount: Math.min(24, settings.fretCount + 1) })} style={styles.stepBtn}>
+                  <Plus size={16} color={colors.onSurface} />
+                </Pressable>
+              </View>
+            }
+          />
         </Group>
 
         <Group title="Entraînement">

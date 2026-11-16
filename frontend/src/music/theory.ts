@@ -109,7 +109,13 @@ export const freqToMidiFloat = (freq: number, a4 = 440) => 69 + 12 * Math.log2(f
 // Standard tuning, displayed top (high e) to bottom (low E)
 export const TUNING = [64, 59, 55, 50, 45, 40];
 export const STRING_LABELS = ["e", "B", "G", "D", "A", "E"];
-export const FRET_COUNT = 24;
+/** Number of frets of the neck (20 to 24, a setting). A live binding: read it at call time, never copy it at module load. */
+export let FRET_COUNT = 24;
+export const MIN_FRETS = 20;
+export const MAX_FRETS = 24;
+export function setFretCount(n: number) {
+  FRET_COUNT = Math.max(MIN_FRETS, Math.min(MAX_FRETS, Math.round(n) || MAX_FRETS));
+}
 export const SINGLE_MARKERS = [3, 5, 7, 9, 15, 17, 19, 21];
 export const DOUBLE_MARKERS = [12, 24];
 export const OCTAVES = [2, 3, 4, 5, 6];

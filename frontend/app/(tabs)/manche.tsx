@@ -84,7 +84,7 @@ export default function FretboardScreen() {
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const coloredLayers = colored;
   // For scales, windows are widened so the visible notes form an unbroken run of the scale (chords keep the raw box).
-  const boxes = useMemo(() => scaleBoxes(rootPc, formula, mode === "scale"), [rootPc, formula, mode]);
+  const boxes = useMemo(() => scaleBoxes(rootPc, formula, mode === "scale"), [rootPc, formula, mode, settings.fretCount]);
   // Scales don't have the same number of positions: drop a selection that no longer exists.
   useEffect(() => {
     if (position !== null && position >= boxes.length) {
@@ -119,7 +119,7 @@ export default function FretboardScreen() {
       if (ladder.length) return ladder;
     }
     return playbackPath(rootPc, formula, mode === "scale", windowRange);
-  }, [rootPc, formula, mode, windowRange, startOnRoot]);
+  }, [rootPc, formula, mode, windowRange, startOnRoot, settings.fretCount]);
   useEffect(() => {
     preloadNotes(path.map((st) => st.midi));
   }, [path]);

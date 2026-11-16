@@ -4,7 +4,6 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import {
   DEGREE_META,
   DOUBLE_MARKERS,
-  FRET_COUNT,
   SINGLE_MARKERS,
   TUNING,
   cellKey,
@@ -25,7 +24,6 @@ const STRING_THICK = [1, 1.4, 1.8, 2.4, 3, 3.6];
 
 const baseFretWidth = (n: number) => (n === 0 ? OPEN_W : 78 * Math.pow(2, -n / 28));
 export const fretWidth = (n: number, scale = 1) => Math.round(baseFretWidth(n) * scale);
-const FRETS = Array.from({ length: FRET_COUNT + 1 }, (_, i) => i);
 
 /** Scale factor so frets 0..lastFret fit exactly in `available` px (never enlarges). */
 export function fitScale(available: number, lastFret: number) {
@@ -179,7 +177,9 @@ function FretboardImpl({
     transform: markerDims.rotate ? [{ rotate: "45deg" }] : [],
   });
   const boardH = rowH * 6;
-  const widths = useMemo(() => FRETS.map((f) => fretWidth(f, fretScale)), [fretScale]);
+  // The neck length is a setting (20–24 frets).
+  const FRETS = useMemo(() => Array.from({ length: settings.fretCount + 1 }, (_, i) => i), [settings.fretCount]);
+  const widths = useMemo(() => FRETS.map((f) => fretWidth(f, fretScale)), [fretScale, FRETS]);
   const totalW = useMemo(() => widths.reduce((s, w) => s + w, 0), [widths]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scrollRef = useRef<any>(null);
@@ -192,7 +192,7 @@ function FretboardImpl({
       if (fr >= 0 && fr < m.length) m[fr] |= 1 << str;
     });
     return m;
-  }, [nextCells]);
+  }, [nextCells, FRETS]);
   const noColumns = !!windowRange?.noColumns;
   const inColumn = (f: number) => !windowRange || (!noColumns && f >= windowRange.min && f <= windowRange.max);
 

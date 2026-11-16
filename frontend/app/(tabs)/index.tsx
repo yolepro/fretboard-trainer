@@ -24,7 +24,7 @@ const FEATURES = [
   },
   {
     title: "Réglages",
-    text: "Notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, étiquettes, volume et diapason.",
+    text: "Notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.",
   },
 ];
 

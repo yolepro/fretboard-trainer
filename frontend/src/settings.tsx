@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { storage } from "@/src/utils/storage";
-import { noteName, type Accidental, type Notation } from "@/src/music/theory";
+import { MAX_FRETS, MIN_FRETS, noteName, setFretCount, type Accidental, type Notation } from "@/src/music/theory";
 import { DEFAULT_FRETBOARD_STYLE, isFretboardStyle, type FretboardStyleId } from "@/src/fretboardStyles";
 
 export type Settings = {
@@ -17,6 +17,8 @@ export type Settings = {
   soundOnTap: boolean;
   volume: number;
   a4: number;
+  /** Number of frets of the neck (20–24). */
+  fretCount: number;
   /** Set once the 1.20 defaults (score + tab shown in both orientations) were applied to saved settings. */
   scoreDefaultsV: number;
 };
@@ -32,6 +34,7 @@ const DEFAULTS: Settings = {
   soundOnTap: true,
   volume: 0.8,
   a4: 440,
+  fretCount: 24,
   scoreDefaultsV: 1,
 };
 
@@ -53,10 +56,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (typeof raw === "string") {
         try {
           const saved = JSON.parse(raw);
+          const fc = Number(saved?.fretCount);
           const merged: Settings = {
             ...DEFAULTS,
             ...saved,
             fretboardStyle: isFretboardStyle(saved?.fretboardStyle) ? saved.fretboardStyle : DEFAULT_FRETBOARD_STYLE,
+            fretCount: fc >= MIN_FRETS && fc <= MAX_FRETS ? Math.round(fc) : MAX_FRETS,
           };
           // 1.20: score + tablature are now shown by default in both orientations (also for already saved settings).
           if (!saved?.scoreDefaultsV) {
@@ -72,6 +77,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       }
     });
   }, []);
+
+  // The music helpers read the neck length from the theory module: keep it in step before the screens render.
+  setFretCount(settings.fretCount);
 
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
