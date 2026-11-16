@@ -361,11 +361,13 @@ export default function FingeringScreen() {
 
   const pickerTop = (
     <>
-      <SectionLabel>{tr("Matière")}</SectionLabel>
-      <ChipRow testID="subject-selector">
-        <Chip testID="subject-scale" label={tr("Gammes")} selected={!arp} onPress={() => setSubject("scale")} />
-        <Chip testID="subject-arp" label={tr("Arpèges 4 sons")} selected={arp} onPress={() => setSubject("arp")} />
-      </ChipRow>
+      <View style={styles.segment} testID="subject-selector">
+        {(["scale", "arp"] as const).map((m) => (
+          <Pressable key={m} testID={`subject-${m}`} onPress={() => setSubject(m)} style={[styles.segBtn, subject === m && styles.segBtnActive]}>
+            <Text style={[styles.segText, subject === m && styles.segTextActive]}>{m === "scale" ? tr("Gammes") : tr("Arpèges 4 sons")}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       {arp ? (
         <>
@@ -615,6 +617,11 @@ export default function FingeringScreen() {
 }
 
 const useStyles = makeStyles((c) => ({
+  segment: { flexDirection: "row", marginHorizontal: spacing.lg, padding: 4, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary },
+  segBtn: { flex: 1, height: 40, alignItems: "center", justifyContent: "center", borderRadius: radius.pill },
+  segBtnActive: { backgroundColor: c.brandPrimary },
+  segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
+  segTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
   screen: { flex: 1, backgroundColor: c.surface },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
   headerText: { flex: 1 },
