@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { ARP_SHAPES, ARP_TYPES, arpFormula, arpRoutes, arpShapePlacements, arpUpDown, arpWindow, type ArpNote, type ArpTypeId } from "@/src/music/arpeggios";
-import { Keyboard, Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { CaretDown, Play, Stop } from "phosphor-react-native";
+import { CaretDown, List, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -51,6 +52,9 @@ import { tr } from "@/src/i18n";
 
 const LANDSCAPE_ROW_MIN = 22;
 
+// Note values per notes-per-beat of the exercise: [slow pace, normal pace].
+const PACE_NOTES: Record<number, [string, string]> = { 2: ["noires", "croches"], 3: ["triolets de noires", "triolets"], 4: ["croches", "doubles croches"] };
+
 export default function FingeringScreen() {
   const insets = useSafeAreaInsets();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
@@ -91,6 +95,8 @@ export default function FingeringScreen() {
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  // Phones in portrait: the menu button is a round icon, the play button has no label.
+  const compactHeader = !isLandscape && width < 480;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
@@ -446,51 +452,6 @@ export default function FingeringScreen() {
         </>
       )}
 
-      <SectionLabel>{tr("Débit des notes")}</SectionLabel>
-      <ChipRow testID="pace-selector">
-        <Chip testID="pace-slow" label={tr("Lent (notes 2× plus longues)")} selected={slow} onPress={() => setSlow(true)} />
-        <Chip testID="pace-normal" label={tr("Normal")} selected={!slow} onPress={() => setSlow(false)} />
-      </ChipRow>
-
-      <SectionLabel>{pulse.half ? tr("Tempo (BPM, à la blanche)") : tr("Tempo (BPM, à la noire)")}</SectionLabel>
-      <View style={styles.bpmRow}>
-        <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-          <Text style={styles.stepText}>−</Text>
-        </Pressable>
-        <TextInput
-          testID="bpm-input"
-          value={bpmText}
-          onChangeText={setBpmText}
-          onEndEditing={() => commitBpm(bpmText)}
-          onSubmitEditing={() => commitBpm(bpmText)}
-          keyboardType="number-pad"
-          returnKeyType="done"
-          maxLength={3}
-          selectTextOnFocus
-          style={styles.bpmInput}
-        />
-        <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-          <Text style={styles.stepText}>+</Text>
-        </Pressable>
-        <Pressable
-          testID="bpm-ok"
-          onPress={() => {
-            commitBpm(bpmText);
-            Keyboard.dismiss();
-          }}
-          style={({ pressed }) => [styles.stepBtn, styles.okBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.stepText}>OK</Text>
-        </Pressable>
-        <Text style={styles.bpmHint}>{tr("max {n} pour cet exercice", { n: maxBpm })}</Text>
-      </View>
-
-      <SectionLabel>{tr("Lecture")}</SectionLabel>
-      <ChipRow testID="play-options">
-        <Chip testID="loop-toggle" label={loop ? tr("Boucle : oui") : tr("Boucle : non")} selected={loop} onPress={() => setLoop(!loop)} />
-        <Chip testID="metronome-toggle" label={metronome ? tr("Métronome : oui") : tr("Métronome : non")} selected={metronome} onPress={() => setMetronome(!metronome)} />
-      </ChipRow>
-
       <SectionLabel>{tr("Partition")}</SectionLabel>
       <ChipRow testID="tab-selector">
         <Chip testID="tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
@@ -536,10 +497,29 @@ export default function FingeringScreen() {
           </View>
         ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
-          <Text style={styles.pickerText}>{tr("Exercice")}</Text>
-          <CaretDown size={16} color={colors.onSurface} weight="bold" />
-        </Pressable>
+        <TempoButton
+          bpm={bpm}
+          min={MIN_BPM}
+          max={maxBpm}
+          half={pulse.half}
+          defaultBpm={defaultBpmFor(rhythmId, slow)}
+          onBpm={(v) => commitBpm(String(v))}
+          pace={{ slow, onChange: setSlow, slowLabel: `${tr("Lent")} · ${tr(PACE_NOTES[exercise.perBeat]?.[0] ?? "noires")}`, normalLabel: `${tr("Normal")} · ${tr(PACE_NOTES[exercise.perBeat]?.[1] ?? "croches")}` }}
+          loop={loop}
+          onLoop={setLoop}
+          metronome={metronome}
+          onMetronome={setMetronome}
+        />
+        {compactHeader ? (
+          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercice")}>
+            <List size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
+        ) : (
+          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
+            <Text style={styles.pickerText}>{tr("Exercice")}</Text>
+            <CaretDown size={16} color={colors.onSurface} weight="bold" />
+          </Pressable>
+        )}
         <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, pressed && styles.pressed, empty && styles.dim]}>
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
           {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
@@ -629,6 +609,7 @@ const useStyles = makeStyles((c) => ({
   headerText: { flex: 1 },
   headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
+  roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   pickerBtn: {
     flexDirection: "row",
     alignItems: "center",

@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.28.0 — bouton rond Tempo dans l’en-tête : feuille « Tempo et lecture » (tempo, raccourcis, débit, boucle, métronome) ; menu en bouton rond sur téléphone
 // 1.27.3 — en-tête : bouton Écouter / Jouer sans texte sur téléphone, bandeau orange « FRETSTUDIO · … » supprimé
 // 1.27.2 — rosace : points du bouton recentrés ; relatif mineur de la tonalité choisie seulement entouré
 // 1.27.1 — correctif web : le choix d’une tonalité dans la rosace plantait (position du clic absente sur le web)
@@ -58,4 +59,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.27.3";
+export const APP_VERSION = "1.28.0";

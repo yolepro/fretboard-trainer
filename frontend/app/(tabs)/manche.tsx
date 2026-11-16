@@ -3,7 +3,7 @@ import { KeyButton } from "@/src/components/KeyWheel";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { CaretDown, Play, Stop } from "phosphor-react-native";
+import { CaretDown, List, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -12,7 +12,7 @@ import { Score, useScore } from "@/src/components/Score";
 import { runSequence } from "@/src/audio/sequencer";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
-import { TempoRow } from "@/src/components/TempoRow";
+import { TempoButton } from "@/src/components/TempoSheet";
 import { positionLadder } from "@/src/music/exercises";
 import {
   CHORDS,
@@ -67,6 +67,8 @@ export default function FretboardScreen() {
   // Landscape: frets 0→16 minimum fit on screen, rows sized to the available height.
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  // Phones in portrait: the menu button is a round icon, the play button has no label.
+  const compactHeader = !isLandscape && width < 480;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
@@ -285,14 +287,17 @@ export default function FretboardScreen() {
           </View>
         ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        <Pressable
-          testID="open-scale-picker"
-          onPress={() => setPickerOpen(true)}
-          style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.pickerText}>{mode === "scale" ? tr("Gamme") : tr("Accord")}</Text>
-          <CaretDown size={16} color={colors.onSurface} weight="bold" />
-        </Pressable>
+        <TempoButton bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
+        {compactHeader ? (
+          <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={mode === "scale" ? tr("Gamme") : tr("Accord")}>
+            <List size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
+        ) : (
+          <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
+            <Text style={styles.pickerText}>{mode === "scale" ? tr("Gamme") : tr("Accord")}</Text>
+            <CaretDown size={16} color={colors.onSurface} weight="bold" />
+          </Pressable>
+        )}
         <Pressable
           testID="play-formula-button"
           onPress={playFormula}
@@ -398,15 +403,6 @@ export default function FretboardScreen() {
                 </ChipRow>
               </>
             ) : null}
-            <SectionLabel>{tr("Tempo de l’écoute (BPM, à la noire)")}</SectionLabel>
-            <TempoRow bpm={bpm} min={30} max={200} onChange={setBpm} hint={tr("croches : 2 notes par temps")} prefix="manche-bpm" />
-
-            <SectionLabel>{tr("Lecture")}</SectionLabel>
-            <ChipRow testID="manche-play-options">
-              <Chip testID="manche-loop-toggle" label={loop ? tr("Boucle : oui") : tr("Boucle : non")} selected={loop} onPress={() => setLoop(!loop)} />
-              <Chip testID="manche-metronome-toggle" label={metronome ? tr("Métronome : oui") : tr("Métronome : non")} selected={metronome} onPress={() => setMetronome(!metronome)} />
-            </ChipRow>
-
             <SectionLabel>{tr("Partition")}</SectionLabel>
             <ChipRow testID="manche-tab-selector">
               <Chip testID="manche-tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
@@ -447,6 +443,7 @@ const useStyles = makeStyles((c) => ({
   headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   titleCompact: { fontSize: 20 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
+  roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   pickerBtn: {
     flexDirection: "row",
     alignItems: "center",
