@@ -474,7 +474,7 @@ export default function FingeringScreen() {
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : arp ? tr("{name} · {n} notes", { name: tr("Arpège"), n: sequence.length }) : horizontal ? tr("{name} · {strings} · {n} notes", { name: tr(exercise.name), strings: stringSetName(stringSets[setI]), n: sequence.length }) : tr("{name} · {n} notes", { name: tr(exercise.name), n: sequence.length })}
+      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : ""}
     </Text>
   );
 
