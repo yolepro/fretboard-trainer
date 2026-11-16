@@ -18,7 +18,7 @@ const FEATURES = [
   },
   {
     title: "Doigté",
-    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle.",
+    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle. Arpèges 4 sons (∆, 7, m7, Ø) en 5 schémas, sur une position ou en enchaînant deux schémas le long du manche.",
   },
   {
     title: "Oreille",

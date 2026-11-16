@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ARP_SHAPES, ARP_TYPES, arpFormula, arpRoutes, arpShapePlacements, arpUpDown, arpWindow, type ArpNote, type ArpTypeId } from "@/src/music/arpeggios";
 import { Keyboard, Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -78,6 +79,13 @@ export default function FingeringScreen() {
   // Horizontal: number of strings a group is spread over (null = one note per string).
   const [stringCount, setStringCount] = useState<number | null>(null);
   const [extent, setExtent] = useState<Extent>("octave");
+  // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
+  const [subject, setSubject] = useState<"scale" | "arp">("scale");
+  const arp = subject === "arp";
+  const [arpType, setArpType] = useState<ArpTypeId>("maj7");
+  const [arpShape, setArpShape] = useState(0);
+  const [arpVariant, setArpVariant] = useState(0);
+  const [towardBody, setTowardBody] = useState(true);
   const cancelRef = useRef<(() => void) | null>(null);
 
   const { width, height } = useWindowDimensions();
@@ -93,8 +101,12 @@ export default function FingeringScreen() {
   }, []);
 
   const formula = useMemo(() => SCALES.find((s) => s.id === scaleId)!, [scaleId]);
-  const degreeMap = useMemo(() => buildDegreeMap(rootPc, formula), [rootPc, formula]);
-  const degrees = useMemo(() => formulaDegrees(formula), [formula]);
+  // What is shown on the neck and written on the score: the scale, or the chord of the arpeggio.
+  const shown = useMemo(() => (arp ? arpFormula(arpType) : formula), [arp, arpType, formula]);
+  // Arpeggios are played 4 notes per beat (like the seventh arpeggios): same pulse, tempo and groups.
+  const rhythmId: ExerciseId = arp ? "sevenths" : exerciseId;
+  const degreeMap = useMemo(() => buildDegreeMap(rootPc, shown), [rootPc, shown]);
+  const degrees = useMemo(() => formulaDegrees(shown), [shown]);
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const colored = useMemo(() => new Set<DegreeKey>(["root"]), []);
   const boxes = useMemo(() => scaleBoxes(rootPc, formula, true), [rootPc, formula, settings.fretCount]);
@@ -108,13 +120,13 @@ export default function FingeringScreen() {
   }, [formula, exerciseId]);
 
   // Horizontal mode: needs groups of 2+ notes (no single-note scale) and a 7-note or pentatonic scale (no special scale).
-  const horizontalOk = !formula.special;
+  const horizontalOk = arp || !formula.special;
   useEffect(() => {
     if (horizontal && !horizontalOk) setHorizontal(false);
   }, [horizontal, horizontalOk]);
   useEffect(() => {
-    if (horizontal && exerciseId === "scale") setExerciseId("thirds");
-  }, [horizontal, exerciseId]);
+    if (!arp && horizontal && exerciseId === "scale") setExerciseId("thirds");
+  }, [arp, horizontal, exerciseId]);
   // Lowest strings by default whenever the exercise (so the group size) changes.
   useEffect(() => {
     setSetIdx(0);
@@ -130,15 +142,28 @@ export default function FingeringScreen() {
     [horizontal, rootPc, formula, exerciseId, stringSets, setI, extent, settings.fretCount],
   );
   // Only the notes actually played are lit (no orphan note without its group at the ends of the neck).
-  const windowRange = useMemo(() => (horizontal ? routeWindow(hGroups) : positionWindow), [horizontal, hGroups, positionWindow]);
+  // Arpeggios: the shape in one position, or the route from the shape to its neighbour (horizontal).
+  const arpList = useMemo<ArpNote[][]>(
+    () => (!arp ? [] : horizontal ? arpRoutes(arpType, arpShape, rootPc, towardBody) : arpShapePlacements(arpType, arpShape, rootPc)),
+    [arp, horizontal, arpType, arpShape, rootPc, towardBody, settings.fretCount],
+  );
+  const arpV = Math.max(0, Math.min(arpVariant, arpList.length - 1));
+  const arpNotes = useMemo<ArpNote[]>(() => arpList[arpV] ?? [], [arpList, arpV]);
+  useEffect(() => {
+    setArpVariant(0);
+  }, [arpType, rootPc, horizontal, towardBody]);
+  const windowRange = useMemo(
+    () => (arp ? arpWindow(arpNotes, horizontal) : horizontal ? routeWindow(hGroups) : positionWindow),
+    [arp, arpNotes, horizontal, hGroups, positionWindow],
+  );
   const stringSetName = (st: { strings: number[] }) => st.strings.map((s) => nameOf(pcOf(TUNING[s]))).join("·");
 
   const ladder = useMemo(() => positionLadder(rootPc, formula, positionWindow), [rootPc, formula, positionWindow]);
   const sequence = useMemo(
-    () => (horizontal ? hGroups.flat() : buildExercise(ladder, exerciseId, rootPc, startOnRoot)),
-    [horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
+    () => (arp ? arpUpDown(arpNotes, !horizontal && startOnRoot) : horizontal ? hGroups.flat() : buildExercise(ladder, exerciseId, rootPc, startOnRoot)),
+    [arp, arpNotes, horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
   );
-  const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
+  const exercise = EXERCISES.find((e) => e.id === rhythmId)!;
 
   // The group of notes being played (or about to be, during the count-in): ringed on the neck.
   const groupSize = exercise.offsets.length;
@@ -157,7 +182,7 @@ export default function FingeringScreen() {
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 214);
-  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn, slow, bpm, pulseOf(exerciseId, slow).half);
+  const { layout } = useScore(sequence, arp ? "path" : exerciseId, exercise.perBeat, rootPc, shown, tabOn, slow, bpm, pulseOf(rhythmId, slow).half);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
@@ -166,8 +191,8 @@ export default function FingeringScreen() {
     : 34;
 
   // Tempo is in beats (quarter notes) per minute; each exercise has its own ceiling (its fastest notes stay playable).
-  const maxBpm = maxBpmFor(exerciseId, slow);
-  const pulse = pulseOf(exerciseId, slow);
+  const maxBpm = maxBpmFor(rhythmId, slow);
+  const pulse = pulseOf(rhythmId, slow);
   // Count-in: one bar, or only its second half when the tempo is slow (under 70), so the wait stays short.
   const countBeats = bpm < 70 ? pulse.barPulses / 2 : pulse.barPulses;
   const countOffset = pulse.barPulses - countBeats; // half a bar counts "3, 4" (or "2" in 2/2)
@@ -182,8 +207,8 @@ export default function FingeringScreen() {
   );
   // Each exercise starts at its own comfortable tempo (eighths 80, triplets 60, sixteenths 50).
   useEffect(() => {
-    commitBpm(String(defaultBpmFor(exerciseId, slow)));
-  }, [exerciseId, slow, commitBpm]);
+    commitBpm(String(defaultBpmFor(rhythmId, slow)));
+  }, [rhythmId, slow, commitBpm]);
   useEffect(() => {
     if (bpm > maxBpm) commitBpm(String(maxBpm));
   }, [bpm, maxBpm, commitBpm]);
@@ -284,7 +309,15 @@ export default function FingeringScreen() {
     [playing, showStep],
   );
 
-  const title = `${nameOf(rootPc)}`;
+  const selectArpShape = (i: number) => {
+    if (i === arpShape) setArpVariant(arpList.length > 1 ? (arpV + 1) % arpList.length : 0);
+    else {
+      setArpShape(i);
+      setArpVariant(0);
+    }
+  };
+  const arpSymbol = ARP_TYPES.find((t) => t.id === arpType)!.symbol;
+  const title = `${nameOf(rootPc)}${arp ? arpSymbol : ""}`;
   const empty = sequence.length === 0;
 
   const exerciseChips = EXERCISES.map((e) => {
@@ -311,23 +344,77 @@ export default function FingeringScreen() {
     <Chip key={i} testID={`hz-strings-${i}`} label={stringSetName(st)} selected={setI === i} onPress={() => setSetIdx(i)} />
   ));
 
+  const arpTypeChips = ARP_TYPES.map((t) => (
+    <Chip key={t.id} testID={`arp-type-${t.id}`} label={`${nameOf(rootPc)}${t.symbol}`} selected={arpType === t.id} onPress={() => setArpType(t.id)} />
+  ));
+  const arpShapeChips = ARP_SHAPES.map((name, i) => (
+    <Chip
+      key={name}
+      testID={`arp-shape-${i}`}
+      label={tr(name)}
+      badge={arpShape === i && arpList.length > 1 ? `${arpV + 1}/${arpList.length}` : undefined}
+      badgeTone={arpV === 1 ? "accent" : "primary"}
+      selected={arpShape === i}
+      onPress={() => selectArpShape(i)}
+    />
+  ));
+
   const pickerTop = (
     <>
-      <SectionLabel>{tr("Exercice")}</SectionLabel>
-      <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
-      <Text style={styles.hint}>{tr(exercise.description)}</Text>
+      <SectionLabel>{tr("Matière")}</SectionLabel>
+      <ChipRow testID="subject-selector">
+        <Chip testID="subject-scale" label={tr("Gammes")} selected={!arp} onPress={() => setSubject("scale")} />
+        <Chip testID="subject-arp" label={tr("Arpèges 4 sons")} selected={arp} onPress={() => setSubject("arp")} />
+      </ChipRow>
+
+      {arp ? (
+        <>
+          <SectionLabel>{tr("Type d’arpège")}</SectionLabel>
+          <ChipRow testID="arp-type-selector">{arpTypeChips}</ChipRow>
+        </>
+      ) : (
+        <>
+          <SectionLabel>{tr("Exercice")}</SectionLabel>
+          <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
+          <Text style={styles.hint}>{tr(exercise.description)}</Text>
+        </>
+      )}
 
       <SectionLabel>{tr("Mode")}</SectionLabel>
       <ChipRow testID="mode-selector">{modeChips}</ChipRow>
       {horizontal ? (
-        <Text style={styles.hint}>{tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}</Text>
+        <Text style={styles.hint}>
+          {arp ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.") : tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}
+        </Text>
       ) : null}
 
     </>
   );
   const pickerExtra = (
     <>
-      {horizontal ? (
+      {arp ? (
+        <>
+          <SectionLabel>{tr("Schéma")}</SectionLabel>
+          <ChipRow testID="arp-shape-selector">{arpShapeChips}</ChipRow>
+          {horizontal ? (
+            <>
+              <SectionLabel>{tr("Déplacement")}</SectionLabel>
+              <ChipRow testID="arp-direction">
+                <Chip testID="arp-toward-body" label={tr("Vers la caisse")} selected={towardBody} onPress={() => setTowardBody(true)} />
+                <Chip testID="arp-toward-nut" label={tr("Vers le sillet")} selected={!towardBody} onPress={() => setTowardBody(false)} />
+              </ChipRow>
+            </>
+          ) : (
+            <>
+              <SectionLabel>{tr("Départ")}</SectionLabel>
+              <ChipRow testID="arp-start-selector">
+                <Chip testID="arp-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+                <Chip testID="arp-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+              </ChipRow>
+            </>
+          )}
+        </>
+      ) : horizontal ? (
         <>
           <SectionLabel>{tr("Cordes")}</SectionLabel>
           {stringCounts.length > 1 ? (
@@ -423,11 +510,13 @@ export default function FingeringScreen() {
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : horizontal ? tr("{name} · {strings} · {n} notes", { name: tr(exercise.name), strings: stringSetName(stringSets[setI]), n: sequence.length }) : tr("{name} · {n} notes", { name: tr(exercise.name), n: sequence.length })}
+      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : arp ? tr("{name} · {n} notes", { name: tr("Arpège"), n: sequence.length }) : horizontal ? tr("{name} · {strings} · {n} notes", { name: tr(exercise.name), strings: stringSetName(stringSets[setI]), n: sequence.length }) : tr("{name} · {n} notes", { name: tr(exercise.name), n: sequence.length })}
     </Text>
   );
 
-  const positionBadge = horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const arpOther = ARP_SHAPES[(arpShape + (towardBody ? 1 : ARP_SHAPES.length - 1)) % ARP_SHAPES.length];
+  const arpBadge = (horizontal ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}` : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })) + (arpList.length > 1 ? ` · ${arpV + 1}/${arpList.length}` : "");
+  const positionBadge = arp ? arpBadge : horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
@@ -436,7 +525,7 @@ export default function FingeringScreen() {
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           {!isLandscape ? <Text style={styles.brand}>{tr("FRETSTUDIO · DOIGTÉ")}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{tr(formula.name)} · {positionBadge}</Text>
+            {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)} · {positionBadge}</Text>
           </Text>
         </View>
         {isLandscape ? (
@@ -484,7 +573,8 @@ export default function FingeringScreen() {
         onModeChange={() => {}}
         scalesOnly
         hideAllPosition
-        title={tr("Exercice et gamme")}
+        title={arp ? tr("Exercice et arpège") : tr("Exercice et gamme")}
+        hideList={arp}
         top={pickerTop}
         extra={pickerExtra}
         rootPc={rootPc}
@@ -492,7 +582,7 @@ export default function FingeringScreen() {
         selectedId={scaleId}
         onSelect={setScaleId}
         nameOf={nameOf}
-        positions={horizontal ? [] : boxes}
+        positions={horizontal || arp ? [] : boxes}
         selectedPosition={pos}
         positionVariants={variants}
         onPositionChange={selectPosition}
@@ -502,12 +592,12 @@ export default function FingeringScreen() {
 
       {isLandscape ? (
         <ChipRow testID="fingering-landscape-row">
-          {exerciseChips}
+          {arp ? arpTypeChips : exerciseChips}
           <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
           <View style={styles.divider} />
           {modeChips}
           <View style={styles.divider} />
-          {horizontal ? stringChips : boxes.map((_, i) => (
+          {arp ? arpShapeChips : horizontal ? stringChips : boxes.map((_, i) => (
             <Chip
               key={i}
               testID={`fingering-position-${i + 1}`}

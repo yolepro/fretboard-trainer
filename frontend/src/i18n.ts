@@ -36,8 +36,8 @@ const EN: Record<string, string> = {
   "Maîtrisez votre manche de guitare": "Master your guitar fretboard",
   "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme avec partition et tablature.":
     "See scales, modes, pentatonics, blues and chords over the whole neck. 5 fixed positions in every key (and their 2/2 version), notes colored by degree, scale playback with score and tablature.",
-  "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle.":
-    "Practice in one position or horizontally (same strings, moving up the neck): full scale, thirds, triads (1-3-5) and seventh arpeggios (1-3-5-7), up and down, with synced score + tablature, adjustable tempo, slow or normal pace, count-in, metronome and loop.",
+  "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle. Arpèges 4 sons (∆, 7, m7, Ø) en 5 schémas, sur une position ou en enchaînant deux schémas le long du manche.":
+    "Practice in one position or horizontally (same strings, moving up the neck): full scale, thirds, triads (1-3-5) and seventh arpeggios (1-3-5-7), up and down, with synced score + tablature, adjustable tempo, slow or normal pace, count-in, metronome and loop. 4-note arpeggios (∆, 7, m7, Ø) in 5 shapes, in one position or linking two shapes along the neck.",
   "Entraînez-vous avec votre guitare : jouer la note demandée sur une corde, écouter et rejouer, degrés d’accord, intervalles. Détection par micro.":
     "Train with your guitar: play the requested note on a string, listen and play back, chord degrees, intervals. Detected through the microphone.",
   "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.":
@@ -115,6 +115,19 @@ const EN: Record<string, string> = {
   " · Note {i}/{n}": " · Note {i}/{n}",
   "Horizontal · {strings}": "Horizontal · {strings}",
   "Exercice et gamme": "Exercise and scale",
+  "Exercice et arpège": "Exercise and arpeggio",
+  "Matière": "Subject",
+  "Arpèges 4 sons": "4-note arpeggios",
+  "Type d’arpège": "Arpeggio type",
+  "Arpège": "Arpeggio",
+  "Schéma": "Shape",
+  "Schéma {name}": "{name} shape",
+  "Déplacement": "Direction",
+  "Vers la caisse": "Towards the body",
+  "Vers le sillet": "Towards the nut",
+  "L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.": "The arpeggio goes from the chosen shape to the neighbouring one, moving along the neck.",
+  Do: "C",
+  Fa: "F",
   "1 octave": "1 octave",
   "2 octaves": "2 octaves",
   "Tierces": "Thirds",
