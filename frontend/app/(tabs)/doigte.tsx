@@ -23,6 +23,7 @@ import {
   pulseOf,
   positionLadder,
   routeWindow,
+  stringCountsFor,
   stringSetsFor,
   type Extent,
   type ExerciseId,
@@ -74,6 +75,8 @@ export default function FingeringScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [horizontal, setHorizontal] = useState(false);
   const [setIdx, setSetIdx] = useState(0);
+  // Horizontal: number of strings a group is spread over (null = one note per string).
+  const [stringCount, setStringCount] = useState<number | null>(null);
   const [extent, setExtent] = useState<Extent>("octave");
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -118,7 +121,9 @@ export default function FingeringScreen() {
   }, [exerciseId]);
 
   // Horizontal mode: the chord groups stay on a set of adjacent strings and climb the neck.
-  const stringSets = useMemo(() => stringSetsFor(exerciseId), [exerciseId]);
+  const stringCounts = useMemo(() => stringCountsFor(exerciseId), [exerciseId]);
+  const nStrings = stringCount !== null && stringCounts.includes(stringCount) ? stringCount : stringCounts[stringCounts.length - 1];
+  const stringSets = useMemo(() => stringSetsFor(exerciseId, nStrings), [exerciseId, nStrings]);
   const setI = Math.min(setIdx, stringSets.length - 1);
   const hGroups = useMemo(
     () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], extent === "all" ? -1 : 0, extent) : []),
@@ -325,6 +330,13 @@ export default function FingeringScreen() {
       {horizontal ? (
         <>
           <SectionLabel>{tr("Cordes")}</SectionLabel>
+          {stringCounts.length > 1 ? (
+            <ChipRow testID="hz-string-count">
+              {stringCounts.map((n) => (
+                <Chip key={n} testID={`hz-string-count-${n}`} label={tr("Sur {n} cordes", { n })} selected={nStrings === n} onPress={() => { setStringCount(n); setSetIdx(0); }} />
+              ))}
+            </ChipRow>
+          ) : null}
           <ChipRow testID="hz-strings">{stringChips}</ChipRow>
 
           <SectionLabel>{tr("Étendue")}</SectionLabel>

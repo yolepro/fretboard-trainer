@@ -119,15 +119,29 @@ export function buildExercise(ladder: PathStep[], id: ExerciseId, rootPc: number
 
 export type StringSet = { low: number; strings: number[] };
 
-/** Sets of adjacent strings an exercise can use: as many strings as notes per group (low string first). */
-export function stringSetsFor(id: ExerciseId): StringSet[] {
+/** How many strings a group can be spread over: one note per string, or fewer strings (2 notes on some). */
+export function stringCountsFor(id: ExerciseId): number[] {
+  const n = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).offsets.length;
+  return n <= 2 ? [n] : Array.from({ length: n - 1 }, (_, i) => i + 2); // triads: 2, 3 — sevenths: 2, 3, 4
+}
+
+/** Sets of `count` adjacent strings (low string first); by default as many strings as notes per group. */
+export function stringSetsFor(id: ExerciseId, count?: number): StringSet[] {
   const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
-  const k = def.offsets.length;
+  const k = Math.max(1, Math.min(count ?? def.offsets.length, def.offsets.length));
   const sets: StringSet[] = [];
   for (let low = TUNING.length - 1; low - (k - 1) >= 0; low--) {
     sets.push({ low, strings: Array.from({ length: k }, (_, j) => low - j) });
   }
   return sets;
+}
+
+/** Ways to share n notes over k strings, low string first, at least one note per string (e.g. 3 over 2: [1,2], [2,1]). */
+function distributions(n: number, k: number): number[][] {
+  if (k === 1) return [[n]];
+  const out: number[][] = [];
+  for (let first = 1; first <= n - (k - 1); first++) distributions(n - first, k - 1).forEach((rest) => out.push([first, ...rest]));
+  return out;
 }
 
 export type Extent = "octave" | "two" | "all";
@@ -163,20 +177,51 @@ export function buildHorizontalGroups(
   const highest = TUNING[0] + FRET_COUNT;
   const ladder: number[] = [];
   for (let m = lowest; m <= highest; m++) if (pcs.has(pcOf(m))) ladder.push(m);
-  // Notes of the group starting at ladder index i, one per string. A group only exists when every note is really
-  // on its string (fret 0–24): no note moved to another octave, so no orphan note at either end of the neck.
-  const placeGroup = (i: number): { midi: number; fret: number }[] | null => {
-    const out: { midi: number; fret: number }[] = [];
-    for (let j = 0; j < def.offsets.length; j++) {
-      const p = ladder[i + def.offsets[j]];
-      if (p === undefined) return null;
-      const fret = p - TUNING[set.strings[j]];
-      if (fret < 0 || fret > FRET_COUNT) return null;
-      out.push({ midi: p, fret });
+  // Notes of the group starting at ladder index i. `dist` says how many notes each string takes (low string first).
+  // A group only exists when every note is really on its string (fret 0 to the last fret): no note moved to another
+  // octave, so no orphan note at either end of the neck.
+  const place = (i: number, dist: number[]): { midi: number; fret: number; string: number }[] | null => {
+    const out: { midi: number; fret: number; string: number }[] = [];
+    let j = 0;
+    for (let k = 0; k < dist.length; k++) {
+      for (let c = 0; c < dist[k]; c++, j++) {
+        const p = ladder[i + def.offsets[j]];
+        if (p === undefined) return null;
+        const fret = p - TUNING[set.strings[k]];
+        if (fret < 0 || fret > FRET_COUNT) return null;
+        out.push({ midi: p, fret, string: set.strings[k] });
+      }
     }
     return out;
   };
-  const fretsOf = (i: number) => placeGroup(i);
+  // With fewer strings than notes, keep the sharing that is the easiest to finger over the whole neck:
+  // the smallest stretch (widest group), then the smallest average stretch, then the most groups.
+  const dists = distributions(def.offsets.length, set.strings.length);
+  let dist = dists[0];
+  if (dists.length > 1) {
+    let bestKey: number[] | null = null;
+    for (const d of dists) {
+      let count = 0;
+      let maxSpan = 0;
+      let sum = 0;
+      for (let i = 0; i < ladder.length; i++) {
+        const g = place(i, d);
+        if (!g) continue;
+        const frets = g.map((x) => x.fret);
+        const span = Math.max(...frets) - Math.min(...frets);
+        count++;
+        maxSpan = Math.max(maxSpan, span);
+        sum += span;
+      }
+      if (!count) continue;
+      const key = [maxSpan, sum / count, -count];
+      if (!bestKey || key[0] < bestKey[0] || (key[0] === bestKey[0] && (key[1] < bestKey[1] || (key[1] === bestKey[1] && key[2] < bestKey[2])))) {
+        bestKey = key;
+        dist = d;
+      }
+    }
+  }
+  const fretsOf = (i: number) => place(i, dist);
   const targetPc = pcOf(rootPc + semis[Math.max(0, Math.min(startDegree, semis.length - 1))]);
   let i0 = -1;
   for (let i = 0; i < ladder.length; i++) {
@@ -193,7 +238,7 @@ export function buildHorizontalGroups(
   for (let n = 0, i = i0; n < max; n++, i++) {
     const frets = fretsOf(i);
     if (!frets) break;
-    up.push(frets.map((n, j) => ({ midi: n.midi, loc: { string: set.strings[j], fret: n.fret } })));
+    up.push(frets.map((n) => ({ midi: n.midi, loc: { string: n.string, fret: n.fret } })));
   }
   const down = up
     .slice(0, -1)

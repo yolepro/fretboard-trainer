@@ -99,6 +99,7 @@ const EN: Record<string, string> = {
   Mode: "Mode",
   "Les groupes restent sur les mêmes cordes et montent le long du manche.": "The groups stay on the same strings and move up the neck.",
   Cordes: "Strings",
+  "Sur {n} cordes": "On {n} strings",
   "Étendue": "Range",
   "Départ": "Start",
   "Débit des notes": "Note pace",

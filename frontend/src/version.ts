@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.25.0 — Horizontal : triades sur 2 ou 3 cordes, triades 7e sur 2, 3 ou 4 cordes (répartition des notes choisie pour le plus petit écart)
 // 1.24.0 — application bilingue : français / anglais (Réglages → Langue ; langue de l’appareil par défaut)
 // 1.23.1 — nombre de cases du manche : 22 par défaut
 // 1.23.0 — Réglages : nombre de cases du manche (20 à 24) ; le manche, les positions, l’écoute et les exercices s’adaptent
@@ -51,4 +52,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.24.0";
+export const APP_VERSION = "1.25.0";
