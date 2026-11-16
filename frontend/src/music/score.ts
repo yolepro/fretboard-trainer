@@ -133,11 +133,7 @@ function groupLabel(
 ): string | null {
   if (notes.length < 2) return null;
   const midis = notes.map((n) => n.midi);
-  if (kind === "thirds") {
-    if (notes.length !== 2) return null;
-    const d = mod12(Math.abs(midis[1] - midis[0]));
-    return d === 3 ? "m3" : d === 4 ? "M3" : null;
-  }
+  // Thirds exercise: no symbol (the pairs are not chords).
   if ((kind === "triads" && notes.length === 3) || (kind === "sevenths" && notes.length === 4)) {
     const lowest = Math.min(...midis);
     const rel = [...new Set(midis.map((m) => mod12(m - lowest)))].filter((x) => x !== 0).sort((a, b) => a - b);
