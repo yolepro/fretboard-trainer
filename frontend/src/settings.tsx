@@ -34,7 +34,7 @@ const DEFAULTS: Settings = {
   soundOnTap: true,
   volume: 0.8,
   a4: 440,
-  fretCount: 24,
+  fretCount: 22,
   scoreDefaultsV: 1,
 };
 
@@ -61,7 +61,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             ...DEFAULTS,
             ...saved,
             fretboardStyle: isFretboardStyle(saved?.fretboardStyle) ? saved.fretboardStyle : DEFAULT_FRETBOARD_STYLE,
-            fretCount: fc >= MIN_FRETS && fc <= MAX_FRETS ? Math.round(fc) : MAX_FRETS,
+            fretCount: fc >= MIN_FRETS && fc <= MAX_FRETS ? Math.round(fc) : 22,
           };
           // 1.20: score + tablature are now shown by default in both orientations (also for already saved settings).
           if (!saved?.scoreDefaultsV) {
