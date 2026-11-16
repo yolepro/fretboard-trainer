@@ -153,17 +153,25 @@ export function buildHorizontalGroups(
   const highest = TUNING[0] + FRET_COUNT;
   const ladder: number[] = [];
   for (let m = lowest; m <= highest; m++) if (pcs.has(pcOf(m))) ladder.push(m);
-  const fretsOf = (i: number): number[] | null => {
-    const out: number[] = [];
+  // Notes of the group starting at ladder index i, one per string. A note that would fall below the open string
+  // (or below the previous note) goes up an octave, so the lowest groups (e.g. E-F# on the low E string) exist too.
+  const placeGroup = (i: number): { midi: number; fret: number }[] | null => {
+    const out: { midi: number; fret: number }[] = [];
+    let prev = -Infinity;
     for (let j = 0; j < def.offsets.length; j++) {
-      const p = ladder[i + def.offsets[j]];
+      let p = ladder[i + def.offsets[j]];
       if (p === undefined) return null;
-      const fret = p - TUNING[set.strings[j]];
-      if (fret < 0 || fret > FRET_COUNT) return null;
-      out.push(fret);
+      const open = TUNING[set.strings[j]];
+      if (j === 0 && p < open) return null; // the first note is never moved: the route starts on the lowest such note
+      while (p < open || p <= prev) p += 12;
+      const fret = p - open;
+      if (fret > FRET_COUNT) return null;
+      out.push({ midi: p, fret });
+      prev = p;
     }
     return out;
   };
+  const fretsOf = (i: number) => placeGroup(i);
   const targetPc = pcOf(rootPc + semis[Math.min(startDegree, semis.length - 1)]);
   let i0 = -1;
   for (let i = 0; i < ladder.length; i++) {
@@ -179,7 +187,7 @@ export function buildHorizontalGroups(
   for (let n = 0, i = i0; n < max; n++, i++) {
     const frets = fretsOf(i);
     if (!frets) break;
-    up.push(def.offsets.map((o, j) => ({ midi: ladder[i + o], loc: { string: set.strings[j], fret: frets[j] } })));
+    up.push(frets.map((n, j) => ({ midi: n.midi, loc: { string: set.strings[j], fret: n.fret } })));
   }
   const down = up
     .slice(0, -1)

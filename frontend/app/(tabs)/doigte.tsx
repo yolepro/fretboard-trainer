@@ -72,7 +72,7 @@ export default function FingeringScreen() {
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [horizontal, setHorizontal] = useState(false);
-  const [setIdx, setSetIdx] = useState(1);
+  const [setIdx, setSetIdx] = useState(0);
   const [degreeIdx, setDegreeIdx] = useState(0);
   const [extent, setExtent] = useState<Extent>("octave");
   const cancelRef = useRef<(() => void) | null>(null);
@@ -103,6 +103,19 @@ export default function FingeringScreen() {
   useEffect(() => {
     if (!exerciseAllowed(exerciseId, formula)) setExerciseId("scale");
   }, [formula, exerciseId]);
+
+  // Horizontal mode: needs groups of 2+ notes (no single-note scale) and a 7-note or pentatonic scale (no special scale).
+  const horizontalOk = !formula.special;
+  useEffect(() => {
+    if (horizontal && !horizontalOk) setHorizontal(false);
+  }, [horizontal, horizontalOk]);
+  useEffect(() => {
+    if (horizontal && exerciseId === "scale") setExerciseId("thirds");
+  }, [horizontal, exerciseId]);
+  // Lowest strings by default whenever the exercise (so the group size) changes.
+  useEffect(() => {
+    setSetIdx(0);
+  }, [exerciseId]);
 
   // Horizontal mode: the chord groups stay on a set of adjacent strings and climb the neck.
   const stringSets = useMemo(() => stringSetsFor(exerciseId), [exerciseId]);
@@ -253,7 +266,7 @@ export default function FingeringScreen() {
   const empty = sequence.length === 0;
 
   const exerciseChips = EXERCISES.map((e) => {
-    const ok = exerciseAllowed(e.id, formula);
+    const ok = exerciseAllowed(e.id, formula) && !(horizontal && e.id === "scale");
     return (
       <Chip
         key={e.id}
@@ -269,7 +282,7 @@ export default function FingeringScreen() {
   const modeChips = (
     <>
       <Chip testID="mode-position" label="Sur une position" selected={!horizontal} onPress={() => setHorizontal(false)} />
-      <Chip testID="mode-horizontal" label="Horizontal" selected={horizontal} onPress={() => setHorizontal(true)} />
+      <Chip testID="mode-horizontal" label="Horizontal" selected={horizontal} dim={!horizontalOk} onPress={() => horizontalOk && setHorizontal(true)} />
     </>
   );
   const stringChips = stringSets.map((st, i) => (
