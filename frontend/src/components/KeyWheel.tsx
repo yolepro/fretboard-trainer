@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Modal, Pressable, Text, View, useWindowDimensions, type GestureResponderEvent } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
@@ -59,14 +59,28 @@ export function KeyWheel({ visible, rootPc, nameOf, onClose, onChange }: WheelPr
   const sig = at === 0 ? "" : at < 6 ? `${at} ♯` : at === 6 ? "6 ♯ / 6 ♭" : `${12 - at} ♭`;
 
   // One touch handler for the whole wheel: only the outer ring (the keys) reacts.
-  const onTouch = (e: GestureResponderEvent) => {
-    const dx = e.nativeEvent.locationX - c;
-    const dy = e.nativeEvent.locationY - c;
+  const wheelRef = useRef<View>(null);
+  const pick = (x: number, y: number) => {
+    const dx = x - c;
+    const dy = y - c;
     const d = Math.hypot(dx, dy);
-    if (d < rMid || d > rOut) return;
+    if (!Number.isFinite(d) || d < rMid || d > rOut) return;
     const i = ((Math.round((Math.atan2(dy, dx) + Math.PI / 2) / (Math.PI / 6)) % 12) + 12) % 12;
     onChange(CIRCLE[i]);
     onClose();
+  };
+  const onTouch = (e: GestureResponderEvent) => {
+    // Native gives the touch position inside the wheel; on the web a click only carries page coordinates
+    // (or offsetX/Y), so the wheel is measured on screen instead.
+    const ne = e.nativeEvent as unknown as { locationX?: number; locationY?: number; offsetX?: number; offsetY?: number; pageX?: number; pageY?: number; clientX?: number; clientY?: number };
+    if (Number.isFinite(ne.locationX) && Number.isFinite(ne.locationY)) return pick(ne.locationX as number, ne.locationY as number);
+    const px = Number.isFinite(ne.clientX) ? (ne.clientX as number) : ne.pageX;
+    const py = Number.isFinite(ne.clientY) ? (ne.clientY as number) : ne.pageY;
+    if (Number.isFinite(px) && Number.isFinite(py) && wheelRef.current?.measureInWindow) {
+      wheelRef.current.measureInWindow((wx, wy) => pick((px as number) - wx, (py as number) - wy));
+      return;
+    }
+    if (Number.isFinite(ne.offsetX) && Number.isFinite(ne.offsetY)) pick(ne.offsetX as number, ne.offsetY as number);
   };
 
   return (
@@ -74,7 +88,7 @@ export function KeyWheel({ visible, rootPc, nameOf, onClose, onChange }: WheelPr
       <Pressable style={styles.backdrop} onPress={onClose} testID="key-wheel-backdrop">
         <View style={styles.card}>
           <Text style={styles.title}>{tr("Tonalité")}</Text>
-          <Pressable onPress={onTouch} style={{ width: size, height: size }} testID="key-wheel">
+          <Pressable ref={wheelRef} onPress={onTouch} style={{ width: size, height: size }} testID="key-wheel">
             <Svg width={size} height={size} pointerEvents="none">
               {CIRCLE.map((pc, i) => {
                 const a0 = -Math.PI / 2 + (i - 0.5) * (Math.PI / 6) + 0.012;
