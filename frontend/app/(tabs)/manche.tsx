@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KeyButton } from "@/src/components/KeyWheel";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -285,6 +286,7 @@ export default function FretboardScreen() {
             {infoContent}
           </View>
         ) : null}
+        <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
         <Pressable
           testID="open-scale-picker"
           onPress={() => setPickerOpen(true)}

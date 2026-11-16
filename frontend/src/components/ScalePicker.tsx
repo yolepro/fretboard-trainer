@@ -120,13 +120,6 @@ export function ScalePicker({
             </View>
           )}
 
-          <SectionLabel>{tr("Tonalité")}</SectionLabel>
-          <ChipRow testID="picker-root-selector">
-            {Array.from({ length: 12 }, (_, pc) => (
-              <Chip key={pc} testID={`picker-root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => onRootChange(pc)} />
-            ))}
-          </ChipRow>
-
           {positions.length > 0 ? (
             <>
               <SectionLabel>{tr("Position")}</SectionLabel>

@@ -49,6 +49,7 @@ const EN: Record<string, string> = {
   Gammes: "Scales",
   "Accords / Triades": "Chords / Triads",
   "Tonalité": "Key",
+  "Touchez une tonalité · touchez à côté pour fermer": "Tap a key · tap outside to close",
   Position: "Position",
   "Étiquettes": "Labels",
   "Noms des notes": "Note names",

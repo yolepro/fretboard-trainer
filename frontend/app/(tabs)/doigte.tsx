@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KeyButton } from "@/src/components/KeyWheel";
 import { ARP_SHAPES, ARP_TYPES, arpFormula, arpRoutes, arpShapePlacements, arpUpDown, arpWindow, type ArpNote, type ArpTypeId } from "@/src/music/arpeggios";
 import { Keyboard, Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -535,6 +536,7 @@ export default function FingeringScreen() {
             {infoContent}
           </View>
         ) : null}
+        <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
         <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
           <Text style={styles.pickerText}>{tr("Exercice")}</Text>
           <CaretDown size={16} color={colors.onSurface} weight="bold" />
