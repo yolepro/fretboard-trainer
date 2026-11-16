@@ -2,9 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { storage } from "@/src/utils/storage";
 import { MAX_FRETS, MIN_FRETS, noteName, setFretCount, type Accidental, type Notation } from "@/src/music/theory";
+import { deviceLang, setLang, type Lang } from "@/src/i18n";
 import { DEFAULT_FRETBOARD_STYLE, isFretboardStyle, type FretboardStyleId } from "@/src/fretboardStyles";
 
 export type Settings = {
+  /** App language (French or English); the device language by default. */
+  language: Lang;
   fretboardStyle: FretboardStyleId;
   notation: Notation;
   accidental: Accidental;
@@ -24,6 +27,7 @@ export type Settings = {
 };
 
 const DEFAULTS: Settings = {
+  language: deviceLang(),
   fretboardStyle: DEFAULT_FRETBOARD_STYLE,
   notation: "english",
   accidental: "sharp",
@@ -61,6 +65,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             ...DEFAULTS,
             ...saved,
             fretboardStyle: isFretboardStyle(saved?.fretboardStyle) ? saved.fretboardStyle : DEFAULT_FRETBOARD_STYLE,
+            language: saved?.language === "fr" || saved?.language === "en" ? saved.language : deviceLang(),
             fretCount: fc >= MIN_FRETS && fc <= MAX_FRETS ? Math.round(fc) : 22,
           };
           // 1.20: score + tablature are now shown by default in both orientations (also for already saved settings).
@@ -80,6 +85,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // The music helpers read the neck length from the theory module: keep it in step before the screens render.
   setFretCount(settings.fretCount);
+  setLang(settings.language);
 
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {

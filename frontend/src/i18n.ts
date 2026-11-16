@@ -1,0 +1,323 @@
+/**
+ * Two languages: French (the source strings of the app) and English.
+ * `tr("Texte français")` returns the text in the current language; `{name}` placeholders are filled from `params`.
+ * The current language is a module-level value kept in step by the SettingsProvider (like the neck length), so the
+ * music / question helpers can translate too. Screens re-render through the settings context when it changes.
+ */
+export type Lang = "fr" | "en";
+
+let current: Lang = "fr";
+export const setLang = (l: Lang) => {
+  current = l === "en" ? "en" : "fr";
+};
+export const getLang = () => current;
+
+/** Language of the device: French for French-speaking systems, English otherwise. */
+export function deviceLang(): Lang {
+  try {
+    const loc = Intl.DateTimeFormat().resolvedOptions().locale || "";
+    return loc.toLowerCase().startsWith("fr") ? "fr" : "en";
+  } catch {
+    return "fr";
+  }
+}
+
+const EN: Record<string, string> = {
+  // ---- tabs / sections
+  Accueil: "Home",
+  Manche: "Fretboard",
+  "Doigté": "Fingering",
+  Oreille: "Ear",
+  "Réglages": "Settings",
+  "FRETSTUDIO · DOIGTÉ": "FRETSTUDIO · FINGERING",
+
+  // ---- home
+  Version: "Version",
+  "Maîtrisez votre manche de guitare": "Master your guitar fretboard",
+  "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme avec partition et tablature.":
+    "See scales, modes, pentatonics, blues and chords over the whole neck. 5 fixed positions in every key (and their 2/2 version), notes colored by degree, scale playback with score and tablature.",
+  "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle.":
+    "Practice in one position or horizontally (same strings, moving up the neck): full scale, thirds, triads (1-3-5) and seventh arpeggios (1-3-5-7), up and down, with synced score + tablature, adjustable tempo, slow or normal pace, count-in, metronome and loop.",
+  "Entraînez-vous avec votre guitare : jouer la note demandée sur une corde, écouter et rejouer, degrés d’accord, intervalles. Détection par micro.":
+    "Train with your guitar: play the requested note on a string, listen and play back, chord degrees, intervals. Detected through the microphone.",
+  "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.":
+    "Language (French / English), notation (Do Re Mi / C D E), sharps or flats, 5 fretboard styles, number of frets (20 to 24), labels, volume and tuning reference.",
+
+  // ---- common
+  Gamme: "Scale",
+  Accord: "Chord",
+  Gammes: "Scales",
+  "Accords / Triades": "Chords / Triads",
+  "Tonalité": "Key",
+  Position: "Position",
+  "Étiquettes": "Labels",
+  "Noms des notes": "Note names",
+  "Degrés": "Degrees",
+  Noms: "Names",
+  "Choisir une gamme": "Choose a scale",
+  "Choisir un accord": "Choose a chord",
+  "Tout le manche": "Whole neck",
+  Tout: "All",
+  "Pos. {n}": "Pos. {n}",
+  Corde: "String",
+  Case: "Fret",
+  "Corde {s} · Case {f}": "String {s} · Fret {f}",
+  "à vide": "open",
+  "case {f}": "fret {f}",
+  Stop: "Stop",
+  Jouer: "Play",
+  "Écouter": "Listen",
+  Tonique: "Root",
+  Partition: "Score",
+  "Partition : oui": "Score: on",
+  "Partition : non": "Score: off",
+  "Notes + tablature": "Notes + tablature",
+  "Notes seules": "Notes only",
+  Lecture: "Playback",
+  "Boucle : oui": "Loop: on",
+  "Boucle : non": "Loop: off",
+  "Métronome : oui": "Metronome: on",
+  "Métronome : non": "Metronome: off",
+  "Note la plus grave": "Lowest note",
+  "Décompte {b}/{n}…": "Count-in {b}/{n}…",
+
+  // ---- Manche
+  "Hors gamme": "Out of scale",
+  "Touchez une note pour l’écouter": "Tap a note to hear it",
+  "Gamme et affichage": "Scale and display",
+  "Accord et affichage": "Chord and display",
+  "Notes neutres : oui": "Out-of-scale notes: on",
+  "Notes neutres : non": "Out-of-scale notes: off",
+  "Écoute et partition : départ": "Playback and score: start",
+  "Tempo de l’écoute (BPM, à la noire)": "Playback tempo (BPM, quarter note)",
+  "croches : 2 notes par temps": "eighth notes: 2 notes per beat",
+
+  // ---- Doigté
+  "Sur une position": "In one position",
+  Horizontal: "Horizontal",
+  Exercice: "Exercise",
+  Mode: "Mode",
+  "Les groupes restent sur les mêmes cordes et montent le long du manche.": "The groups stay on the same strings and move up the neck.",
+  Cordes: "Strings",
+  "Étendue": "Range",
+  "Départ": "Start",
+  "Débit des notes": "Note pace",
+  "Lent (notes 2× plus longues)": "Slow (notes twice as long)",
+  Normal: "Normal",
+  "Tempo (BPM, à la blanche)": "Tempo (BPM, half note)",
+  "Tempo (BPM, à la noire)": "Tempo (BPM, quarter note)",
+  "max {n} pour cet exercice": "max {n} for this exercise",
+  "Parcours impossible sur ces cordes.": "No route on these strings.",
+  "Position trop courte : essayez 1/2.": "Position too short: try 1/2.",
+  "{name} · {n} notes": "{name} · {n} notes",
+  "{name} · {strings} · {n} notes": "{name} · {strings} · {n} notes",
+  " · Note {i}/{n}": " · Note {i}/{n}",
+  "Horizontal · {strings}": "Horizontal · {strings}",
+  "Exercice et gamme": "Exercise and scale",
+  "1 octave": "1 octave",
+  "2 octaves": "2 octaves",
+  "Tierces": "Thirds",
+  "Triades": "Triads",
+  "Triades 7e": "7th arpeggios",
+  "Toutes les notes de la position, de la plus grave à la plus aiguë, puis retour (2 notes par temps).":
+    "Every note of the position, from the lowest to the highest, then back (2 notes per beat).",
+  "1-3, 2-4, 3-5… en montant, puis retour en descendant (2 notes par temps).": "1-3, 2-4, 3-5… going up, then back down (2 notes per beat).",
+  "1-3-5, 2-4-6, 3-5-7… (arpèges de triades sur chaque degré), en triolets : 3 notes par temps.":
+    "1-3-5, 2-4-6, 3-5-7… (triad arpeggios on each degree), in triplets: 3 notes per beat.",
+  "1-3-5-7, 2-4-6-8… (arpèges de septième sur chaque degré), en doubles croches : 4 notes par temps.":
+    "1-3-5-7, 2-4-6-8… (seventh arpeggios on each degree), in sixteenth notes: 4 notes per beat.",
+
+  // ---- degrees
+  "3ce": "3rd",
+  "5te": "5th",
+  "7e": "7th",
+  "9e": "9th",
+  "11e": "11th",
+  "13e": "13th",
+  tonique: "root",
+  tierce: "third",
+  quinte: "fifth",
+  "septième": "seventh",
+  "neuvième": "ninth",
+  "onzième": "eleventh",
+  "treizième": "thirteenth",
+  sixte: "sixth",
+  quarte: "fourth",
+  seconde: "second",
+
+  // ---- scales
+  Majeure: "Major",
+  "Mineure naturelle": "Natural minor",
+  "Mineure harmonique": "Harmonic minor",
+  "Mineure mélodique": "Melodic minor",
+  "Pentatonique majeure": "Major pentatonic",
+  "Pentatonique mineure": "Minor pentatonic",
+  Blues: "Blues",
+  Dorien: "Dorian",
+  Phrygien: "Phrygian",
+  Lydien: "Lydian",
+  Mixolydien: "Mixolydian",
+  Locrien: "Locrian",
+  Chromatique: "Chromatic",
+  "Tons entiers": "Whole tone",
+  "Demi-ton / ton": "Half-whole",
+  "Ton / demi-ton": "Whole-half",
+  Diatonique: "Diatonic",
+  Mineures: "Minor scales",
+  Pentatoniques: "Pentatonics",
+  Modes: "Modes",
+  "Spéciales": "Special",
+  // ---- chords
+  Majeur: "Major",
+  Mineur: "Minor",
+  "Diminué": "Diminished",
+  "Augmenté": "Augmented",
+  "Septième": "Seventh",
+  "Majeur 7": "Major 7",
+  "Mineur 7": "Minor 7",
+  "Demi-diminué": "Half-diminished",
+  "Diminué 7": "Diminished 7",
+  Sixte: "Sixth",
+  "Mineur 6": "Minor 6",
+  "Neuvième": "Ninth",
+  "Majeur 9": "Major 9",
+  "Mineur 9": "Minor 9",
+  "Onzième": "Eleventh",
+  "Mineur 11": "Minor 11",
+  "Treizième": "Thirteenth",
+  "Septièmes": "Sevenths",
+  "Étendus": "Extended",
+
+  // ---- Oreille
+  "Écoute & rejoue": "Listen & play back",
+  "Degrés d’accord": "Chord degrees",
+  Intervalles: "Intervals",
+  "Joue la note demandée sur la corde indiquée.": "Play the requested note on the given string.",
+  "Écoute une note et rejoue-la à la bonne octave.": "Listen to a note and play it back in the right octave.",
+  "Joue le degré demandé d’un accord (n’importe quelle octave).": "Play the requested degree of a chord (any octave).",
+  "L’app joue la tonique : joue l’intervalle demandé au-dessus.": "The app plays the root: play the requested interval above it.",
+  "Mi aigu": "High E",
+  "Mi grave": "Low E",
+  Si: "B",
+  Sol: "G",
+  "Ré": "D",
+  La: "A",
+  Seconde: "Second",
+  Tierce: "Third",
+  Quarte: "Fourth",
+  Quinte: "Fifth",
+  juste: "perfect",
+  majeure: "major",
+  mineure: "minor",
+  "diminuée": "diminished",
+  "augmentée": "augmented",
+  "1 · Unique": "1 · Single",
+  "2 · Facile": "2 · Easy",
+  "3 · Moyen": "3 · Medium",
+  "4 · Difficile": "4 · Hard",
+  "5 · Tous": "5 · All",
+  "corde {s} ({l}), {where}": "string {s} ({l}), {where}",
+  Joue: "Play",
+  "Corde {s} · {name} ({l})": "String {s} · {name} ({l})",
+  "Écoute et rejoue": "Listen and play back",
+  "à la bonne octave": "in the right octave",
+  "Joue la {deg} de": "Play the {deg} of",
+  "n’importe quelle octave": "any octave",
+  "Joue la": "Play the",
+  "au-dessus de {note} (tonique)": "above {note} (root)",
+  "Bravo !": "Well done!",
+  "Raté — c’était {answer}": "Missed — it was {answer}",
+  "Tu joues {note} — encore 1 chance": "You played {note} — 1 more try",
+  "Bonne note, mauvaise octave — vise {n} octave plus haut (encore 1 chance)": "Right note, wrong octave — aim {n} octave higher (1 more try)",
+  "Bonne note, mauvaise octave — vise {n} octaves plus haut (encore 1 chance)": "Right note, wrong octave — aim {n} octaves higher (1 more try)",
+  "Bonne note, mauvaise octave — vise {n} octave plus bas (encore 1 chance)": "Right note, wrong octave — aim {n} octave lower (1 more try)",
+  "Bonne note, mauvaise octave — vise {n} octaves plus bas (encore 1 chance)": "Right note, wrong octave — aim {n} octaves lower (1 more try)",
+  "Écoute…": "Listening…",
+  "Connexion au micro…": "Connecting to the microphone…",
+  "Joue la note…": "Play the note…",
+  "Micro en pause": "Microphone paused",
+  "Tu joues {note}": "You are playing {note}",
+  "Joue la note sur ta guitare": "Play the note on your guitar",
+  Passer: "Skip",
+  "{section} · terminé": "{section} · finished",
+  "Nouveau record !": "New record!",
+  "notes trouvées": "notes found",
+  "Temps total": "Total time",
+  "Par note": "Per note",
+  Record: "Best",
+  Rejouer: "Play again",
+  "Changer les réglages": "Change the settings",
+  "Chrono global · 2 chances par note": "Overall timer · 2 tries per note",
+  "Record : {n} note en {time}": "Best: {n} note in {time}",
+  "Record : {n} notes en {time}": "Best: {n} notes in {time}",
+  "Pas encore de record": "No best score yet",
+  "Nombre de notes": "Number of notes",
+  "{n} notes": "{n} notes",
+  "Difficulté": "Difficulty",
+  "Intervalles en jeu": "Intervals in play",
+  "Micro bloqué": "Microphone blocked",
+  "Autorise le micro dans les réglages pour que l’app entende ta guitare.": "Allow the microphone in the settings so the app can hear your guitar.",
+  "Ouvrir les réglages": "Open the settings",
+  "Le micro analyse ta guitare directement sur l’appareil. Rien n’est enregistré.": "The microphone analyses your guitar on the device itself. Nothing is recorded.",
+  "Micro indisponible : {error}": "Microphone unavailable: {error}",
+  "Démarrer le challenge": "Start the challenge",
+  "Aide : {note} se joue ici": "Hint: {note} is played here",
+  "Corde {s} ({l}) · {where}": "String {s} ({l}) · {where}",
+
+  // ---- Réglages
+  Langue: "Language",
+  "Langue de l’application": "App language",
+  Audio: "Audio",
+  "Son au toucher": "Sound on tap",
+  "Joue un sample de guitare acoustique": "Plays an acoustic guitar sample",
+  Volume: "Volume",
+  "Tester le son": "Test the sound",
+  "La 3 (A3, 220 Hz)": "A3 (220 Hz)",
+  Notation: "Notation",
+  "Système": "System",
+  "Anglo-saxon ou latin": "English or Latin note names",
+  "Altérations": "Accidentals",
+  "Dièses #": "Sharps #",
+  "Bémols b": "Flats b",
+  "Style du manche": "Fretboard style",
+  "Bois, frettes, cordes et repères": "Wood, frets, strings and markers",
+  "Étiquettes des notes": "Note labels",
+  "Notes neutres": "Out-of-scale notes",
+  "Affiche les notes hors gamme en gris": "Shows the notes outside the scale in grey",
+  Accordage: "Tuning",
+  "Standard · E A D G B E": "Standard · E A D G B E",
+  "Nombre de cases du manche": "Number of frets",
+  "De 20 à 24 : le manche, les positions et les exercices s’adaptent": "From 20 to 24: the neck, the positions and the exercises adapt",
+  "Entraînement": "Training",
+  "Octave exacte": "Exact octave",
+  "Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs": "The Note and Listen modes require the right octave; a hint is shown after 2 mistakes",
+  "Diapason (La 4)": "Tuning reference (A4)",
+  "Calibration de la détection": "Calibrates the detection",
+  "Réinitialiser le record": "Reset the best scores",
+  "Record remis à zéro": "Best scores cleared",
+  "Records des challenges Oreille": "Best scores of the Ear challenges",
+  Effacer: "Clear",
+  "Détection 100 % locale": "100% on-device detection",
+
+  // ---- fretboard styles
+  Studio: "Studio",
+  Palissandre: "Rosewood",
+  "Érable miel": "Honey maple",
+  "Ébène": "Ebony",
+  "Nuit indigo": "Indigo night",
+  "Bois sombre, repères ronds marron (style d'origine)": "Dark wood, round brown markers (original style)",
+  "Touche rouge-brun, frettes nickel, pastilles crème": "Red-brown fingerboard, nickel frets, cream dots",
+  "Bois clair doré, frettes argentées, repères noirs en blocs": "Light golden wood, silver frets, black block markers",
+  "Noir profond, frettes laiton, losanges nacrés": "Deep black, brass frets, pearl diamonds",
+  "Bleu nuit, frettes discrètes, barres indigo": "Midnight blue, discreet frets, indigo bars",
+};
+
+/** Translate a French source string to the current language, filling `{name}` placeholders. */
+export function tr(fr: string, params?: Record<string, string | number>): string {
+  let s = current === "en" ? (EN[fr] ?? fr) : fr;
+  if (params) for (const k of Object.keys(params)) s = s.split(`{${k}}`).join(String(params[k]));
+  return s;
+}
+
+/** French source strings that have no English entry (used by the checks). */
+export const hasEnglish = (fr: string) => Object.prototype.hasOwnProperty.call(EN, fr);

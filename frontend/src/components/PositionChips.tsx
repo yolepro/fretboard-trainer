@@ -2,6 +2,7 @@ import React from "react";
 
 import { Chip, ChipRow } from "@/src/components/Chip";
 import { type BoxWindow } from "@/src/music/theory";
+import { tr } from "@/src/i18n";
 
 type Props = {
   boxes: BoxWindow[];
@@ -19,7 +20,7 @@ export function PositionChips({ boxes, selected, variants = [], onChange, prefix
   return (
     <ChipRow testID={`${prefix}-selector`}>
       {hideAll ? null : (
-        <Chip testID={`${prefix}-all`} label="Tout le manche" selected={selected === null} onPress={() => onChange(null)} />
+        <Chip testID={`${prefix}-all`} label={tr("Tout le manche")} selected={selected === null} onPress={() => onChange(null)} />
       )}
       {boxes.map((_, i) => {
         const variant = variants[i] ?? 0;

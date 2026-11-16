@@ -1,4 +1,5 @@
 import React from "react";
+import { tr } from "@/src/i18n";
 import { Pressable, Text, View } from "react-native";
 
 import {
@@ -92,8 +93,8 @@ export function FretboardStylePicker({ value, onChange }: Props) {
           >
             <Preview p={fretboardPalette(s.id, colors)} rootColor={colors.degreeRoot} />
             <View style={styles.cardText}>
-              <Text style={[styles.name, selected && styles.nameSelected]}>{s.name}</Text>
-              <Text style={styles.desc}>{s.description}</Text>
+              <Text style={[styles.name, selected && styles.nameSelected]}>{tr(s.name)}</Text>
+              <Text style={styles.desc}>{tr(s.description)}</Text>
             </View>
           </Pressable>
         );

@@ -5,6 +5,7 @@ import { Lightbulb } from "phosphor-react-native";
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { DEGREE_META, FRET_COUNT, STRING_LABELS, TUNING, octaveOf, pcOf, type DegreeKey, type IntervalDef } from "@/src/music/theory";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 const DEGREE_NUM: Record<DegreeKey, number> = { root: 1, third: 3, fifth: 5, seventh: 7, ninth: 9, eleventh: 11, thirteenth: 13 };
 const HINT_LAST_FRET = 12;
@@ -51,15 +52,14 @@ export function NoteHint({ targetMidi, pitchClassOnly, degree, degreeLabel, name
       <View style={styles.titleRow}>
         <Lightbulb size={18} color={colors.brandPrimary} weight="fill" />
         <Text style={styles.title}>
-          Aide : {nameOf(pc)}
-          {pitchClassOnly ? "" : octaveOf(targetMidi)} se joue ici
+          {tr("Aide : {note} se joue ici", { note: `${nameOf(pc)}${pitchClassOnly ? "" : octaveOf(targetMidi)}` })}
         </Text>
       </View>
       <View style={styles.list}>
         {positions.slice(0, 6).map((p) => (
           <View key={`${p.string}-${p.fret}`} style={[styles.pos, { borderColor: colors[DEGREE_META[key].color] }]} testID={`hint-pos-s${p.string}-f${p.fret}`}>
             <Text style={styles.posText}>
-              Corde {p.string + 1} ({STRING_LABELS[p.string]}) · {p.fret === 0 ? "à vide" : `case ${p.fret}`}
+              {tr("Corde {s} ({l}) · {where}", { s: p.string + 1, l: STRING_LABELS[p.string], where: p.fret === 0 ? tr("à vide") : tr("case {f}", { f: p.fret }) })}
             </Text>
           </View>
         ))}

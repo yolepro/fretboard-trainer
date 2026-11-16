@@ -4,6 +4,7 @@ import { ArrowClockwise, Faders, Trophy } from "phosphor-react-native";
 
 import { formatTime, type Best } from "@/src/ear/questions";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 type Props = {
   sectionLabel: string;
@@ -21,39 +22,39 @@ export function ResultView({ sectionLabel, score, count, timeMs, best, isRecord,
   const { colors } = useTheme();
   return (
     <View style={styles.wrap} testID="challenge-result">
-      <Text style={styles.section}>{sectionLabel} · terminé</Text>
+      <Text style={styles.section}>{tr("{section} · terminé", { section: sectionLabel })}</Text>
       {isRecord ? (
         <View style={styles.record} testID="new-record-badge">
           <Trophy size={18} color={colors.onBrandPrimary} weight="fill" />
-          <Text style={styles.recordText}>Nouveau record !</Text>
+          <Text style={styles.recordText}>{tr("Nouveau record !")}</Text>
         </View>
       ) : null}
       <Text style={styles.score} testID="result-score">
         {score}
         <Text style={styles.scoreOf}>/{count}</Text>
       </Text>
-      <Text style={styles.label}>notes trouvées</Text>
+      <Text style={styles.label}>{tr("notes trouvées")}</Text>
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statValue} testID="result-time">{formatTime(timeMs)}</Text>
-          <Text style={styles.statLabel}>Temps total</Text>
+          <Text style={styles.statLabel}>{tr("Temps total")}</Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statValue}>{(timeMs / 1000 / Math.max(1, count)).toFixed(1)} s</Text>
-          <Text style={styles.statLabel}>Par note</Text>
+          <Text style={styles.statLabel}>{tr("Par note")}</Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statValue} testID="result-best">{best ? `${best.score} · ${formatTime(best.timeMs)}` : "—"}</Text>
-          <Text style={styles.statLabel}>Record</Text>
+          <Text style={styles.statLabel}>{tr("Record")}</Text>
         </View>
       </View>
       <Pressable testID="result-replay-button" onPress={onReplay} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
         <ArrowClockwise size={20} color={colors.onBrandPrimary} weight="bold" />
-        <Text style={styles.primaryText}>Rejouer</Text>
+        <Text style={styles.primaryText}>{tr("Rejouer")}</Text>
       </Pressable>
       <Pressable testID="result-setup-button" onPress={onSetup} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
         <Faders size={20} color={colors.onSurface} />
-        <Text style={styles.secondaryText}>Changer les réglages</Text>
+        <Text style={styles.secondaryText}>{tr("Changer les réglages")}</Text>
       </Pressable>
     </View>
   );

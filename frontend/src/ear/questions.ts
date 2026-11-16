@@ -10,6 +10,7 @@ import {
   type DegreeKey,
   type IntervalDef,
 } from "@/src/music/theory";
+import { getLang, tr } from "@/src/i18n";
 
 export type Section = "board" | "listen" | "degree" | "interval";
 
@@ -67,7 +68,13 @@ export function intervalName(label: string) {
   if (label.startsWith("bb")) q = "diminuée";
   else if (label.startsWith("b")) q = perfect ? "diminuée" : "mineure";
   else if (label.startsWith("#")) q = "augmentée";
-  return `${BASE[n] ?? label} ${q}`;
+  const base = BASE[n] ?? label;
+  // English puts the quality first: "Major third".
+  if (getLang() === "en") {
+    const qe = tr(q);
+    return `${qe.charAt(0).toUpperCase()}${qe.slice(1)} ${tr(base).toLowerCase()}`;
+  }
+  return `${base} ${q}`;
 }
 
 export function scaleIntervals(scaleId: string): IntervalDef[] {
@@ -105,7 +112,7 @@ export function lowestPosition(midi: number, pcOnly: boolean) {
 }
 
 export const positionText = (p: { string: number; fret: number }) =>
-  `corde ${p.string + 1} (${STRING_LABELS[p.string]}), ${p.fret === 0 ? "à vide" : `case ${p.fret}`}`;
+  tr("corde {s} ({l}), {where}", { s: p.string + 1, l: STRING_LABELS[p.string], where: p.fret === 0 ? tr("à vide") : tr("case {f}", { f: p.fret }) });
 
 // ---- Generators ----
 const QUIZ_CHORDS = CHORDS.filter((c) => ["maj", "min", "dom7", "maj7", "m7", "m7b5", "dom9", "m9", "dom11", "dom13", "six", "sus4"].includes(c.id));
@@ -119,9 +126,9 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
     return {
       targetMidi: midi,
       pitchClassOnly: false,
-      prompt: "Joue",
+      prompt: tr("Joue"),
       big: full(midi),
-      sub: `Corde ${s + 1} · ${STRING_NAMES[s]} (${STRING_LABELS[s]})`,
+      sub: tr("Corde {s} · {name} ({l})", { s: s + 1, name: tr(STRING_NAMES[s]), l: STRING_LABELS[s] }),
       hidden: false,
       playMidi: midi,
       autoPlay: false,
@@ -134,9 +141,9 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
     return {
       targetMidi: midi,
       pitchClassOnly: false,
-      prompt: "Écoute et rejoue",
+      prompt: tr("Écoute et rejoue"),
       big: full(midi),
-      sub: "à la bonne octave",
+      sub: tr("à la bonne octave"),
       hidden: true,
       playMidi: midi,
       autoPlay: true,
@@ -152,9 +159,9 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
     return {
       targetMidi: target,
       pitchClassOnly: true,
-      prompt: `Joue la ${degName} de`,
+      prompt: tr("Joue la {deg} de", { deg: tr(degName) }),
       big: `${name(root)}${chord.symbol}`,
-      sub: "n’importe quelle octave",
+      sub: tr("n’importe quelle octave"),
       hidden: false,
       playMidi: 48 + pcOf(root),
       autoPlay: false,
@@ -170,9 +177,9 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
   return {
     targetMidi: target,
     pitchClassOnly: false,
-    prompt: "Joue la",
+    prompt: tr("Joue la"),
     big: intervalName(iv.label),
-    sub: `au-dessus de ${full(root)} (tonique)`,
+    sub: tr("au-dessus de {note} (tonique)", { note: full(root) }),
     hidden: false,
     playMidi: root,
     autoPlay: true,

@@ -29,6 +29,7 @@ import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { fonts, makeStyles, spacing } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 type Phase = "setup" | "running" | "done";
 type Perm = "unknown" | "granted" | "ask" | "blocked";
@@ -187,7 +188,7 @@ export default function EarScreen() {
     answeredRef.current = true;
     record(true);
     setRevealed(true);
-    setFeedback({ kind: "correct", text: "Bravo !" });
+    setFeedback({ kind: "correct", text: tr("Bravo !") });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     later(advance, 550);
   };
@@ -205,14 +206,14 @@ export default function EarScreen() {
       setRevealed(true);
       const pos = q.string !== undefined && q.fret !== undefined ? { string: q.string, fret: q.fret } : lowestPosition(q.targetMidi, q.pitchClassOnly);
       const answer = `${name(pcOf(q.targetMidi))}${q.pitchClassOnly ? "" : octaveOf(q.targetMidi)}`;
-      setFeedback({ kind: "miss", text: `Raté — c’était ${answer}${pos ? ` · ${positionText(pos)}` : ""}` });
+      setFeedback({ kind: "miss", text: tr("Raté — c’était {answer}", { answer }) + (pos ? ` · ${positionText(pos)}` : "") });
       later(advance, 1800);
       return;
     }
-    let text = `Tu joues ${played} — encore 1 chance`;
+    let text = tr("Tu joues {note} — encore 1 chance", { note: played });
     if (!q.pitchClassOnly && pcOf(midi) === pcOf(q.targetMidi)) {
       const diff = octaveOf(q.targetMidi) - octaveOf(midi);
-      text = `Bonne note, mauvaise octave — vise ${Math.abs(diff)} octave${Math.abs(diff) > 1 ? "s" : ""} plus ${diff > 0 ? "haut" : "bas"} (encore 1 chance)`;
+      text = tr(`Bonne note, mauvaise octave — vise {n} octave${Math.abs(diff) > 1 ? "s" : ""} plus ${diff > 0 ? "haut" : "bas"} (encore 1 chance)`, { n: Math.abs(diff) });
     }
     setFeedback({ kind: "wrong", text });
   };
@@ -307,14 +308,14 @@ export default function EarScreen() {
     advance();
   };
 
-  const sectionLabel = SECTIONS.find((s) => s.id === section)!.label;
+  const sectionLabel = tr(SECTIONS.find((s) => s.id === section)!.label);
   const micText = suspended
-    ? "Écoute…"
+    ? tr("Écoute…")
     : status === "starting"
-      ? "Connexion au micro…"
+      ? tr("Connexion au micro…")
       : status === "listening"
-        ? "Joue la note…"
-        : "Micro en pause";
+        ? tr("Joue la note…")
+        : tr("Micro en pause");
 
   return (
     <View style={styles.screen} testID="ear-screen">
@@ -341,7 +342,7 @@ export default function EarScreen() {
         </View>
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
-          <Text style={styles.title}>Oreille</Text>
+          <Text style={styles.title}>{tr("Oreille")}</Text>
           {phase === "done" ? (
             <View style={[styles.flex, { paddingBottom: bottomChrome + spacing.lg }]}>
               <ResultView

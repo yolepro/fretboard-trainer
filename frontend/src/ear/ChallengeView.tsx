@@ -6,6 +6,7 @@ import { SkipForward, SpeakerHigh, X } from "phosphor-react-native";
 import { DEGREE_META, octaveOf, pcOf } from "@/src/music/theory";
 import { formatTime, type Question } from "@/src/ear/questions";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 export type Feedback = { kind: "correct" | "wrong" | "miss"; text: string } | null;
 
@@ -97,7 +98,7 @@ export function ChallengeView(p: Props) {
           ) : null}
           <Text style={styles.sub} numberOfLines={2} testID="challenge-target-sub">{q.sub}</Text>
           <Text style={styles.detected} testID="detected-note">
-            {p.detected ? `Tu joues ${p.nameOf(pcOf(p.detected.midi))}${octaveOf(p.detected.midi)}` : p.micText}
+            {p.detected ? tr("Tu joues {note}", { note: `${p.nameOf(pcOf(p.detected.midi))}${octaveOf(p.detected.midi)}` }) : p.micText}
           </Text>
         </View>
       </View>
@@ -110,18 +111,18 @@ export function ChallengeView(p: Props) {
 
       <View style={[styles.feedback, p.feedback && { borderColor: accent }]} testID="quiz-feedback">
         <Text style={[styles.feedbackText, { color: p.feedback ? accent : colors.muted }]} numberOfLines={2}>
-          {p.feedback?.text ?? "Joue la note sur ta guitare"}
+          {p.feedback?.text ?? tr("Joue la note sur ta guitare")}
         </Text>
       </View>
 
       <View style={styles.actions}>
         <Pressable testID="replay-button" onPress={p.onReplay} style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}>
           <SpeakerHigh size={20} color={colors.onSurface} />
-          <Text style={styles.actionText}>{q.playMidi !== q.targetMidi ? "Tonique" : "Écouter"}</Text>
+          <Text style={styles.actionText}>{q.playMidi !== q.targetMidi ? tr("Tonique") : tr("Écouter")}</Text>
         </Pressable>
         <Pressable testID="skip-button" onPress={p.onSkip} style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}>
           <SkipForward size={20} color={colors.onSurface} />
-          <Text style={styles.actionText}>Passer</Text>
+          <Text style={styles.actionText}>{tr("Passer")}</Text>
         </Pressable>
       </View>
     </View>

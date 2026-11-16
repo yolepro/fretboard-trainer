@@ -16,6 +16,7 @@ import {
   type Section,
 } from "@/src/ear/questions";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 type Props = {
   section: Section;
@@ -51,32 +52,32 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
     <View style={styles.flex}>
       <ChipRow testID="ear-section-selector">
         {SECTIONS.map((s) => (
-          <Chip key={s.id} testID={`ear-section-${s.id}`} label={s.label} selected={section === s.id} onPress={() => onSection(s.id)} />
+          <Chip key={s.id} testID={`ear-section-${s.id}`} label={tr(s.label)} selected={section === s.id} onPress={() => onSection(s.id)} />
         ))}
       </ChipRow>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false}>
         <View style={styles.introCard} testID="ear-section-intro">
-          <Text style={styles.introTitle}>{meta.label}</Text>
-          <Text style={styles.introText}>{meta.desc}</Text>
-          <Text style={styles.introText}>Chrono global · 2 chances par note</Text>
+          <Text style={styles.introTitle}>{tr(meta.label)}</Text>
+          <Text style={styles.introText}>{tr(meta.desc)}</Text>
+          <Text style={styles.introText}>{tr("Chrono global · 2 chances par note")}</Text>
           <View style={styles.bestRow} testID="ear-best">
             <Trophy size={16} color={colors.degree7th} weight="fill" />
             <Text style={styles.bestText}>
-              {best ? `Record : ${best.score} note${best.score > 1 ? "s" : ""} en ${formatTime(best.timeMs)}` : "Pas encore de record"}
+              {best ? tr(best.score > 1 ? "Record : {n} notes en {time}" : "Record : {n} note en {time}", { n: best.score, time: formatTime(best.timeMs) }) : tr("Pas encore de record")}
             </Text>
           </View>
         </View>
 
-        <SectionLabel>Nombre de notes</SectionLabel>
+        <SectionLabel>{tr("Nombre de notes")}</SectionLabel>
         <View style={styles.wrapRow}>
           {COUNTS.map((n) => (
-            <Chip key={n} testID={`ear-count-${n}`} label={`${n} notes`} selected={opts.count === n} onPress={() => setOpts({ ...opts, count: n })} />
+            <Chip key={n} testID={`ear-count-${n}`} label={tr("{n} notes", { n })} selected={opts.count === n} onPress={() => setOpts({ ...opts, count: n })} />
           ))}
         </View>
 
         {section === "board" ? (
           <>
-            <SectionLabel>Cordes</SectionLabel>
+            <SectionLabel>{tr("Cordes")}</SectionLabel>
             <View style={styles.wrapRow}>
               {[5, 4, 3, 2, 1, 0].map((s) => (
                 <Chip key={s} testID={`ear-string-${s}`} label={`${s + 1} · ${STRING_LABELS[s]}`} selected={opts.strings.includes(s)} onPress={() => toggleString(s)} />
@@ -87,31 +88,31 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
 
         {section === "interval" ? (
           <>
-            <SectionLabel>Gamme</SectionLabel>
+            <SectionLabel>{tr("Gamme")}</SectionLabel>
             <ChipRow testID="ear-scale-selector">
               {SCALES.filter((s) => !s.special).map((s) => (
                 <Chip
                   key={s.id}
                   testID={`ear-scale-${s.id}`}
-                  label={s.name}
+                  label={tr(s.name)}
                   selected={opts.scaleId === s.id}
                   onPress={() => setOpts({ ...opts, scaleId: s.id, intervals: intervalsForLevel(s.id, opts.level) })}
                 />
               ))}
             </ChipRow>
-            <SectionLabel>Difficulté</SectionLabel>
+            <SectionLabel>{tr("Difficulté")}</SectionLabel>
             <View style={styles.wrapRow}>
               {LEVEL_LABELS.map((l, i) => (
                 <Chip
                   key={l}
                   testID={`ear-level-${i + 1}`}
-                  label={l}
+                  label={tr(l)}
                   selected={opts.level === i + 1}
                   onPress={() => setOpts({ ...opts, level: i + 1, intervals: intervalsForLevel(opts.scaleId, i + 1) })}
                 />
               ))}
             </View>
-            <SectionLabel>Intervalles en jeu</SectionLabel>
+            <SectionLabel>{tr("Intervalles en jeu")}</SectionLabel>
             <View style={styles.wrapRow}>
               {scaleIntervals(opts.scaleId).map((iv) => (
                 <Chip
@@ -128,26 +129,26 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
 
         {perm === "blocked" ? (
           <View style={styles.permCard} testID="mic-blocked-card">
-            <Text style={styles.permTitle}>Micro bloqué</Text>
-            <Text style={styles.permText}>Autorise le micro dans les réglages pour que l’app entende ta guitare.</Text>
+            <Text style={styles.permTitle}>{tr("Micro bloqué")}</Text>
+            <Text style={styles.permText}>{tr("Autorise le micro dans les réglages pour que l’app entende ta guitare.")}</Text>
             {Platform.OS !== "web" ? (
               <Pressable testID="open-settings-button" onPress={() => Linking.openSettings()} style={styles.permBtn}>
-                <Text style={styles.permBtnText}>Ouvrir les réglages</Text>
+                <Text style={styles.permBtnText}>{tr("Ouvrir les réglages")}</Text>
               </Pressable>
             ) : null}
           </View>
         ) : perm !== "granted" ? (
           <Text style={styles.note} testID="mic-permission-note">
-            Le micro analyse ta guitare directement sur l’appareil. Rien n’est enregistré.
+            {tr("Le micro analyse ta guitare directement sur l’appareil. Rien n’est enregistré.")}
           </Text>
         ) : null}
         {error && error !== "denied" ? (
-          <Text style={styles.error} testID="mic-error">Micro indisponible : {error}</Text>
+          <Text style={styles.error} testID="mic-error">{tr("Micro indisponible : {error}", { error })}</Text>
         ) : null}
 
         <Pressable testID="start-challenge-button" onPress={onStart} style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
           <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-          <Text style={styles.startText}>Démarrer le challenge</Text>
+          <Text style={styles.startText}>{tr("Démarrer le challenge")}</Text>
         </Pressable>
       </ScrollView>
     </View>

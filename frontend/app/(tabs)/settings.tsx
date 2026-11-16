@@ -26,6 +26,7 @@ import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 type IconType = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
 
@@ -90,19 +91,27 @@ export default function SettingsScreen() {
     <View style={styles.screen} testID="settings-screen">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Text style={styles.title}>Réglages</Text>
+        <Text style={styles.title}>{tr("Réglages")}</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl }} showsVerticalScrollIndicator={false}>
-        <Group title="Audio">
+        <Group title={tr("Langue")}>
+          <Row testID="setting-language" icon={Stack} title={tr("Langue de l’application")} />
+          <View style={styles.inlineChips}>
+            <Chip testID="language-fr" label="Français" selected={settings.language === "fr"} onPress={() => update({ language: "fr" })} />
+            <Chip testID="language-en" label="English" selected={settings.language === "en"} onPress={() => update({ language: "en" })} />
+          </View>
+        </Group>
+
+        <Group title={tr("Audio")}>
           <Row
             testID="setting-sound-on-tap"
             icon={SpeakerHigh}
-            title="Son au toucher"
-            subtitle="Joue un sample de guitare acoustique"
+            title={tr("Son au toucher")}
+            subtitle={tr("Joue un sample de guitare acoustique")}
             right={sw(settings.soundOnTap, (v) => update({ soundOnTap: v }), "switch-sound-on-tap")}
           />
           <View style={styles.sep} />
-          <Row testID="setting-volume" icon={Waveform} title="Volume" subtitle={`${Math.round(settings.volume * 100)} %`} />
+          <Row testID="setting-volume" icon={Waveform} title={tr("Volume")} subtitle={`${Math.round(settings.volume * 100)} %`} />
           <View style={styles.inlineChips}>
             {[0.25, 0.5, 0.8, 1].map((v) => (
               <Chip key={v} testID={`volume-${Math.round(v * 100)}`} label={`${Math.round(v * 100)}%`} selected={settings.volume === v} onPress={() => update({ volume: v })} />
@@ -112,55 +121,55 @@ export default function SettingsScreen() {
           <Row
             testID="setting-test-sound"
             icon={MusicNotes}
-            title="Tester le son"
-            subtitle="La 3 (A3, 220 Hz)"
+            title={tr("Tester le son")}
+            subtitle={tr("La 3 (A3, 220 Hz)")}
             right={
               <Pressable testID="test-sound-button" onPress={() => playNote(57, settings.volume)} style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}>
-                <Text style={styles.smallBtnText}>Jouer</Text>
+                <Text style={styles.smallBtnText}>{tr("Jouer")}</Text>
               </Pressable>
             }
           />
         </Group>
 
-        <Group title="Notation">
-          <Row testID="setting-notation" icon={TextAa} title="Système" subtitle="Anglo-saxon ou latin" />
+        <Group title={tr("Notation")}>
+          <Row testID="setting-notation" icon={TextAa} title={tr("Système")} subtitle={tr("Anglo-saxon ou latin")} />
           <View style={styles.inlineChips}>
             <Chip testID="notation-english" label="C D E" selected={settings.notation === "english"} onPress={() => update({ notation: "english" })} />
             <Chip testID="notation-latin" label="Do Ré Mi" selected={settings.notation === "latin"} onPress={() => update({ notation: "latin" })} />
           </View>
           <View style={styles.sep} />
-          <Row testID="setting-accidental" icon={Hash} title="Altérations" />
+          <Row testID="setting-accidental" icon={Hash} title={tr("Altérations")} />
           <View style={styles.inlineChips}>
-            <Chip testID="accidental-sharp" label="Dièses #" selected={settings.accidental === "sharp"} onPress={() => update({ accidental: "sharp" })} />
-            <Chip testID="accidental-flat" label="Bémols b" selected={settings.accidental === "flat"} onPress={() => update({ accidental: "flat" })} />
+            <Chip testID="accidental-sharp" label={tr("Dièses #")} selected={settings.accidental === "sharp"} onPress={() => update({ accidental: "sharp" })} />
+            <Chip testID="accidental-flat" label={tr("Bémols b")} selected={settings.accidental === "flat"} onPress={() => update({ accidental: "flat" })} />
           </View>
         </Group>
 
-        <Group title="Manche">
-          <Row testID="setting-fretboard-style" icon={Palette} title="Style du manche" subtitle="Bois, frettes, cordes et repères" />
+        <Group title={tr("Manche")}>
+          <Row testID="setting-fretboard-style" icon={Palette} title={tr("Style du manche")} subtitle={tr("Bois, frettes, cordes et repères")} />
           <FretboardStylePicker value={settings.fretboardStyle} onChange={(id) => update({ fretboardStyle: id })} />
           <View style={styles.sep} />
-          <Row testID="setting-label-mode" icon={Stack} title="Étiquettes des notes" />
+          <Row testID="setting-label-mode" icon={Stack} title={tr("Étiquettes des notes")} />
           <View style={styles.inlineChips}>
-            <Chip testID="settings-label-note" label="Noms" selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
-            <Chip testID="settings-label-degree" label="Degrés" selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
+            <Chip testID="settings-label-note" label={tr("Noms")} selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
+            <Chip testID="settings-label-degree" label={tr("Degrés")} selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
           </View>
           <View style={styles.sep} />
           <Row
             testID="setting-show-neutral"
             icon={Eye}
-            title="Notes neutres"
-            subtitle="Affiche les notes hors gamme en gris"
+            title={tr("Notes neutres")}
+            subtitle={tr("Affiche les notes hors gamme en gris")}
             right={sw(settings.showNeutral, (v) => update({ showNeutral: v }), "switch-show-neutral")}
           />
           <View style={styles.sep} />
-          <Row testID="setting-tuning" icon={Lock} title="Accordage" subtitle="Standard · E A D G B E" />
+          <Row testID="setting-tuning" icon={Lock} title={tr("Accordage")} subtitle={tr("Standard · E A D G B E")} />
           <View style={styles.sep} />
           <Row
             testID="setting-frets"
             icon={Target}
-            title="Nombre de cases du manche"
-            subtitle="De 20 à 24 : le manche, les positions et les exercices s’adaptent"
+            title={tr("Nombre de cases du manche")}
+            subtitle={tr("De 20 à 24 : le manche, les positions et les exercices s’adaptent")}
             right={
               <View style={styles.stepper}>
                 <Pressable testID="frets-decrease" onPress={() => update({ fretCount: Math.max(20, settings.fretCount - 1) })} style={styles.stepBtn}>
@@ -175,19 +184,19 @@ export default function SettingsScreen() {
           />
         </Group>
 
-        <Group title="Entraînement">
+        <Group title={tr("Entraînement")}>
           <Row
             testID="setting-octave-info"
             icon={Target}
-            title="Octave exacte"
-            subtitle="Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs"
+            title={tr("Octave exacte")}
+            subtitle={tr("Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs")}
           />
           <View style={styles.sep} />
           <Row
             testID="setting-a4"
             icon={Waveform}
-            title="Diapason (La 4)"
-            subtitle="Calibration de la détection"
+            title={tr("Diapason (La 4)")}
+            subtitle={tr("Calibration de la détection")}
             right={
               <View style={styles.stepper}>
                 <Pressable testID="a4-decrease" onPress={() => update({ a4: Math.max(430, settings.a4 - 1) })} style={styles.stepBtn}>
@@ -204,8 +213,8 @@ export default function SettingsScreen() {
           <Row
             testID="setting-reset-best"
             icon={Trash}
-            title="Réinitialiser le record"
-            subtitle={resetDone ? "Record remis à zéro" : "Records des challenges Oreille"}
+            title={tr("Réinitialiser le record")}
+            subtitle={resetDone ? tr("Record remis à zéro") : tr("Records des challenges Oreille")}
             right={
               <Pressable
                 testID="reset-best-button"
@@ -219,13 +228,13 @@ export default function SettingsScreen() {
                 }}
                 style={({ pressed }) => [styles.smallBtn, styles.dangerBtn, pressed && styles.pressed]}
               >
-                <Text style={[styles.smallBtnText, styles.dangerText]}>Effacer</Text>
+                <Text style={[styles.smallBtnText, styles.dangerText]}>{tr("Effacer")}</Text>
               </Pressable>
             }
           />
         </Group>
 
-        <Text style={styles.footer} testID="settings-version">FretStudio · v{APP_VERSION} · Détection 100 % locale</Text>
+        <Text style={styles.footer} testID="settings-version">FretStudio · v{APP_VERSION} · {tr("Détection 100 % locale")}</Text>
       </ScrollView>
     </View>
   );

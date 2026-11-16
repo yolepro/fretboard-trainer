@@ -32,6 +32,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 type Mode = "scale" | "chord";
 
@@ -261,12 +262,12 @@ export default function FretboardScreen() {
         {octaveOf(active.midi)}
       </Text>
       <Text style={styles.infoMeta} numberOfLines={1}>
-        {activeIv ? `${DEGREE_META[activeKey!].label} (${activeIv.label})` : "Hors gamme"} · Corde {active.string + 1} · Case {active.fret} ·{" "}
+        {activeIv ? `${tr(DEGREE_META[activeKey!].label)} (${activeIv.label})` : tr("Hors gamme")} · {tr("Corde {s} · Case {f}", { s: active.string + 1, f: active.fret })} ·{" "}
         {midiToFreq(active.midi, settings.a4).toFixed(1)} Hz
       </Text>
     </>
   ) : (
-    <Text style={styles.infoMeta}>{beat !== null ? `Décompte ${beat}/4…` : "Touchez une note pour l’écouter"}</Text>
+    <Text style={styles.infoMeta}>{beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: 4 }) : tr("Touchez une note pour l’écouter")}</Text>
   );
 
   return (
@@ -276,7 +277,7 @@ export default function FretboardScreen() {
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           {!isLandscape ? <Text style={styles.brand} testID="app-version">FRETSTUDIO · v{APP_VERSION}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{formula.name}</Text>
+            {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
           </Text>
         </View>
         {isLandscape ? (
@@ -289,7 +290,7 @@ export default function FretboardScreen() {
           onPress={() => setPickerOpen(true)}
           style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.pickerText}>{mode === "scale" ? "Gamme" : "Accord"}</Text>
+          <Text style={styles.pickerText}>{mode === "scale" ? tr("Gamme") : tr("Accord")}</Text>
           <CaretDown size={16} color={colors.onSurface} weight="bold" />
         </Pressable>
         <Pressable
@@ -298,7 +299,7 @@ export default function FretboardScreen() {
           style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]}
         >
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {!isLandscape ? <Text style={styles.playText}>{playing ? "Stop" : "Écouter"}</Text> : null}
+          {!isLandscape ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
         </Pressable>
       </View>
 
@@ -329,19 +330,19 @@ export default function FretboardScreen() {
           <Chip
             key={d}
             testID={`layer-toggle-${d}`}
-            label={DEGREE_META[d].label}
+            label={tr(DEGREE_META[d].label)}
             dotColor={colors[DEGREE_META[d].color]}
             selected={colored.has(d)}
             onPress={() => toggleLayer(d)}
           />
         ))}
         {isLandscape ? (
-          <Chip testID="manche-score-toggle" label={settings.showScoreLandscape ? "Partition : oui" : "Partition : non"} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
+          <Chip testID="manche-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
         ) : null}
         {isLandscape && boxes.length > 0 ? (
           <>
             <View style={styles.legendDivider} />
-            <Chip testID="landscape-position-all" label="Tout" selected={position === null} onPress={() => selectPosition(null)} />
+            <Chip testID="landscape-position-all" label={tr("Tout")} selected={position === null} onPress={() => selectPosition(null)} />
             {boxes.map((_, i) => {
               const v = variants[i] ?? 0;
               return (
@@ -376,11 +377,11 @@ export default function FretboardScreen() {
         onPositionChange={selectPosition}
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
-        title={mode === "scale" ? "Gamme et affichage" : "Accord et affichage"}
+        title={mode === "scale" ? tr("Gamme et affichage") : tr("Accord et affichage")}
         labelExtra={
           <Chip
             testID="toggle-neutral"
-            label={settings.showNeutral ? "Notes neutres : oui" : "Notes neutres : non"}
+            label={settings.showNeutral ? tr("Notes neutres : oui") : tr("Notes neutres : non")}
             selected={settings.showNeutral}
             onPress={() => update({ showNeutral: !settings.showNeutral })}
           />
@@ -389,26 +390,26 @@ export default function FretboardScreen() {
           <>
             {mode === "scale" ? (
               <>
-                <SectionLabel>Écoute et partition : départ</SectionLabel>
+                <SectionLabel>{tr("Écoute et partition : départ")}</SectionLabel>
                 <ChipRow testID="manche-start-selector">
-                  <Chip testID="manche-start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-                  <Chip testID="manche-start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+                  <Chip testID="manche-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+                  <Chip testID="manche-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
                 </ChipRow>
               </>
             ) : null}
-            <SectionLabel>Tempo de l’écoute (BPM, à la noire)</SectionLabel>
-            <TempoRow bpm={bpm} min={30} max={200} onChange={setBpm} hint="croches : 2 notes par temps" prefix="manche-bpm" />
+            <SectionLabel>{tr("Tempo de l’écoute (BPM, à la noire)")}</SectionLabel>
+            <TempoRow bpm={bpm} min={30} max={200} onChange={setBpm} hint={tr("croches : 2 notes par temps")} prefix="manche-bpm" />
 
-            <SectionLabel>Lecture</SectionLabel>
+            <SectionLabel>{tr("Lecture")}</SectionLabel>
             <ChipRow testID="manche-play-options">
-              <Chip testID="manche-loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
-              <Chip testID="manche-metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
+              <Chip testID="manche-loop-toggle" label={loop ? tr("Boucle : oui") : tr("Boucle : non")} selected={loop} onPress={() => setLoop(!loop)} />
+              <Chip testID="manche-metronome-toggle" label={metronome ? tr("Métronome : oui") : tr("Métronome : non")} selected={metronome} onPress={() => setMetronome(!metronome)} />
             </ChipRow>
 
-            <SectionLabel>Partition</SectionLabel>
+            <SectionLabel>{tr("Partition")}</SectionLabel>
             <ChipRow testID="manche-tab-selector">
-              <Chip testID="manche-tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
-              <Chip testID="manche-tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+              <Chip testID="manche-tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
+              <Chip testID="manche-tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
             </ChipRow>
           </>
         }

@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { usesNativeTabs } from "@/src/navigation";
+import { useSettings } from "@/src/settings";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, spacing } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 const FEATURES = [
   {
@@ -16,7 +18,7 @@ const FEATURES = [
   },
   {
     title: "Doigté",
-    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, BPM à la noire, décompte, métronome et boucle.",
+    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle.",
   },
   {
     title: "Oreille",
@@ -24,13 +26,14 @@ const FEATURES = [
   },
   {
     title: "Réglages",
-    text: "Notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.",
+    text: "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.",
   },
 ];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const styles = useStyles();
+  useSettings(); // re-render when the language changes
   const { width, height } = useWindowDimensions();
   const logoSize = Math.min(width, height) * 0.5;
 
@@ -48,14 +51,14 @@ export default function HomeScreen() {
           testID="home-logo"
         />
         <Text style={styles.version} testID="app-version">
-          Version {APP_VERSION}
+          {tr("Version")} {APP_VERSION}
         </Text>
-        <Text style={styles.tagline}>Maîtrisez votre manche de guitare</Text>
+        <Text style={styles.tagline}>{tr("Maîtrisez votre manche de guitare")}</Text>
         <Glass style={styles.card} testID="home-description">
           {FEATURES.map((f) => (
             <View key={f.title} style={styles.feature}>
-              <Text style={styles.featureTitle}>{f.title}</Text>
-              <Text style={styles.featureText}>{f.text}</Text>
+              <Text style={styles.featureTitle}>{tr(f.title)}</Text>
+              <Text style={styles.featureText}>{tr(f.text)}</Text>
             </View>
           ))}
         </Glass>

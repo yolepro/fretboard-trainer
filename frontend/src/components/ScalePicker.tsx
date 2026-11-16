@@ -7,6 +7,7 @@ import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { PositionChips } from "@/src/components/PositionChips";
 import { CHORDS, DEGREE_META, SCALES, degreeKeyFromNum, type BoxWindow, type Formula } from "@/src/music/theory";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 export type PickerMode = "scale" | "chord";
 
@@ -94,7 +95,7 @@ export function ScalePicker({
         >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>{title ?? (mode === "scale" ? "Choisir une gamme" : "Choisir un accord")}</Text>
+            <Text style={styles.title}>{title ?? (mode === "scale" ? tr("Choisir une gamme") : tr("Choisir un accord"))}</Text>
             <Pressable testID="scale-picker-close" onPress={onClose} style={styles.closeBtn} hitSlop={8}>
               <X size={20} color={colors.onSurface} />
             </Pressable>
@@ -113,13 +114,13 @@ export function ScalePicker({
             <View style={styles.segment}>
               {(["scale", "chord"] as PickerMode[]).map((m) => (
                 <Pressable key={m} testID={`picker-mode-${m}`} onPress={() => onModeChange(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
-                  <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? "Gammes" : "Accords / Triades"}</Text>
+                  <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? tr("Gammes") : tr("Accords / Triades")}</Text>
                 </Pressable>
               ))}
             </View>
           )}
 
-          <SectionLabel>Tonalité</SectionLabel>
+          <SectionLabel>{tr("Tonalité")}</SectionLabel>
           <ChipRow testID="picker-root-selector">
             {Array.from({ length: 12 }, (_, pc) => (
               <Chip key={pc} testID={`picker-root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => onRootChange(pc)} />
@@ -128,15 +129,15 @@ export function ScalePicker({
 
           {positions.length > 0 ? (
             <>
-              <SectionLabel>Position</SectionLabel>
+              <SectionLabel>{tr("Position")}</SectionLabel>
               <PositionChips boxes={positions} selected={selectedPosition} variants={positionVariants} onChange={onPositionChange} prefix="picker-position" hideAll={hideAllPosition} />
             </>
           ) : null}
 
-          <SectionLabel>Étiquettes</SectionLabel>
+          <SectionLabel>{tr("Étiquettes")}</SectionLabel>
           <ChipRow testID="picker-label-selector">
-            <Chip testID="picker-label-note" label="Noms des notes" selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
-            <Chip testID="picker-label-degree" label="Degrés" selected={labelMode === "degree"} onPress={() => onLabelModeChange("degree")} />
+            <Chip testID="picker-label-note" label={tr("Noms des notes")} selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
+            <Chip testID="picker-label-degree" label={tr("Degrés")} selected={labelMode === "degree"} onPress={() => onLabelModeChange("degree")} />
             {labelExtra}
           </ChipRow>
 
@@ -145,7 +146,7 @@ export function ScalePicker({
           <View style={styles.listContent}>
             {(hideList ? [] : groups).map((g) => (
               <View key={g.title}>
-                <Text style={styles.groupTitle}>{g.title}</Text>
+                <Text style={styles.groupTitle}>{tr(g.title)}</Text>
                 {g.items.map((f) => {
                   const selected = f.id === selectedId;
                   return (
@@ -161,7 +162,7 @@ export function ScalePicker({
                       <View style={styles.itemText}>
                         <Text style={[styles.itemName, selected && styles.itemNameSelected]}>
                           {mode === "chord" ? `${nameOf(rootPc)}${f.symbol} · ` : `${nameOf(rootPc)} `}
-                          {f.name}
+                          {tr(f.name)}
                         </Text>
                         <View style={styles.ivRow}>
                           {f.intervals.map((i) => {

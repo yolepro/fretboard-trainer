@@ -44,6 +44,7 @@ import {
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { tr } from "@/src/i18n";
 
 const LANDSCAPE_ROW_MIN = 22;
 
@@ -287,7 +288,7 @@ export default function FingeringScreen() {
       <Chip
         key={e.id}
         testID={`exercise-${e.id}`}
-        label={e.name}
+        label={tr(e.name)}
         selected={exerciseId === e.id}
         dim={!ok}
         onPress={() => ok && setExerciseId(e.id)}
@@ -297,8 +298,8 @@ export default function FingeringScreen() {
 
   const modeChips = (
     <>
-      <Chip testID="mode-position" label="Sur une position" selected={!horizontal} onPress={() => setHorizontal(false)} />
-      <Chip testID="mode-horizontal" label="Horizontal" selected={horizontal} dim={!horizontalOk} onPress={() => horizontalOk && setHorizontal(true)} />
+      <Chip testID="mode-position" label={tr("Sur une position")} selected={!horizontal} onPress={() => setHorizontal(false)} />
+      <Chip testID="mode-horizontal" label={tr("Horizontal")} selected={horizontal} dim={!horizontalOk} onPress={() => horizontalOk && setHorizontal(true)} />
     </>
   );
   const stringChips = stringSets.map((st, i) => (
@@ -307,14 +308,14 @@ export default function FingeringScreen() {
 
   const pickerTop = (
     <>
-      <SectionLabel>Exercice</SectionLabel>
+      <SectionLabel>{tr("Exercice")}</SectionLabel>
       <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
-      <Text style={styles.hint}>{exercise.description}</Text>
+      <Text style={styles.hint}>{tr(exercise.description)}</Text>
 
-      <SectionLabel>Mode</SectionLabel>
+      <SectionLabel>{tr("Mode")}</SectionLabel>
       <ChipRow testID="mode-selector">{modeChips}</ChipRow>
       {horizontal ? (
-        <Text style={styles.hint}>Les groupes restent sur les mêmes cordes et montent le long du manche.</Text>
+        <Text style={styles.hint}>{tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}</Text>
       ) : null}
 
     </>
@@ -323,33 +324,33 @@ export default function FingeringScreen() {
     <>
       {horizontal ? (
         <>
-          <SectionLabel>Cordes</SectionLabel>
+          <SectionLabel>{tr("Cordes")}</SectionLabel>
           <ChipRow testID="hz-strings">{stringChips}</ChipRow>
 
-          <SectionLabel>Étendue</SectionLabel>
+          <SectionLabel>{tr("Étendue")}</SectionLabel>
           <ChipRow testID="hz-extent">
             {EXTENTS.map((e) => (
-              <Chip key={e.id} testID={`hz-extent-${e.id}`} label={e.name} selected={extent === e.id} onPress={() => setExtent(e.id)} />
+              <Chip key={e.id} testID={`hz-extent-${e.id}`} label={tr(e.name)} selected={extent === e.id} onPress={() => setExtent(e.id)} />
             ))}
           </ChipRow>
         </>
       ) : (
         <>
-          <SectionLabel>Départ</SectionLabel>
+          <SectionLabel>{tr("Départ")}</SectionLabel>
           <ChipRow testID="start-selector">
-            <Chip testID="start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-            <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+            <Chip testID="start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+            <Chip testID="start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
           </ChipRow>
         </>
       )}
 
-      <SectionLabel>Débit des notes</SectionLabel>
+      <SectionLabel>{tr("Débit des notes")}</SectionLabel>
       <ChipRow testID="pace-selector">
-        <Chip testID="pace-slow" label="Lent (notes 2× plus longues)" selected={slow} onPress={() => setSlow(true)} />
-        <Chip testID="pace-normal" label="Normal" selected={!slow} onPress={() => setSlow(false)} />
+        <Chip testID="pace-slow" label={tr("Lent (notes 2× plus longues)")} selected={slow} onPress={() => setSlow(true)} />
+        <Chip testID="pace-normal" label={tr("Normal")} selected={!slow} onPress={() => setSlow(false)} />
       </ChipRow>
 
-      <SectionLabel>{pulse.half ? "Tempo (BPM, à la blanche)" : "Tempo (BPM, à la noire)"}</SectionLabel>
+      <SectionLabel>{pulse.half ? tr("Tempo (BPM, à la blanche)") : tr("Tempo (BPM, à la noire)")}</SectionLabel>
       <View style={styles.bpmRow}>
         <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
           <Text style={styles.stepText}>−</Text>
@@ -379,19 +380,19 @@ export default function FingeringScreen() {
         >
           <Text style={styles.stepText}>OK</Text>
         </Pressable>
-        <Text style={styles.bpmHint}>max {maxBpm} pour cet exercice</Text>
+        <Text style={styles.bpmHint}>{tr("max {n} pour cet exercice", { n: maxBpm })}</Text>
       </View>
 
-      <SectionLabel>Lecture</SectionLabel>
+      <SectionLabel>{tr("Lecture")}</SectionLabel>
       <ChipRow testID="play-options">
-        <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
-        <Chip testID="metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
+        <Chip testID="loop-toggle" label={loop ? tr("Boucle : oui") : tr("Boucle : non")} selected={loop} onPress={() => setLoop(!loop)} />
+        <Chip testID="metronome-toggle" label={metronome ? tr("Métronome : oui") : tr("Métronome : non")} selected={metronome} onPress={() => setMetronome(!metronome)} />
       </ChipRow>
 
-      <SectionLabel>Partition</SectionLabel>
+      <SectionLabel>{tr("Partition")}</SectionLabel>
       <ChipRow testID="tab-selector">
-        <Chip testID="tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
-        <Chip testID="tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+        <Chip testID="tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
+        <Chip testID="tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
       </ChipRow>
 
     </>
@@ -404,26 +405,26 @@ export default function FingeringScreen() {
         {octaveOf(active.midi)}
       </Text>
       <Text style={styles.infoMeta} numberOfLines={1}>
-        Corde {active.string + 1} · Case {active.fret}
-        {stepIdx !== null ? ` · Note ${stepIdx + 1}/${sequence.length}` : ""}
+        {tr("Corde {s} · Case {f}", { s: active.string + 1, f: active.fret })}
+        {stepIdx !== null ? tr(" · Note {i}/{n}", { i: stepIdx + 1, n: sequence.length }) : ""}
       </Text>
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? `Décompte ${beat}/${pulse.barPulses}…` : empty ? (horizontal ? "Parcours impossible sur ces cordes." : "Position trop courte : essayez 1/2.") : horizontal ? `${exercise.name} · ${stringSetName(stringSets[setI])} · ${sequence.length} notes` : `${exercise.name} · ${sequence.length} notes`}
+      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : horizontal ? tr("{name} · {strings} · {n} notes", { name: tr(exercise.name), strings: stringSetName(stringSets[setI]), n: sequence.length }) : tr("{name} · {n} notes", { name: tr(exercise.name), n: sequence.length })}
     </Text>
   );
 
-  const positionBadge = horizontal ? `Horizontal · ${stringSetName(stringSets[setI])}` : `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const positionBadge = horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          {!isLandscape ? <Text style={styles.brand}>FRETSTUDIO · DOIGTÉ</Text> : null}
+          {!isLandscape ? <Text style={styles.brand}>{tr("FRETSTUDIO · DOIGTÉ")}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{formula.name} · {positionBadge}</Text>
+            {title} <Text style={styles.titleSub}>{tr(formula.name)} · {positionBadge}</Text>
           </Text>
         </View>
         {isLandscape ? (
@@ -432,12 +433,12 @@ export default function FingeringScreen() {
           </View>
         ) : null}
         <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
-          <Text style={styles.pickerText}>Exercice</Text>
+          <Text style={styles.pickerText}>{tr("Exercice")}</Text>
           <CaretDown size={16} color={colors.onSurface} weight="bold" />
         </Pressable>
         <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, pressed && styles.pressed, empty && styles.dim]}>
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {!isLandscape ? <Text style={styles.playText}>{playing ? "Stop" : "Jouer"}</Text> : null}
+          {!isLandscape ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Jouer")}</Text> : null}
         </Pressable>
       </View>
 
@@ -471,7 +472,7 @@ export default function FingeringScreen() {
         onModeChange={() => {}}
         scalesOnly
         hideAllPosition
-        title="Exercice et gamme"
+        title={tr("Exercice et gamme")}
         top={pickerTop}
         extra={pickerExtra}
         rootPc={rootPc}
@@ -490,7 +491,7 @@ export default function FingeringScreen() {
       {isLandscape ? (
         <ChipRow testID="fingering-landscape-row">
           {exerciseChips}
-          <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? "Partition : oui" : "Partition : non"} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
+          <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
           <View style={styles.divider} />
           {modeChips}
           <View style={styles.divider} />
