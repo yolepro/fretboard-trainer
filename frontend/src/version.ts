@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.22.2 — décompte automatique : 1 mesure, ou une demi-mesure (affichée 3/4 puis 4/4) quand le tempo est sous 70 ; bouton Décompte supprimé
 // 1.22.1 — partition : indication de tempo au-dessus de la clé (noire ou blanche = BPM)
 // 1.22.0 — partition : chiffrage de mesure (4/4, 2/2 pour les triolets de noires) et nouvelle clé de sol ; triolets de noires : pulsation, tempo, décompte et métronome à la blanche ; décompte en mesures ; Manche : tempo, boucle, décompte et métronome dans le menu
 // 1.21.0 — Doigté : débit des notes « Lent » (par défaut : un groupe sur 2 temps — noires, triolets de noires, croches ; tempos 110 / 85 / 70) ou « Normal » ; décompte 4 temps, 2 temps ou aucun ; la partition écrit les vraies valeurs de notes
@@ -45,4 +46,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.22.1";
+export const APP_VERSION = "1.22.2";

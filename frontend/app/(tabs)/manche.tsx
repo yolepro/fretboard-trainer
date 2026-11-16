@@ -59,7 +59,6 @@ export default function FretboardScreen() {
   // Listening: eighth notes at this tempo (quarter note), with the same options as the Doigté section.
   const [bpm, setBpm] = useState(80);
   const [loop, setLoop] = useState(false);
-  const [countIn, setCountIn] = useState<0 | 2 | 4>(0);
   const [metronome, setMetronome] = useState(false);
   const [beat, setBeat] = useState<number | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
@@ -133,7 +132,7 @@ export default function FretboardScreen() {
     cancelRef.current = null;
     setPlaying(false);
     setBeat(null);
-  }, [path, bpm, loop, countIn, metronome]);
+  }, [path, bpm, loop, metronome]);
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * 22 - 6;
@@ -184,6 +183,8 @@ export default function FretboardScreen() {
 
   // "Écouter": climbs from the root (inside the selected position) to the root one octave above, then stops.
   // Each note is highlighted on the neck while it sounds, at the place closest to the left of the position.
+  // Count-in: one bar (4 beats), or its second half ("3, 4") when the tempo is under 70.
+  const countBeats = bpm < 70 ? 2 : 4;
   const playFormula = () => {
     if (playing) {
       cancelRef.current?.();
@@ -199,12 +200,12 @@ export default function FretboardScreen() {
       length: path.length,
       noteMs: 60000 / bpm / 2,
       beatMs: 60000 / bpm,
-      beats: countIn,
+      beats: countBeats,
       loop,
       leadMs: 30,
       onBeat: (b) => {
-        playClick(b, settings.volume);
-        setBeat(b + 1);
+        playClick(4 - countBeats + b, settings.volume);
+        setBeat(4 - countBeats + b + 1);
       },
       onClick: metronome ? (k) => playClick(k % 4, settings.volume * 0.8) : undefined,
       onNote: (i) => {
@@ -265,7 +266,7 @@ export default function FretboardScreen() {
       </Text>
     </>
   ) : (
-    <Text style={styles.infoMeta}>{beat !== null ? `Décompte ${beat}/${countIn}…` : "Touchez une note pour l’écouter"}</Text>
+    <Text style={styles.infoMeta}>{beat !== null ? `Décompte ${beat}/4…` : "Touchez une note pour l’écouter"}</Text>
   );
 
   return (
@@ -401,12 +402,6 @@ export default function FretboardScreen() {
             <SectionLabel>Lecture</SectionLabel>
             <ChipRow testID="manche-play-options">
               <Chip testID="manche-loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
-              <Chip
-                testID="manche-countin-toggle"
-                label={countIn === 4 ? "Décompte : 1 mesure" : countIn === 2 ? "Décompte : ½ mesure" : "Décompte : non"}
-                selected={countIn > 0}
-                onPress={() => setCountIn(countIn === 4 ? 2 : countIn === 2 ? 0 : 4)}
-              />
               <Chip testID="manche-metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
             </ChipRow>
 
