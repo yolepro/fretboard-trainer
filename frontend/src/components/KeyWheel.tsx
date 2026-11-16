@@ -21,9 +21,10 @@ export function KeyButton({ rootPc, nameOf, onChange, testID = "key-button" }: B
       <Pressable testID={testID} onPress={() => setOpen(true)} style={({ pressed }) => [styles.button, pressed && styles.pressed]} accessibilityLabel={tr("Tonalité")}>
         {CIRCLE.map((_, i) => {
           const a = -Math.PI / 2 + (i * Math.PI) / 6;
+          // Positions are relative to the inside of the 2 px border: the centre is at 20, not 22.
           const on = i === at;
           const r = on ? 2.5 : 1.3;
-          return <View key={i} style={[styles.dot, on && styles.dotOn, { width: r * 2, height: r * 2, borderRadius: r, left: 22 + 17.5 * Math.cos(a) - r, top: 22 + 17.5 * Math.sin(a) - r }]} />;
+          return <View key={i} style={[styles.dot, on && styles.dotOn, { width: r * 2, height: r * 2, borderRadius: r, left: 20 + 16 * Math.cos(a) - r, top: 20 + 16 * Math.sin(a) - r }]} />;
         })}
         <Text style={[styles.buttonText, name.length > 2 && styles.buttonTextLong]} numberOfLines={1}>
           {name}
@@ -105,8 +106,8 @@ export function KeyWheel({ visible, rootPc, nameOf, onClose, onChange }: WheelPr
                     <SvgText x={c + rk * Math.cos(am)} y={c + rk * Math.sin(am) + size * 0.02} fill={ink} fontSize={size * 0.058} fontWeight="700" fontFamily={fonts.display} textAnchor="middle">
                       {nameOf(pc)}
                     </SvgText>
-                    <Path d={sector(c, rIn + 2, rMid - 2, a0, a1)} fill={fill} stroke={colors.borderStrong} strokeWidth={1} />
-                    <SvgText x={c + rm * Math.cos(am)} y={c + rm * Math.sin(am) + size * 0.012} fill={ink} fontSize={size * 0.034} fontFamily={fonts.text} textAnchor="middle">
+                    <Path d={sector(c, rIn + 2, rMid - 2, a0, a1)} fill={colors.surfaceTertiary} stroke={on ? colors.brandPrimary : colors.borderStrong} strokeWidth={on ? 2 : 1} />
+                    <SvgText x={c + rm * Math.cos(am)} y={c + rm * Math.sin(am) + size * 0.012} fill={on ? colors.brandPrimary : colors.onSurface} fontSize={size * 0.034} fontFamily={fonts.text} textAnchor="middle">
                       {`${nameOf(pc + 9)}m`}
                     </SvgText>
                   </React.Fragment>
