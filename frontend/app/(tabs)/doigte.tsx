@@ -526,7 +526,6 @@ export default function FingeringScreen() {
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          {!isLandscape ? <Text style={styles.brand}>{tr("FRETSTUDIO · DOIGTÉ")}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)} · {positionBadge}</Text>
           </Text>
@@ -543,7 +542,8 @@ export default function FingeringScreen() {
         </Pressable>
         <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, pressed && styles.pressed, empty && styles.dim]}>
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {!isLandscape ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Jouer")}</Text> : null}
+          {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
+          {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Jouer")}</Text> : null}
         </Pressable>
       </View>
 

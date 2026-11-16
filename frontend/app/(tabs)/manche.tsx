@@ -31,7 +31,6 @@ import {
 } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
-import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
@@ -276,7 +275,6 @@ export default function FretboardScreen() {
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          {!isLandscape ? <Text style={styles.brand} testID="app-version">FRETSTUDIO · v{APP_VERSION}</Text> : null}
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
           </Text>
@@ -301,7 +299,8 @@ export default function FretboardScreen() {
           style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]}
         >
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {!isLandscape ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
+          {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
+          {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
         </Pressable>
       </View>
 
