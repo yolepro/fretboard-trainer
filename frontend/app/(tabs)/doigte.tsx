@@ -60,8 +60,8 @@ export default function FingeringScreen() {
   const [variants, setVariants] = useState<number[]>([]);
   const [exerciseId, setExerciseId] = useState<ExerciseId>("scale");
   const [startOnRoot, setStartOnRoot] = useState(false);
-  const [bpm, setBpm] = useState(80);
-  const [bpmText, setBpmText] = useState("80");
+  const [bpm, setBpm] = useState(28);
+  const [bpmText, setBpmText] = useState("28");
   const [metronome, setMetronome] = useState(false);
   const [loop, setLoop] = useState(false);
   const [countIn, setCountIn] = useState(true);
@@ -168,7 +168,7 @@ export default function FingeringScreen() {
   const commitBpm = useCallback(
     (text: string) => {
       const n = parseInt(text, 10);
-      const v = Math.max(MIN_BPM, Math.min(maxBpm, Number.isFinite(n) ? n : 80));
+      const v = Math.max(MIN_BPM, Math.min(maxBpm, Number.isFinite(n) ? n : 28));
       setBpm(v);
       setBpmText(String(v));
     },
@@ -244,8 +244,9 @@ export default function FingeringScreen() {
     };
     cancelRef.current = runSequence({
       length: sequence.length,
-      noteMs: 60000 / bpm / exercise.perBeat, // one group of notes per beat
-      beatMs: 60000 / bpm, // a beat = a quarter note
+      // The tempo is in half notes: a quarter note lasts 60000 / (2 × bpm) ms; one group of notes per quarter note.
+      noteMs: 60000 / (bpm * 2) / exercise.perBeat,
+      beatMs: 60000 / (bpm * 2), // count-in and metronome click on the quarter notes
       beats: countIn ? 4 : 0,
       loop,
       onBeat: (b) => {
@@ -343,9 +344,9 @@ export default function FingeringScreen() {
         </>
       )}
 
-      <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
+      <SectionLabel>Tempo (BPM, à la blanche)</SectionLabel>
       <View style={styles.bpmRow}>
-        <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+        <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 2))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
           <Text style={styles.stepText}>−</Text>
         </Pressable>
         <TextInput
@@ -360,7 +361,7 @@ export default function FingeringScreen() {
           selectTextOnFocus
           style={styles.bpmInput}
         />
-        <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+        <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 2))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
           <Text style={styles.stepText}>+</Text>
         </Pressable>
         <Pressable

@@ -60,13 +60,14 @@ export function positionLadder(rootPc: number, formula: Formula, window: BoxWind
 
 /** Fastest note allowed (ms): below this the samples blur and the display can't follow. */
 const MIN_NOTE_MS = 110;
-export const MAX_BPM = 200;
-export const MIN_BPM = 30;
+// Tempos are counted in half notes (blanche): one beat of the tempo = 2 quarter notes.
+export const MAX_BPM = 100;
+export const MIN_BPM = 10;
 
 /** Highest tempo (beats per minute, quarter notes) for an exercise: its fastest notes stay playable. */
 export function maxBpmFor(id: ExerciseId): number {
   const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
-  return Math.min(MAX_BPM, Math.floor(60000 / (def.perBeat * MIN_NOTE_MS)));
+  return Math.min(MAX_BPM, Math.floor(60000 / (def.perBeat * MIN_NOTE_MS) / 2));
 }
 
 /**
@@ -217,16 +218,8 @@ export function routeWindow(groups: PathStep[][], extraCells?: Set<string>): Box
   return { min, max, cells, noColumns: true };
 }
 
-/** Default tempo (BPM, quarter note) by notes per beat: eighths 80, triplets 60, sixteenths 50. */
+/** Default tempo (BPM, half note) by notes per quarter note: eighths 28, triplets 21, sixteenths 18. */
 export function defaultBpmFor(id: ExerciseId): number {
   const per = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).perBeat;
-  return per >= 4 ? 50 : per === 3 ? 60 : 80;
-}
-
-/** Every note of the scale on the given strings, over the whole neck. */
-export function scaleCellsOnStrings(rootPc: number, formula: Formula, set: StringSet): Set<string> {
-  const pcs = new Set(scaleDegreesSemis(formula).map((x) => pcOf(rootPc + x)));
-  const cells = new Set<string>();
-  for (const s of set.strings) for (let f = 0; f <= FRET_COUNT; f++) if (pcs.has(pcOf(TUNING[s] + f))) cells.add(cellKey(s, f));
-  return cells;
+  return per >= 4 ? 18 : per === 3 ? 21 : 28;
 }

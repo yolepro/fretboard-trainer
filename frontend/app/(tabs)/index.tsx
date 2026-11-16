@@ -16,7 +16,7 @@ const FEATURES = [
   },
   {
     title: "Doigté",
-    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, BPM à la noire, décompte, métronome et boucle.",
+    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, BPM à la blanche, décompte, métronome et boucle.",
   },
   {
     title: "Oreille",
