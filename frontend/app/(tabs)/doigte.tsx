@@ -489,7 +489,7 @@ export default function FingeringScreen() {
       <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)} · {positionBadge}</Text>
+            {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)}{isLandscape ? ` · ${positionBadge}` : ""}</Text>
           </Text>
         </View>
         {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
@@ -592,10 +592,11 @@ export default function FingeringScreen() {
         </ChipRow>
       ) : null}
 
-      {/* Details of the touched / played note: at the very bottom, in portrait (where there is room). */}
-      {!isLandscape && infoContent ? (
-        <View style={[styles.infoBottom, { paddingBottom: bottomChrome + spacing.sm }]} testID="fingering-info">
-          {infoContent}
+      {/* Portrait: everything but the scale name sits at the bottom left — position / shape, then the note details. */}
+      {!isLandscape ? (
+        <View style={[styles.bottomInfo, { paddingBottom: bottomChrome + spacing.sm }]} testID="fingering-info">
+          <Text style={styles.bottomBadge} numberOfLines={1} testID="fingering-position-badge">{positionBadge}</Text>
+          {infoContent ? <View style={styles.bottomRow}>{infoContent}</View> : null}
         </View>
       ) : null}
     </View>
@@ -644,6 +645,9 @@ const useStyles = makeStyles((c) => ({
   dim: { opacity: 0.4 },
   infoBar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, height: 40, paddingHorizontal: spacing.lg },
   infoBottom: { marginTop: "auto", flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 36, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  bottomInfo: { marginTop: "auto", paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: 2, alignItems: "flex-start" },
+  bottomBadge: { fontFamily: fonts.text, fontSize: 14, color: c.onSurfaceSecondary },
+  bottomRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 26, alignSelf: "stretch" },
   infoNote: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   infoMeta: { flex: 1, fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
   bpmRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.sm },
