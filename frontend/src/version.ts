@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.28.4 — paysage : détails de la note de nouveau dans l’en-tête
 // 1.28.3 — décompte affiché dans le bouton Tempo ; détails de la note déplacés tout en bas (portrait) ; manche collé sous l’en-tête
 // 1.28.2 — Manche : mention « Touchez une note pour l’écouter » supprimée
 // 1.28.1 — Doigté : mention « exercice · nombre de notes » supprimée de la ligne d’information
@@ -62,4 +63,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.28.3";
+export const APP_VERSION = "1.28.4";

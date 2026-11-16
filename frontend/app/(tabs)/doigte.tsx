@@ -492,6 +492,12 @@ export default function FingeringScreen() {
             {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)} · {positionBadge}</Text>
           </Text>
         </View>
+        {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
+        {isLandscape ? (
+          <View style={styles.infoInline} testID="fingering-info-inline">
+            {infoContent}
+          </View>
+        ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
         <TempoButton
           count={beat}
@@ -605,7 +611,7 @@ const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
   headerText: { flex: 1 },
-  headerTextCompact: { flex: 1, minWidth: 0 },
+  headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
   roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   pickerBtn: {

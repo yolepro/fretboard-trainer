@@ -280,6 +280,12 @@ export default function FretboardScreen() {
             {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
           </Text>
         </View>
+        {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
+        {isLandscape ? (
+          <View style={styles.infoInline} testID="note-info-inline">
+            {infoContent}
+          </View>
+        ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
         <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
         {compactHeader ? (
@@ -435,7 +441,7 @@ const useStyles = makeStyles((c) => ({
   },
   headerText: { flex: 1 },
   legendDivider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
-  headerTextCompact: { flex: 1, minWidth: 0 },
+  headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   titleCompact: { fontSize: 20 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
   roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
