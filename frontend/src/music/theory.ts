@@ -133,7 +133,14 @@ export function formulaDegrees(formula: Formula): DegreeKey[] {
  * A position. `min`/`max` are the first and last fret it uses. For scales, `cells` lists exactly which
  * notes belong to it ("string:fret" keys); without `cells` (chords) every note inside [min, max] belongs to it.
  */
-export type BoxWindow = { min: number; max: number; cells?: Set<string>; second?: BoxWindow };
+export type BoxWindow = {
+  min: number;
+  max: number;
+  cells?: Set<string>;
+  second?: BoxWindow;
+  /** Don't tint the fret columns (min–max): only the exact cells are lit (horizontal exercises). */
+  noColumns?: boolean;
+};
 
 export const cellKey = (string: number, fret: number) => `${string}:${fret}`;
 

@@ -1,4 +1,4 @@
-import { TUNING, cellKey, pcOf, type BoxWindow, type FretLoc, type Formula, type PathStep } from "@/src/music/theory";
+import { FRET_COUNT, TUNING, cellKey, pcOf, type BoxWindow, type FretLoc, type Formula, type PathStep } from "@/src/music/theory";
 
 export type ExerciseId = "scale" | "thirds" | "triads" | "sevenths";
 
@@ -101,4 +101,104 @@ export function buildExerciseGroups(
 /** Flat list of the notes of the exercise (see buildExerciseGroups). */
 export function buildExercise(ladder: PathStep[], id: ExerciseId, rootPc: number, startOnRoot: boolean): PathStep[] {
   return buildExerciseGroups(ladder, id, rootPc, startOnRoot).flat();
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Horizontal exercises: the chord groups are played on a fixed set of adjacent strings, climbing the neck.
+// ---------------------------------------------------------------------------------------------------------------
+
+export type StringSet = { low: number; strings: number[] };
+
+/** Sets of adjacent strings an exercise can use: as many strings as notes per group (low string first). */
+export function stringSetsFor(id: ExerciseId): StringSet[] {
+  const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
+  const k = def.offsets.length;
+  const sets: StringSet[] = [];
+  for (let low = TUNING.length - 1; low - (k - 1) >= 0; low--) {
+    sets.push({ low, strings: Array.from({ length: k }, (_, j) => low - j) });
+  }
+  return sets;
+}
+
+export type Extent = "octave" | "two" | "all";
+export const EXTENTS: { id: Extent; name: string }[] = [
+  { id: "octave", name: "1 octave" },
+  { id: "two", name: "2 octaves" },
+  { id: "all", name: "Tout le manche" },
+];
+
+/** The scale degrees (as semitones above the root, ascending), used to pick the first chord. */
+export function scaleDegreesSemis(formula: Formula): number[] {
+  return [...new Set(formula.intervals.map((i) => ((i.semi % 12) + 12) % 12))].sort((a, b) => a - b);
+}
+
+/**
+ * Chord groups climbing the neck on one set of strings: each group stacks scale thirds (per the exercise), the 1st
+ * note on the lowest string, the next ones on the strings above. The first group is the LOWEST one on these strings
+ * that starts on the chosen scale degree; then the next degrees follow, one octave, two octaves or as far as the
+ * neck allows. The way down mirrors the way up (groups reversed, each played backwards, top group once).
+ */
+export function buildHorizontalGroups(
+  rootPc: number,
+  formula: Formula,
+  id: ExerciseId,
+  set: StringSet,
+  startDegree: number,
+  extent: Extent,
+): PathStep[][] {
+  const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
+  const semis = scaleDegreesSemis(formula);
+  const pcs = new Set(semis.map((x) => pcOf(rootPc + x)));
+  const lowest = TUNING[TUNING.length - 1];
+  const highest = TUNING[0] + FRET_COUNT;
+  const ladder: number[] = [];
+  for (let m = lowest; m <= highest; m++) if (pcs.has(pcOf(m))) ladder.push(m);
+  const fretsOf = (i: number): number[] | null => {
+    const out: number[] = [];
+    for (let j = 0; j < def.offsets.length; j++) {
+      const p = ladder[i + def.offsets[j]];
+      if (p === undefined) return null;
+      const fret = p - TUNING[set.strings[j]];
+      if (fret < 0 || fret > FRET_COUNT) return null;
+      out.push(fret);
+    }
+    return out;
+  };
+  const targetPc = pcOf(rootPc + semis[Math.min(startDegree, semis.length - 1)]);
+  let i0 = -1;
+  for (let i = 0; i < ladder.length; i++) {
+    if (pcOf(ladder[i]) === targetPc && fretsOf(i)) {
+      i0 = i;
+      break;
+    }
+  }
+  if (i0 < 0) return [];
+  const m = semis.length;
+  const max = extent === "octave" ? m + 1 : extent === "two" ? 2 * m + 1 : Infinity;
+  const up: PathStep[][] = [];
+  for (let n = 0, i = i0; n < max; n++, i++) {
+    const frets = fretsOf(i);
+    if (!frets) break;
+    up.push(def.offsets.map((o, j) => ({ midi: ladder[i + o], loc: { string: set.strings[j], fret: frets[j] } })));
+  }
+  const down = up
+    .slice(0, -1)
+    .reverse()
+    .map((g) => [...g].reverse());
+  return [...up, ...down];
+}
+
+/** What the fretboard lights up for a horizontal route: exactly the notes played, no tinted columns. */
+export function routeWindow(groups: PathStep[][]): BoxWindow {
+  const cells = new Set<string>();
+  let min = Infinity;
+  let max = -Infinity;
+  groups.flat().forEach((st) => {
+    if (!st.loc) return;
+    cells.add(cellKey(st.loc.string, st.loc.fret));
+    min = Math.min(min, st.loc.fret);
+    max = Math.max(max, st.loc.fret);
+  });
+  if (!cells.size) return { min: 0, max: 0, cells, noColumns: true };
+  return { min, max, cells, noColumns: true };
 }

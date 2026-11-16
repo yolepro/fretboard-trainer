@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.18.0 — Doigté : exercice horizontal (les groupes restent sur les mêmes cordes et montent le long du manche) ; choix des cordes, du premier accord et de l’étendue ; manche : seules les notes du parcours sont allumées
 // 1.17.2 — exercice Tierces : plus de symboles m3 / M3 au-dessus de la partition
 // 1.17.1 — Manche : en mode Gamme, la position 1 est affichée par défaut
 // 1.17.0 — Manche : avec une position sélectionnée, la partition et « Écouter » couvrent toutes les notes de la position ; sélecteur de départ (note la plus grave / tonique)
@@ -34,4 +35,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.17.2";
+export const APP_VERSION = "1.18.0";

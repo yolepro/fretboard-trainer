@@ -177,7 +177,8 @@ function FretboardImpl({
   const scrollRef = useRef<any>(null);
   const scrollX = useRef(0);
   const viewW = useRef(0);
-  const inColumn = (f: number) => !windowRange || (f >= windowRange.min && f <= windowRange.max);
+  const noColumns = !!windowRange?.noColumns;
+  const inColumn = (f: number) => !windowRange || (!noColumns && f >= windowRange.min && f <= windowRange.max);
 
   // Landscape fits frets 0→16: reset any scroll left over from portrait.
   useEffect(() => {
@@ -186,7 +187,7 @@ function FretboardImpl({
 
   // Only scroll when the selected position is (partly) off-screen.
   useEffect(() => {
-    if (!windowRange) return;
+    if (!windowRange || noColumns) return;
     let start = 0;
     for (let f = 0; f < windowRange.min; f++) start += widths[f];
     let end = start;
@@ -194,7 +195,18 @@ function FretboardImpl({
     const visible = start >= scrollX.current && end <= scrollX.current + viewW.current;
     if (visible && viewW.current > 0) return;
     scrollRef.current?.scrollTo({ x: Math.max(0, start - widths[0]), animated: true });
-  }, [windowRange, widths]);
+  }, [windowRange, widths, noColumns]);
+
+  // Horizontal routes span the neck: follow the note being played when it leaves the screen.
+  const activeFret = noColumns && activeMidi ? activeMidi.fret : -1;
+  useEffect(() => {
+    if (activeFret < 0 || viewW.current <= 0) return;
+    let start = 0;
+    for (let f = 0; f < activeFret; f++) start += widths[f];
+    const end = start + widths[activeFret];
+    if (start >= scrollX.current && end <= scrollX.current + viewW.current) return;
+    scrollRef.current?.scrollTo({ x: Math.max(0, start - viewW.current / 3), animated: true });
+  }, [activeFret, widths]);
 
   return (
     <ScrollView

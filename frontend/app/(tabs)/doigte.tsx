@@ -13,7 +13,21 @@ import { Score, useScore } from "@/src/components/Score";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { runSequence } from "@/src/audio/sequencer";
-import { EXERCISES, MIN_BPM, buildExercise, exerciseAllowed, maxBpmFor, positionLadder, type ExerciseId } from "@/src/music/exercises";
+import {
+  EXERCISES,
+  EXTENTS,
+  MIN_BPM,
+  buildExercise,
+  buildHorizontalGroups,
+  exerciseAllowed,
+  maxBpmFor,
+  positionLadder,
+  routeWindow,
+  scaleDegreesSemis,
+  stringSetsFor,
+  type Extent,
+  type ExerciseId,
+} from "@/src/music/exercises";
 import {
   DEGREE_META,
   SCALES,
@@ -24,6 +38,7 @@ import {
   octaveOf,
   pcOf,
   scaleBoxes,
+  TUNING,
   type DegreeKey,
 } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
@@ -55,6 +70,10 @@ export default function FingeringScreen() {
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [horizontal, setHorizontal] = useState(false);
+  const [setIdx, setSetIdx] = useState(1);
+  const [degreeIdx, setDegreeIdx] = useState(0);
+  const [extent, setExtent] = useState<Extent>("octave");
   const cancelRef = useRef<(() => void) | null>(null);
 
   const { width, height } = useWindowDimensions();
@@ -77,17 +96,29 @@ export default function FingeringScreen() {
   const boxes = useMemo(() => scaleBoxes(rootPc, formula, true), [rootPc, formula]);
   const pos = Math.min(position, boxes.length - 1);
   const variant = variants[pos] ?? 0;
-  const windowRange = useMemo(() => boxVariant(boxes[pos], variant), [boxes, pos, variant]);
+  const positionWindow = useMemo(() => boxVariant(boxes[pos], variant), [boxes, pos, variant]);
 
   // Exercises that don't fit the scale (triads on a pentatonic, anything but the scale on special scales).
   useEffect(() => {
     if (!exerciseAllowed(exerciseId, formula)) setExerciseId("scale");
   }, [formula, exerciseId]);
 
-  const ladder = useMemo(() => positionLadder(rootPc, formula, windowRange), [rootPc, formula, windowRange]);
+  // Horizontal mode: the chord groups stay on a set of adjacent strings and climb the neck.
+  const stringSets = useMemo(() => stringSetsFor(exerciseId), [exerciseId]);
+  const setI = Math.min(setIdx, stringSets.length - 1);
+  const degreeSemis = useMemo(() => scaleDegreesSemis(formula), [formula]);
+  const degI = Math.min(degreeIdx, degreeSemis.length - 1);
+  const hGroups = useMemo(
+    () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], degI, extent) : []),
+    [horizontal, rootPc, formula, exerciseId, stringSets, setI, degI, extent],
+  );
+  const windowRange = useMemo(() => (horizontal ? routeWindow(hGroups) : positionWindow), [horizontal, hGroups, positionWindow]);
+  const stringSetName = (st: { strings: number[] }) => st.strings.map((s) => nameOf(pcOf(TUNING[s]))).join("·");
+
+  const ladder = useMemo(() => positionLadder(rootPc, formula, positionWindow), [rootPc, formula, positionWindow]);
   const sequence = useMemo(
-    () => buildExercise(ladder, exerciseId, rootPc, startOnRoot),
-    [ladder, exerciseId, rootPc, startOnRoot],
+    () => (horizontal ? hGroups.flat() : buildExercise(ladder, exerciseId, rootPc, startOnRoot)),
+    [horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
   );
   const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
 
@@ -230,6 +261,16 @@ export default function FingeringScreen() {
     );
   });
 
+  const modeChips = (
+    <>
+      <Chip testID="mode-position" label="Sur une position" selected={!horizontal} onPress={() => setHorizontal(false)} />
+      <Chip testID="mode-horizontal" label="Horizontal" selected={horizontal} onPress={() => setHorizontal(true)} />
+    </>
+  );
+  const stringChips = stringSets.map((st, i) => (
+    <Chip key={i} testID={`hz-strings-${i}`} label={stringSetName(st)} selected={setI === i} onPress={() => setSetIdx(i)} />
+  ));
+
   const infoContent = active ? (
     <>
       <Text style={styles.infoNote}>
@@ -243,11 +284,11 @@ export default function FingeringScreen() {
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? `Décompte ${beat}/4…` : empty ? "Position trop courte : essayez 1/2." : `${exercise.name} · ${sequence.length} notes`}
+      {beat !== null ? `Décompte ${beat}/4…` : empty ? (horizontal ? "Parcours impossible sur ces cordes." : "Position trop courte : essayez 1/2.") : horizontal ? `${exercise.name} · ${stringSetName(stringSets[setI])} · ${sequence.length} notes` : `${exercise.name} · ${sequence.length} notes`}
     </Text>
   );
 
-  const positionBadge = `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const positionBadge = horizontal ? `Horizontal · ${stringSetName(stringSets[setI])}` : `Pos. ${pos + 1} · ${variant + 1}/2`;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
@@ -310,7 +351,7 @@ export default function FingeringScreen() {
         selectedId={scaleId}
         onSelect={setScaleId}
         nameOf={nameOf}
-        positions={boxes}
+        positions={horizontal ? [] : boxes}
         selectedPosition={pos}
         positionVariants={variants}
         onPositionChange={selectPosition}
@@ -323,7 +364,9 @@ export default function FingeringScreen() {
           {exerciseChips}
           <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? "Partition : oui" : "Partition : non"} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
           <View style={styles.divider} />
-          {boxes.map((_, i) => (
+          {modeChips}
+          <View style={styles.divider} />
+          {horizontal ? stringChips : boxes.map((_, i) => (
             <Chip
               key={i}
               testID={`fingering-position-${i + 1}`}
@@ -361,14 +404,43 @@ export default function FingeringScreen() {
               ))}
             </ChipRow>
 
-            <SectionLabel>Position</SectionLabel>
-            <PositionChips hideAll boxes={boxes} selected={pos} variants={variants} onChange={selectPosition} prefix="fingering-position" />
+            <SectionLabel>Mode</SectionLabel>
+            <ChipRow testID="mode-selector">{modeChips}</ChipRow>
+            {horizontal ? (
+              <Text style={styles.hint}>Les groupes restent sur les mêmes cordes et montent le long du manche.</Text>
+            ) : null}
 
-            <SectionLabel>Départ</SectionLabel>
-            <ChipRow testID="start-selector">
-              <Chip testID="start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-              <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-            </ChipRow>
+            {horizontal ? (
+              <>
+                <SectionLabel>Cordes</SectionLabel>
+                <ChipRow testID="hz-strings">{stringChips}</ChipRow>
+
+                <SectionLabel>Premier accord (degré)</SectionLabel>
+                <ChipRow testID="hz-degree">
+                  {degreeSemis.map((semi, i) => (
+                    <Chip key={i} testID={`hz-degree-${i}`} label={nameOf(pcOf(rootPc + semi))} selected={degI === i} onPress={() => setDegreeIdx(i)} />
+                  ))}
+                </ChipRow>
+
+                <SectionLabel>Étendue</SectionLabel>
+                <ChipRow testID="hz-extent">
+                  {EXTENTS.map((e) => (
+                    <Chip key={e.id} testID={`hz-extent-${e.id}`} label={e.name} selected={extent === e.id} onPress={() => setExtent(e.id)} />
+                  ))}
+                </ChipRow>
+              </>
+            ) : (
+              <>
+                <SectionLabel>Position</SectionLabel>
+                <PositionChips hideAll boxes={boxes} selected={pos} variants={variants} onChange={selectPosition} prefix="fingering-position" />
+
+                <SectionLabel>Départ</SectionLabel>
+                <ChipRow testID="start-selector">
+                  <Chip testID="start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+                  <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+                </ChipRow>
+              </>
+            )}
 
             <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
             <View style={styles.bpmRow}>
