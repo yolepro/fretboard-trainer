@@ -63,10 +63,20 @@ const MIN_NOTE_MS = 110;
 export const MAX_BPM = 200;
 export const MIN_BPM = 30;
 
-/** Highest tempo (beats per minute, quarter notes) for an exercise: its fastest notes stay playable. */
-export function maxBpmFor(id: ExerciseId, slow = false): number {
+/**
+ * Pulse of an exercise. Normal pace: quarter-note pulse, a group per pulse (4/4). Slow pace: a group lasts 2 quarter
+ * notes; the triplets are then felt on the half note (2/2: 3 notes per pulse), the others stay on the quarter note.
+ */
+export function pulseOf(id: ExerciseId, slow = false): { half: boolean; barPulses: number; notesPerPulse: number } {
   const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
-  return Math.min(MAX_BPM, Math.floor((60000 * (slow ? 2 : 1)) / (def.perBeat * MIN_NOTE_MS)));
+  if (!slow) return { half: false, barPulses: 4, notesPerPulse: def.perBeat };
+  if (def.perBeat === 3) return { half: true, barPulses: 2, notesPerPulse: 3 };
+  return { half: false, barPulses: 4, notesPerPulse: def.perBeat / 2 };
+}
+
+/** Highest tempo (pulses per minute) for an exercise: its fastest notes stay playable. */
+export function maxBpmFor(id: ExerciseId, slow = false): number {
+  return Math.min(MAX_BPM, Math.floor(60000 / (pulseOf(id, slow).notesPerPulse * MIN_NOTE_MS)));
 }
 
 /**
@@ -223,6 +233,6 @@ export function routeWindow(groups: PathStep[][], extraCells?: Set<string>): Box
  */
 export function defaultBpmFor(id: ExerciseId, slow = false): number {
   const per = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).perBeat;
-  if (slow) return per >= 4 ? 70 : per === 3 ? 85 : 110;
+  if (slow) return per >= 4 ? 70 : per === 3 ? 42 : 110; // slow triplets: 42 to the half note (= 84 to the quarter)
   return per >= 4 ? 50 : per === 3 ? 60 : 80;
 }

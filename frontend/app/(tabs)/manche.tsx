@@ -10,7 +10,8 @@ import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Score, useScore } from "@/src/components/Score";
 import { runSequence } from "@/src/audio/sequencer";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { playNote, preloadNotes, initAudio } from "@/src/audio/sampler";
+import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
+import { TempoRow } from "@/src/components/TempoRow";
 import { positionLadder } from "@/src/music/exercises";
 import {
   CHORDS,
@@ -55,6 +56,12 @@ export default function FretboardScreen() {
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [startOnRoot, setStartOnRoot] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Listening: eighth notes at this tempo (quarter note), with the same options as the Doigté section.
+  const [bpm, setBpm] = useState(80);
+  const [loop, setLoop] = useState(false);
+  const [countIn, setCountIn] = useState<0 | 2 | 4>(0);
+  const [metronome, setMetronome] = useState(false);
+  const [beat, setBeat] = useState<number | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
 
   // Landscape: frets 0→16 minimum fit on screen, rows sized to the available height.
@@ -65,6 +72,7 @@ export default function FretboardScreen() {
   const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
   useEffect(() => {
     initAudio();
+    preloadClicks();
     return () => cancelRef.current?.();
   }, []);
 
@@ -119,6 +127,13 @@ export default function FretboardScreen() {
   useEffect(() => {
     setStepIdx(null);
   }, [path]);
+  // Any change of what is played stops the playback (a loop would otherwise go on with the old notes).
+  useEffect(() => {
+    cancelRef.current?.();
+    cancelRef.current = null;
+    setPlaying(false);
+    setBeat(null);
+  }, [path, bpm, loop, countIn, metronome]);
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * 22 - 6;
@@ -176,18 +191,24 @@ export default function FretboardScreen() {
       setPlaying(false);
       setActive(null);
       setStepIdx(null);
+      setBeat(null);
       return;
     }
     if (!path.length) return;
     cancelRef.current = runSequence({
       length: path.length,
-      noteMs: 380,
-      beatMs: 760,
-      beats: 0,
-      loop: false,
+      noteMs: 60000 / bpm / 2,
+      beatMs: 60000 / bpm,
+      beats: countIn,
+      loop,
       leadMs: 30,
-      onBeat: () => {},
+      onBeat: (b) => {
+        playClick(b, settings.volume);
+        setBeat(b + 1);
+      },
+      onClick: metronome ? (k) => playClick(k % 4, settings.volume * 0.8) : undefined,
       onNote: (i) => {
+        if (i === 0) setBeat(null);
         const step = path[i];
         playNote(step.midi, settings.volume);
         setStepIdx(i);
@@ -198,6 +219,7 @@ export default function FretboardScreen() {
         setPlaying(false);
         setActive(null);
         setStepIdx(null);
+        setBeat(null);
       },
     });
     setPlaying(true);
@@ -243,7 +265,7 @@ export default function FretboardScreen() {
       </Text>
     </>
   ) : (
-    <Text style={styles.infoMeta}>Touchez une note pour l’écouter</Text>
+    <Text style={styles.infoMeta}>{beat !== null ? `Décompte ${beat}/${countIn}…` : "Touchez une note pour l’écouter"}</Text>
   );
 
   return (
@@ -373,6 +395,21 @@ export default function FretboardScreen() {
                 </ChipRow>
               </>
             ) : null}
+            <SectionLabel>Tempo de l’écoute (BPM, à la noire)</SectionLabel>
+            <TempoRow bpm={bpm} min={30} max={200} onChange={setBpm} hint="croches : 2 notes par temps" prefix="manche-bpm" />
+
+            <SectionLabel>Lecture</SectionLabel>
+            <ChipRow testID="manche-play-options">
+              <Chip testID="manche-loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
+              <Chip
+                testID="manche-countin-toggle"
+                label={countIn === 4 ? "Décompte : 1 mesure" : countIn === 2 ? "Décompte : ½ mesure" : "Décompte : non"}
+                selected={countIn > 0}
+                onPress={() => setCountIn(countIn === 4 ? 2 : countIn === 2 ? 0 : 4)}
+              />
+              <Chip testID="manche-metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
+            </ChipRow>
+
             <SectionLabel>Partition</SectionLabel>
             <ChipRow testID="manche-tab-selector">
               <Chip testID="manche-tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />

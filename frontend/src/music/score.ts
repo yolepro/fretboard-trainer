@@ -103,6 +103,8 @@ export type ScoreModel = {
   /** Slow pace: a group lasts 2 beats (quarter notes, quarter-note triplets, eighth notes): 2 groups per bar. */
   slow: boolean;
   groupsPerBar: number;
+  /** Time signature: 4/4, or 2/2 when the pulse is the half note (slow triplets). */
+  timeSig: [number, number];
   keySig: KeySignature;
   /** Pitch letters of the key signature accidentals in drawing order (for the layout). */
   barCount: number;
@@ -203,5 +205,5 @@ export function buildScoreModel(inp: ScoreInput): ScoreModel {
     const end = Math.min(inp.steps.length, start + inp.perBeat) - 1;
     groups.push({ start, end, label: groupLabel(inp.kind, inp.steps.slice(start, end + 1), inp.perBeat, spelled, inp.notation) });
   }
-  return { events, groups, perBeat: inp.perBeat, slow: !!inp.slow, groupsPerBar, keySig: sig, barCount: Math.ceil(groupCount / groupsPerBar) };
+  return { events, groups, perBeat: inp.perBeat, slow: !!inp.slow, groupsPerBar, timeSig: inp.slow && inp.perBeat === 3 ? [2, 2] : [4, 4], keySig: sig, barCount: Math.ceil(groupCount / groupsPerBar) };
 }

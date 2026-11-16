@@ -29,7 +29,7 @@ const TAB_GAP = 10;
 
 // Own drawing of a treble clef (stroke only), staff coordinates: bottom line y = 0, 8 px per staff space.
 const CLEF_PATH =
-  "M 1.5,-17 C 9,-24 10,-37 4.5,-43 C 1.5,-46 -1.5,-42 -0.5,-36 C 0.5,-28 3,-14 2,2 C 1.5,10 1,14 -1,15 C -4.5,16 -6,12 -3,11 C -1,10.5 0,12 -0.5,13.5 M 2.2,-6 C 0,-18 -11,-14 -9,-5 C -8,3 7,5 7.5,-5.5 C 7.8,-13 -3,-16.5 -4.5,-8";
+  "M -0.5,-3.5 C -3.5,-3.5 -5,-7.5 -3.5,-11 C -2,-14.5 2,-16 5,-13.5 C 9,-10 9,-2 3.5,1.5 C -2,4.5 -9,1 -9,-6 C -9,-13 -2.5,-19 1.5,-25 C 5,-30 6.5,-36 5.5,-41 C 4.8,-45.5 2,-47 0.5,-44 C -1.5,-40 -0.5,-33 0.3,-27 L 3.2,3 C 4,10 2,14 -1.5,14 C -4.5,14 -5.5,11 -4,9.5";
 
 const SHARP_STEPS = [38, 35, 39, 36, 33, 37, 34]; // F5 C5 G5 D5 A4 E5 B4
 const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31]; // B4 E5 A4 D5 G4 C5 F4
@@ -37,7 +37,7 @@ const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31]; // B4 E5 A4 D5 G4 C5 F4
 const noteWidth = (perBeat: number) => (perBeat >= 4 ? 22 : perBeat === 3 ? 27 : 30);
 
 export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): ScoreLayout {
-  const { events, groups, perBeat, keySig, slow, groupsPerBar } = model;
+  const { events, groups, perBeat, keySig, slow, groupsPerBar, timeSig } = model;
   // Slow pace: quarter notes (no beam), quarter-note triplets (no beam, bracket), eighth notes (one beam).
   const beams = slow ? (perBeat >= 4 ? 1 : 0) : perBeat >= 4 ? 2 : 1;
   const staff: Shape[] = []; // staff-local coordinates (bottom line y = 0, up is negative)
@@ -46,7 +46,8 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
   // ---- horizontal layout ----
   const clefX = 14;
   const ksW = keySig.kind ? keySig.count * 8 + 6 : 0;
-  let cursor = 6 + 30 + ksW + 8;
+  const tsX = 6 + 30 + ksW + 9; // center of the time signature
+  let cursor = 6 + 30 + ksW + 18 + 8;
   const nx: number[] = new Array(events.length).fill(0);
   const accX: number[] = new Array(events.length).fill(0);
   const barLines: number[] = [];
@@ -69,7 +70,10 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
 
   // ---- staff lines, clef, key signature ----
   for (let l = 0; l < 5; l++) staff.push({ t: "line", x1: 4, y1: -l * 8, x2: width - 4, y2: -l * 8, w: 1, c: "muted" });
-  staff.push({ t: "path", d: CLEF_PATH, tx: clefX + 8, ty: 0, c: "ink", w: 2.2 });
+  staff.push({ t: "path", d: CLEF_PATH, tx: clefX + 8, ty: 0, c: "ink", w: 2 });
+  staff.push({ t: "ellipse", cx: clefX + 8 - 3.4, cy: 10.6, rx: 2.1, ry: 2.1, c: "ink" });
+  staff.push({ t: "text", x: tsX, y: -17.5, s: String(timeSig[0]), size: 19, c: "ink", anchor: "middle", bold: true });
+  staff.push({ t: "text", x: tsX, y: -1.5, s: String(timeSig[1]), size: 19, c: "ink", anchor: "middle", bold: true });
   if (keySig.kind) {
     const steps = keySig.kind === "sharp" ? SHARP_STEPS : FLAT_STEPS;
     for (let i = 0; i < keySig.count; i++) {
