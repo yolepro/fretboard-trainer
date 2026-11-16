@@ -236,3 +236,11 @@ export function defaultBpmFor(id: ExerciseId, slow = false): number {
   if (slow) return per >= 4 ? 70 : per === 3 ? 42 : 110; // slow triplets: 42 to the half note (= 84 to the quarter)
   return per >= 4 ? 50 : per === 3 ? 60 : 80;
 }
+
+/** Every note of the scale on the given strings, over the whole neck. */
+export function scaleCellsOnStrings(rootPc: number, formula: Formula, set: StringSet): Set<string> {
+  const pcs = new Set(scaleDegreesSemis(formula).map((x) => pcOf(rootPc + x)));
+  const cells = new Set<string>();
+  for (const s of set.strings) for (let f = 0; f <= FRET_COUNT; f++) if (pcs.has(pcOf(TUNING[s] + f))) cells.add(cellKey(s, f));
+  return cells;
+}
