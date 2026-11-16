@@ -361,7 +361,7 @@ const useStyles = makeStyles((c) => ({
   },
   rootNode: { borderWidth: 2, borderColor: c.onSurface },
   nextNode: { borderWidth: 3, borderColor: "#FFB020", transform: [{ scale: 1.12 }] },
-  activeNode: { transform: [{ scale: 1.2 }], borderWidth: 2, borderColor: c.surfaceInverse },
+  activeNode: { transform: [{ scale: 1.2 }], borderWidth: 3, borderColor: "#E8590C" },
   nodeText: { fontFamily: fonts.display, fontSize: 10, fontWeight: "700" },
   neutral: {
     width: 20,

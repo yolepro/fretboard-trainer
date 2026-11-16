@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.19.1 — manche : la note active est entourée en orange foncé
 // 1.19.0 — Horizontal : départ sur la fondamentale (position 1), « Tout le manche » affiche toutes les notes de la gamme sur les cordes choisies ; Doigté : le groupe de notes à venir est entouré en orange sur le manche
 // 1.18.2 — Horizontal : cordes graves par défaut, exercice Gamme désactivé, le parcours part de la note la plus grave du degré choisi (E case 0, F# case 2…), étendue effective
 // 1.18.1 — Doigté : tempo par défaut selon l’exercice (croches 80, triolets 60, doubles croches 50)
@@ -38,4 +39,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.19.0";
+export const APP_VERSION = "1.19.1";
