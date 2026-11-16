@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.28.8 — Manche : choix « Notes neutres » retiré du menu (il reste dans Réglages)
 // 1.28.7 — Manche, accords : la partition et l’écoute reprennent toutes les notes de la position choisie
 // 1.28.6 — en-tête téléphone : bouton lecture rond (44), boutons qui ne rétrécissent plus ni ne sortent de l’écran
 // 1.28.5 — Doigté portrait : seul le nom de la gamme reste en haut à gauche ; position / schéma et détails de la note en bas à gauche
@@ -66,4 +67,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.28.7";
+export const APP_VERSION = "1.28.8";

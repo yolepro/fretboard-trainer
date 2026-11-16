@@ -379,14 +379,6 @@ export default function FretboardScreen() {
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
         title={mode === "scale" ? tr("Gamme et affichage") : tr("Accord et affichage")}
-        labelExtra={
-          <Chip
-            testID="toggle-neutral"
-            label={settings.showNeutral ? tr("Notes neutres : oui") : tr("Notes neutres : non")}
-            selected={settings.showNeutral}
-            onPress={() => update({ showNeutral: !settings.showNeutral })}
-          />
-        }
         extra={
           <>
             {windowRange ? (
