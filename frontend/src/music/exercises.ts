@@ -202,3 +202,9 @@ export function routeWindow(groups: PathStep[][]): BoxWindow {
   if (!cells.size) return { min: 0, max: 0, cells, noColumns: true };
   return { min, max, cells, noColumns: true };
 }
+
+/** Default tempo (BPM, quarter note) by notes per beat: eighths 80, triplets 60, sixteenths 50. */
+export function defaultBpmFor(id: ExerciseId): number {
+  const per = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).perBeat;
+  return per >= 4 ? 50 : per === 3 ? 60 : 80;
+}

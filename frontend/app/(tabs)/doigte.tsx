@@ -19,6 +19,7 @@ import {
   MIN_BPM,
   buildExercise,
   buildHorizontalGroups,
+  defaultBpmFor,
   exerciseAllowed,
   maxBpmFor,
   positionLadder,
@@ -144,6 +145,10 @@ export default function FingeringScreen() {
     },
     [maxBpm],
   );
+  // Each exercise starts at its own comfortable tempo (eighths 80, triplets 60, sixteenths 50).
+  useEffect(() => {
+    commitBpm(String(defaultBpmFor(exerciseId)));
+  }, [exerciseId, commitBpm]);
   useEffect(() => {
     if (bpm > maxBpm) commitBpm(String(maxBpm));
   }, [bpm, maxBpm, commitBpm]);
