@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.20.0 — tous les filtres passent dans le menu (bouton « Gamme / Accord » dans Manche, « Exercice » dans Doigté), visible en portrait et en paysage ; panneau du bas supprimé en portrait ; partition + tablature affichées par défaut (paysage : tablature si la hauteur le permet)
 // 1.19.2 — note active : orange un peu moins foncé, plus proche du groupe à venir
 // 1.19.1 — manche : la note active est entourée en orange foncé
 // 1.19.0 — Horizontal : départ sur la fondamentale (position 1), « Tout le manche » affiche toutes les notes de la gamme sur les cordes choisies ; Doigté : le groupe de notes à venir est entouré en orange sur le manche
@@ -40,4 +41,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.19.2";
+export const APP_VERSION = "1.20.0";

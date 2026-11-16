@@ -1,16 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { CaretDown, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
-import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Score, useScore } from "@/src/components/Score";
 import { runSequence } from "@/src/audio/sequencer";
-import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playNote, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { positionLadder } from "@/src/music/exercises";
@@ -122,7 +120,10 @@ export default function FretboardScreen() {
     setStepIdx(null);
   }, [path]);
   const showScore = !isLandscape || settings.showScoreLandscape;
-  const { layout } = useScore(path, "path", 2, rootPc, formula, settings.showTab && !isLandscape);
+  // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
+  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * 22 - 6;
+  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 168);
+  const { layout } = useScore(path, "path", 2, rootPc, formula, tabOn);
   const rowH = isLandscape
     ? Math.max(
         showScore ? 22 : 26,
@@ -352,96 +353,47 @@ export default function FretboardScreen() {
         onPositionChange={selectPosition}
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
+        title={mode === "scale" ? "Gamme et affichage" : "Accord et affichage"}
+        labelExtra={
+          <Chip
+            testID="toggle-neutral"
+            label={settings.showNeutral ? "Notes neutres : oui" : "Notes neutres : non"}
+            selected={settings.showNeutral}
+            onPress={() => update({ showNeutral: !settings.showNeutral })}
+          />
+        }
+        extra={
+          <>
+            {mode === "scale" ? (
+              <>
+                <SectionLabel>Écoute et partition : départ</SectionLabel>
+                <ChipRow testID="manche-start-selector">
+                  <Chip testID="manche-start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+                  <Chip testID="manche-start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+                </ChipRow>
+              </>
+            ) : null}
+            <SectionLabel>Partition</SectionLabel>
+            <ChipRow testID="manche-tab-selector">
+              <Chip testID="manche-tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
+              <Chip testID="manche-tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+            </ChipRow>
+          </>
+        }
       />
 
       {!isLandscape ? (
-      <ScrollView
-        style={styles.panelScroll}
-        contentContainerStyle={[styles.panelContent, { paddingBottom: bottomChrome + spacing.xl }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Glass style={styles.panel} testID="control-panel">
-          <View style={styles.segment}>
-            {(["scale", "chord"] as Mode[]).map((m) => (
-              <Pressable
-                key={m}
-                testID={`mode-${m}`}
-                onPress={() => setMode(m)}
-                style={[styles.segBtn, mode === m && styles.segBtnActive]}
-              >
-                <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? "Gamme" : "Accord / Triade"}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <SectionLabel>Tonalité</SectionLabel>
-          <ChipRow testID="root-selector">
-            {Array.from({ length: 12 }, (_, pc) => (
-              <Chip key={pc} testID={`root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => setRootPc(pc)} />
-            ))}
-          </ChipRow>
-
-          {boxes.length > 0 ? (
-            <>
-              <SectionLabel>Position (boîte de gamme)</SectionLabel>
-              <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} />
-            </>
-          ) : null}
-
-          <SectionLabel>{mode === "scale" ? "Gamme" : "Accord"}</SectionLabel>
-          <ChipRow testID="formula-selector">
-            {(mode === "scale" ? SCALES : CHORDS).map((f) => (
-              <Chip
-                key={f.id}
-                testID={`formula-${f.id}`}
-                label={mode === "scale" ? f.name : `${nameOf(rootPc)}${f.symbol || ""} · ${f.name}`}
-                selected={(mode === "scale" ? scaleId : chordId) === f.id}
-                onPress={() => (mode === "scale" ? setScaleId(f.id) : setChordId(f.id))}
-              />
-            ))}
-          </ChipRow>
-
-          <SectionLabel>Étiquettes</SectionLabel>
-          <ChipRow testID="label-mode-selector">
-            <Chip testID="label-mode-note" label="Noms des notes" selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
-            <Chip testID="label-mode-degree" label="Degrés" selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
-            <Chip
-              testID="toggle-neutral"
-              label={settings.showNeutral ? "Notes neutres : oui" : "Notes neutres : non"}
-              selected={settings.showNeutral}
-              onPress={() => update({ showNeutral: !settings.showNeutral })}
-            />
-          </ChipRow>
-
-          {mode === "scale" ? (
-            <>
-              <SectionLabel>Écoute et partition : départ</SectionLabel>
-              <ChipRow testID="manche-start-selector">
-                <Chip testID="manche-start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-                <Chip testID="manche-start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-              </ChipRow>
-            </>
-          ) : null}
-
-          <SectionLabel>Partition</SectionLabel>
-          <ChipRow testID="manche-tab-selector">
-            <Chip testID="manche-tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
-            <Chip testID="manche-tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
-          </ChipRow>
-
-          <View style={styles.formulaRow} testID="formula-intervals">
-            {formula.intervals.map((i) => {
-              const k = degreeKeyFromNum(i.num);
-              return (
-                <View key={`${i.semi}-${i.label}`} style={[styles.ivPill, { borderColor: colors[DEGREE_META[k].color] }]}>
-                  <Text style={[styles.ivLabel, { color: colors[DEGREE_META[k].color] }]}>{i.label}</Text>
-                  <Text style={styles.ivNote}>{nameOf(rootPc + i.semi)}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </Glass>
-      </ScrollView>
+        <View style={styles.formulaRow} testID="formula-intervals">
+          {formula.intervals.map((i) => {
+            const k = degreeKeyFromNum(i.num);
+            return (
+              <View key={`${i.semi}-${i.label}`} style={[styles.ivPill, { borderColor: colors[DEGREE_META[k].color] }]}>
+                <Text style={[styles.ivLabel, { color: colors[DEGREE_META[k].color] }]}>{i.label}</Text>
+                <Text style={styles.ivNote}>{nameOf(rootPc + i.semi)}</Text>
+              </View>
+            );
+          })}
+        </View>
       ) : null}
     </View>
   );

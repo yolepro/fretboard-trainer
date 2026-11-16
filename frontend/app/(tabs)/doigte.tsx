@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Keyboard, Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { CaretDown, Play, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
-import { PositionChips } from "@/src/components/PositionChips";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
-import { Glass } from "@/src/components/Glass";
 import { Score, useScore } from "@/src/components/Score";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
@@ -154,7 +152,9 @@ export default function FingeringScreen() {
 
   // Score under the fretboard: portrait always; landscape on request (staff only, to save height).
   const showScore = !isLandscape || settings.showScoreLandscape;
-  const tabOn = settings.showTab && !isLandscape;
+  // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
+  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
+  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= (exercise.offsets.length > 2 ? 214 : 168));
   const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn);
   const rowH = isLandscape
     ? Math.max(
@@ -305,6 +305,93 @@ export default function FingeringScreen() {
     <Chip key={i} testID={`hz-strings-${i}`} label={stringSetName(st)} selected={setI === i} onPress={() => setSetIdx(i)} />
   ));
 
+  const pickerTop = (
+    <>
+      <SectionLabel>Exercice</SectionLabel>
+      <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
+      <Text style={styles.hint}>{exercise.description}</Text>
+
+      <SectionLabel>Mode</SectionLabel>
+      <ChipRow testID="mode-selector">{modeChips}</ChipRow>
+      {horizontal ? (
+        <Text style={styles.hint}>Les groupes restent sur les mêmes cordes et montent le long du manche.</Text>
+      ) : null}
+
+    </>
+  );
+  const pickerExtra = (
+    <>
+      {horizontal ? (
+        <>
+          <SectionLabel>Cordes</SectionLabel>
+          <ChipRow testID="hz-strings">{stringChips}</ChipRow>
+
+          <SectionLabel>Étendue</SectionLabel>
+          <ChipRow testID="hz-extent">
+            {EXTENTS.map((e) => (
+              <Chip key={e.id} testID={`hz-extent-${e.id}`} label={e.name} selected={extent === e.id} onPress={() => setExtent(e.id)} />
+            ))}
+          </ChipRow>
+        </>
+      ) : (
+        <>
+          <SectionLabel>Départ</SectionLabel>
+          <ChipRow testID="start-selector">
+            <Chip testID="start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+            <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+          </ChipRow>
+        </>
+      )}
+
+      <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
+      <View style={styles.bpmRow}>
+        <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+          <Text style={styles.stepText}>−</Text>
+        </Pressable>
+        <TextInput
+          testID="bpm-input"
+          value={bpmText}
+          onChangeText={setBpmText}
+          onEndEditing={() => commitBpm(bpmText)}
+          onSubmitEditing={() => commitBpm(bpmText)}
+          keyboardType="number-pad"
+          returnKeyType="done"
+          maxLength={3}
+          selectTextOnFocus
+          style={styles.bpmInput}
+        />
+        <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
+          <Text style={styles.stepText}>+</Text>
+        </Pressable>
+        <Pressable
+          testID="bpm-ok"
+          onPress={() => {
+            commitBpm(bpmText);
+            Keyboard.dismiss();
+          }}
+          style={({ pressed }) => [styles.stepBtn, styles.okBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.stepText}>OK</Text>
+        </Pressable>
+        <Text style={styles.bpmHint}>max {maxBpm} pour cet exercice</Text>
+      </View>
+
+      <SectionLabel>Lecture</SectionLabel>
+      <ChipRow testID="play-options">
+        <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
+        <Chip testID="countin-toggle" label={countIn ? "Décompte : 4 temps" : "Décompte : non"} selected={countIn} onPress={() => setCountIn(!countIn)} />
+        <Chip testID="metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
+      </ChipRow>
+
+      <SectionLabel>Partition</SectionLabel>
+      <ChipRow testID="tab-selector">
+        <Chip testID="tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
+        <Chip testID="tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+      </ChipRow>
+
+    </>
+  );
+
   const infoContent = active ? (
     <>
       <Text style={styles.infoNote}>
@@ -339,12 +426,10 @@ export default function FingeringScreen() {
             {infoContent}
           </View>
         ) : null}
-        {isLandscape ? (
-          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
-            <Text style={styles.pickerText}>Gamme</Text>
-            <CaretDown size={16} color={colors.onSurface} weight="bold" />
-          </Pressable>
-        ) : null}
+        <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
+          <Text style={styles.pickerText}>Exercice</Text>
+          <CaretDown size={16} color={colors.onSurface} weight="bold" />
+        </Pressable>
         <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, pressed && styles.pressed, empty && styles.dim]}>
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
           {!isLandscape ? <Text style={styles.playText}>{playing ? "Stop" : "Jouer"}</Text> : null}
@@ -381,6 +466,9 @@ export default function FingeringScreen() {
         onModeChange={() => {}}
         scalesOnly
         hideAllPosition
+        title="Exercice et gamme"
+        top={pickerTop}
+        extra={pickerExtra}
         rootPc={rootPc}
         onRootChange={setRootPc}
         selectedId={scaleId}
@@ -413,117 +501,7 @@ export default function FingeringScreen() {
             />
           ))}
         </ChipRow>
-      ) : (
-        <ScrollView
-          style={styles.panelScroll}
-          contentContainerStyle={[styles.panelContent, { paddingBottom: bottomChrome + spacing.xl }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Glass style={styles.panel} testID="fingering-panel">
-            <SectionLabel>Exercice</SectionLabel>
-            <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
-            <Text style={styles.hint}>{exercise.description}</Text>
-
-            <SectionLabel>Tonalité</SectionLabel>
-            <ChipRow testID="fingering-root-selector">
-              {Array.from({ length: 12 }, (_, pc) => (
-                <Chip key={pc} testID={`fingering-root-${pc}`} label={nameOf(pc)} selected={rootPc === pc} onPress={() => setRootPc(pc)} />
-              ))}
-            </ChipRow>
-
-            <SectionLabel>Gamme</SectionLabel>
-            <ChipRow testID="fingering-scale-selector">
-              {SCALES.map((f) => (
-                <Chip key={f.id} testID={`fingering-scale-${f.id}`} label={f.name} selected={scaleId === f.id} onPress={() => setScaleId(f.id)} />
-              ))}
-            </ChipRow>
-
-            <SectionLabel>Mode</SectionLabel>
-            <ChipRow testID="mode-selector">{modeChips}</ChipRow>
-            {horizontal ? (
-              <Text style={styles.hint}>Les groupes restent sur les mêmes cordes et montent le long du manche.</Text>
-            ) : null}
-
-            {horizontal ? (
-              <>
-                <SectionLabel>Cordes</SectionLabel>
-                <ChipRow testID="hz-strings">{stringChips}</ChipRow>
-
-                <SectionLabel>Étendue</SectionLabel>
-                <ChipRow testID="hz-extent">
-                  {EXTENTS.map((e) => (
-                    <Chip key={e.id} testID={`hz-extent-${e.id}`} label={e.name} selected={extent === e.id} onPress={() => setExtent(e.id)} />
-                  ))}
-                </ChipRow>
-              </>
-            ) : (
-              <>
-                <SectionLabel>Position</SectionLabel>
-                <PositionChips hideAll boxes={boxes} selected={pos} variants={variants} onChange={selectPosition} prefix="fingering-position" />
-
-                <SectionLabel>Départ</SectionLabel>
-                <ChipRow testID="start-selector">
-                  <Chip testID="start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-                  <Chip testID="start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-                </ChipRow>
-              </>
-            )}
-
-            <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
-            <View style={styles.bpmRow}>
-              <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-                <Text style={styles.stepText}>−</Text>
-              </Pressable>
-              <TextInput
-                testID="bpm-input"
-                value={bpmText}
-                onChangeText={setBpmText}
-                onEndEditing={() => commitBpm(bpmText)}
-                onSubmitEditing={() => commitBpm(bpmText)}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                maxLength={3}
-                selectTextOnFocus
-                style={styles.bpmInput}
-              />
-              <Pressable testID="bpm-plus" onPress={() => commitBpm(String(bpm + 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
-                <Text style={styles.stepText}>+</Text>
-              </Pressable>
-              <Pressable
-                testID="bpm-ok"
-                onPress={() => {
-                  commitBpm(bpmText);
-                  Keyboard.dismiss();
-                }}
-                style={({ pressed }) => [styles.stepBtn, styles.okBtn, pressed && styles.pressed]}
-              >
-                <Text style={styles.stepText}>OK</Text>
-              </Pressable>
-              <Text style={styles.bpmHint}>max {maxBpm} pour cet exercice</Text>
-            </View>
-
-            <SectionLabel>Lecture</SectionLabel>
-            <ChipRow testID="play-options">
-              <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
-              <Chip testID="countin-toggle" label={countIn ? "Décompte : 4 temps" : "Décompte : non"} selected={countIn} onPress={() => setCountIn(!countIn)} />
-              <Chip testID="metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
-            </ChipRow>
-
-            <SectionLabel>Partition</SectionLabel>
-            <ChipRow testID="tab-selector">
-              <Chip testID="tab-on" label="Notes + tablature" selected={settings.showTab} onPress={() => update({ showTab: true })} />
-              <Chip testID="tab-off" label="Notes seules" selected={!settings.showTab} onPress={() => update({ showTab: false })} />
-            </ChipRow>
-
-            <SectionLabel>Étiquettes</SectionLabel>
-            <ChipRow testID="fingering-label-selector">
-              <Chip testID="fingering-label-note" label="Noms des notes" selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
-              <Chip testID="fingering-label-degree" label="Degrés" selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
-            </ChipRow>
-          </Glass>
-        </ScrollView>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -572,8 +550,5 @@ const useStyles = makeStyles((c) => ({
   bpmInput: { width: 72, height: 40, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, textAlign: "center", fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   bpmHint: { flex: 1, fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
   divider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
-  panelScroll: { flex: 1 },
-  panelContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
-  panel: { paddingVertical: spacing.md },
   hint: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, paddingHorizontal: spacing.lg, marginTop: spacing.xs },
 }));

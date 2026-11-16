@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type ReactNode } from "react";
 import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, X } from "phosphor-react-native";
@@ -30,6 +30,15 @@ type Props = {
   scalesOnly?: boolean;
   /** Hides the "Tout le manche" position chip (a position is always selected). */
   hideAllPosition?: boolean;
+  /** Sheet title (default: "Choisir une gamme" / "Choisir un accord"). */
+  title?: string;
+  /** Section-specific controls shown first / right after the labels, before the long list of scales. */
+  top?: ReactNode;
+  extra?: ReactNode;
+  /** Extra chips appended to the "Étiquettes" row. */
+  labelExtra?: ReactNode;
+  /** Hide the list of scales / chords (a section that only needs the other filters). */
+  hideList?: boolean;
 };
 
 function groupBy(list: Formula[]) {
@@ -60,6 +69,11 @@ export function ScalePicker({
   onLabelModeChange,
   scalesOnly = false,
   hideAllPosition = false,
+  title,
+  top,
+  extra,
+  labelExtra,
+  hideList = false,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -80,7 +94,7 @@ export function ScalePicker({
         >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>{mode === "scale" ? "Choisir une gamme" : "Choisir un accord"}</Text>
+            <Text style={styles.title}>{title ?? (mode === "scale" ? "Choisir une gamme" : "Choisir un accord")}</Text>
             <Pressable testID="scale-picker-close" onPress={onClose} style={styles.closeBtn} hitSlop={8}>
               <X size={20} color={colors.onSurface} />
             </Pressable>
@@ -92,7 +106,9 @@ export function ScalePicker({
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.lg }]}
             showsVerticalScrollIndicator
             nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
           >
+          {top}
           {scalesOnly ? null : (
             <View style={styles.segment}>
               {(["scale", "chord"] as PickerMode[]).map((m) => (
@@ -121,10 +137,13 @@ export function ScalePicker({
           <ChipRow testID="picker-label-selector">
             <Chip testID="picker-label-note" label="Noms des notes" selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
             <Chip testID="picker-label-degree" label="Degrés" selected={labelMode === "degree"} onPress={() => onLabelModeChange("degree")} />
+            {labelExtra}
           </ChipRow>
 
+          {extra}
+
           <View style={styles.listContent}>
-            {groups.map((g) => (
+            {(hideList ? [] : groups).map((g) => (
               <View key={g.title}>
                 <Text style={styles.groupTitle}>{g.title}</Text>
                 {g.items.map((f) => {

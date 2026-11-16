@@ -11,12 +11,14 @@ export type Settings = {
   labelMode: "note" | "degree";
   /** Score under the fretboard: show the tablature line too. */
   showTab: boolean;
-  /** Landscape only: show the (staff-only) score under the fretboard. */
+  /** Landscape: show the score under the fretboard. */
   showScoreLandscape: boolean;
   showNeutral: boolean;
   soundOnTap: boolean;
   volume: number;
   a4: number;
+  /** Set once the 1.20 defaults (score + tab shown in both orientations) were applied to saved settings. */
+  scoreDefaultsV: number;
 };
 
 const DEFAULTS: Settings = {
@@ -25,11 +27,12 @@ const DEFAULTS: Settings = {
   accidental: "sharp",
   labelMode: "note",
   showTab: true,
-  showScoreLandscape: false,
+  showScoreLandscape: true,
   showNeutral: false,
   soundOnTap: true,
   volume: 0.8,
   a4: 440,
+  scoreDefaultsV: 1,
 };
 
 const KEY = "fretstudio_settings_v2";
@@ -50,11 +53,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (typeof raw === "string") {
         try {
           const saved = JSON.parse(raw);
-          setSettings({
+          const merged: Settings = {
             ...DEFAULTS,
             ...saved,
             fretboardStyle: isFretboardStyle(saved?.fretboardStyle) ? saved.fretboardStyle : DEFAULT_FRETBOARD_STYLE,
-          });
+          };
+          // 1.20: score + tablature are now shown by default in both orientations (also for already saved settings).
+          if (!saved?.scoreDefaultsV) {
+            merged.showScoreLandscape = true;
+            merged.showTab = true;
+            merged.scoreDefaultsV = 1;
+            storage.setItem(KEY, JSON.stringify(merged));
+          }
+          setSettings(merged);
         } catch {
           // keep defaults
         }
