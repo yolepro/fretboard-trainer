@@ -64,9 +64,9 @@ export const MAX_BPM = 200;
 export const MIN_BPM = 30;
 
 /** Highest tempo (beats per minute, quarter notes) for an exercise: its fastest notes stay playable. */
-export function maxBpmFor(id: ExerciseId): number {
+export function maxBpmFor(id: ExerciseId, slow = false): number {
   const def = EXERCISES.find((e) => e.id === id) ?? EXERCISES[0];
-  return Math.min(MAX_BPM, Math.floor(60000 / (def.perBeat * MIN_NOTE_MS)));
+  return Math.min(MAX_BPM, Math.floor((60000 * (slow ? 2 : 1)) / (def.perBeat * MIN_NOTE_MS)));
 }
 
 /**
@@ -217,16 +217,12 @@ export function routeWindow(groups: PathStep[][], extraCells?: Set<string>): Box
   return { min, max, cells, noColumns: true };
 }
 
-/** Default tempo (BPM, quarter note) by notes per beat: eighths 80, triplets 60, sixteenths 50. */
-export function defaultBpmFor(id: ExerciseId): number {
+/**
+ * Default tempo (BPM, quarter note). Normal pace (a group per beat): eighths 80, triplets 60, sixteenths 50.
+ * Slow pace (a group over 2 beats, notes twice as long): 110 / 85 / 70, i.e. about 30 % slower than normal.
+ */
+export function defaultBpmFor(id: ExerciseId, slow = false): number {
   const per = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).perBeat;
+  if (slow) return per >= 4 ? 70 : per === 3 ? 85 : 110;
   return per >= 4 ? 50 : per === 3 ? 60 : 80;
-}
-
-/** Every note of the scale on the given strings, over the whole neck. */
-export function scaleCellsOnStrings(rootPc: number, formula: Formula, set: StringSet): Set<string> {
-  const pcs = new Set(scaleDegreesSemis(formula).map((x) => pcOf(rootPc + x)));
-  const cells = new Set<string>();
-  for (const s of set.strings) for (let f = 0; f <= FRET_COUNT; f++) if (pcs.has(pcOf(TUNING[s] + f))) cells.add(cellKey(s, f));
-  return cells;
 }

@@ -60,11 +60,13 @@ export default function FingeringScreen() {
   const [variants, setVariants] = useState<number[]>([]);
   const [exerciseId, setExerciseId] = useState<ExerciseId>("scale");
   const [startOnRoot, setStartOnRoot] = useState(false);
-  const [bpm, setBpm] = useState(80);
-  const [bpmText, setBpmText] = useState("80");
+  const [bpm, setBpm] = useState(110);
+  const [bpmText, setBpmText] = useState("110");
   const [metronome, setMetronome] = useState(false);
   const [loop, setLoop] = useState(false);
-  const [countIn, setCountIn] = useState(true);
+  const [countIn, setCountIn] = useState<0 | 2 | 4>(4);
+  // Slow pace (default): a group of notes lasts 2 beats instead of 1, the BPM keeps a usual value.
+  const [slow, setSlow] = useState(true);
   const [beat, setBeat] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
@@ -155,7 +157,7 @@ export default function FingeringScreen() {
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= (exercise.offsets.length > 2 ? 214 : 168));
-  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn);
+  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn, slow);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
@@ -164,7 +166,7 @@ export default function FingeringScreen() {
     : 34;
 
   // Tempo is in beats (quarter notes) per minute; each exercise has its own ceiling (its fastest notes stay playable).
-  const maxBpm = maxBpmFor(exerciseId);
+  const maxBpm = maxBpmFor(exerciseId, slow);
   const commitBpm = useCallback(
     (text: string) => {
       const n = parseInt(text, 10);
@@ -176,8 +178,8 @@ export default function FingeringScreen() {
   );
   // Each exercise starts at its own comfortable tempo (eighths 80, triplets 60, sixteenths 50).
   useEffect(() => {
-    commitBpm(String(defaultBpmFor(exerciseId)));
-  }, [exerciseId, commitBpm]);
+    commitBpm(String(defaultBpmFor(exerciseId, slow)));
+  }, [exerciseId, slow, commitBpm]);
   useEffect(() => {
     if (bpm > maxBpm) commitBpm(String(maxBpm));
   }, [bpm, maxBpm, commitBpm]);
@@ -199,7 +201,7 @@ export default function FingeringScreen() {
   // Any change of the exercise stops what is playing.
   useEffect(() => {
     stop();
-  }, [sequence, bpm, loop, countIn, metronome, stop]);
+  }, [sequence, bpm, slow, loop, countIn, metronome, stop]);
 
   const selectPosition = useCallback(
     (i: number | null) => {
@@ -244,9 +246,9 @@ export default function FingeringScreen() {
     };
     cancelRef.current = runSequence({
       length: sequence.length,
-      noteMs: 60000 / bpm / exercise.perBeat, // one group of notes per beat
+      noteMs: (60000 / bpm / exercise.perBeat) * (slow ? 2 : 1), // one group of notes per beat (2 beats when slow)
       beatMs: 60000 / bpm, // a beat = a quarter note
-      beats: countIn ? 4 : 0,
+      beats: countIn,
       loop,
       onBeat: (b) => {
         playClick(b, settings.volume);
@@ -343,6 +345,12 @@ export default function FingeringScreen() {
         </>
       )}
 
+      <SectionLabel>Débit des notes</SectionLabel>
+      <ChipRow testID="pace-selector">
+        <Chip testID="pace-slow" label="Lent (notes 2× plus longues)" selected={slow} onPress={() => setSlow(true)} />
+        <Chip testID="pace-normal" label="Normal" selected={!slow} onPress={() => setSlow(false)} />
+      </ChipRow>
+
       <SectionLabel>Tempo (BPM, à la noire)</SectionLabel>
       <View style={styles.bpmRow}>
         <Pressable testID="bpm-minus" onPress={() => commitBpm(String(bpm - 5))} style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}>
@@ -379,7 +387,12 @@ export default function FingeringScreen() {
       <SectionLabel>Lecture</SectionLabel>
       <ChipRow testID="play-options">
         <Chip testID="loop-toggle" label={loop ? "Boucle : oui" : "Boucle : non"} selected={loop} onPress={() => setLoop(!loop)} />
-        <Chip testID="countin-toggle" label={countIn ? "Décompte : 4 temps" : "Décompte : non"} selected={countIn} onPress={() => setCountIn(!countIn)} />
+        <Chip
+          testID="countin-toggle"
+          label={countIn === 4 ? "Décompte : 4 temps" : countIn === 2 ? "Décompte : 2 temps" : "Décompte : non"}
+          selected={countIn > 0}
+          onPress={() => setCountIn(countIn === 4 ? 2 : countIn === 2 ? 0 : 4)}
+        />
         <Chip testID="metronome-toggle" label={metronome ? "Métronome : oui" : "Métronome : non"} selected={metronome} onPress={() => setMetronome(!metronome)} />
       </ChipRow>
 
@@ -405,7 +418,7 @@ export default function FingeringScreen() {
     </>
   ) : (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? `Décompte ${beat}/4…` : empty ? (horizontal ? "Parcours impossible sur ces cordes." : "Position trop courte : essayez 1/2.") : horizontal ? `${exercise.name} · ${stringSetName(stringSets[setI])} · ${sequence.length} notes` : `${exercise.name} · ${sequence.length} notes`}
+      {beat !== null ? `Décompte ${beat}/${countIn || 4}…` : empty ? (horizontal ? "Parcours impossible sur ces cordes." : "Position trop courte : essayez 1/2.") : horizontal ? `${exercise.name} · ${stringSetName(stringSets[setI])} · ${sequence.length} notes` : `${exercise.name} · ${sequence.length} notes`}
     </Text>
   );
 

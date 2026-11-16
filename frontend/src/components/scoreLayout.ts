@@ -37,7 +37,9 @@ const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31]; // B4 E5 A4 D5 G4 C5 F4
 const noteWidth = (perBeat: number) => (perBeat >= 4 ? 22 : perBeat === 3 ? 27 : 30);
 
 export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): ScoreLayout {
-  const { events, groups, perBeat, keySig } = model;
+  const { events, groups, perBeat, keySig, slow, groupsPerBar } = model;
+  // Slow pace: quarter notes (no beam), quarter-note triplets (no beam, bracket), eighth notes (one beam).
+  const beams = slow ? (perBeat >= 4 ? 1 : 0) : perBeat >= 4 ? 2 : 1;
   const staff: Shape[] = []; // staff-local coordinates (bottom line y = 0, up is negative)
   const stepY = (step: number) => -(step - 30) * HALF;
 
@@ -58,7 +60,7 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
       cursor += noteWidth(perBeat);
     }
     cursor += 4;
-    if ((gi + 1) % 4 === 0 || gi === groups.length - 1) {
+    if ((gi + 1) % groupsPerBar === 0 || gi === groups.length - 1) {
       barLines.push(cursor);
       cursor += 14;
     }
@@ -97,6 +99,24 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
     const dir = down ? 1 : -1; // y direction of the stem (down = +)
     const sx = (i: number) => nx[i] + (down ? -5 : 5);
     const stemLen = 26;
+    if (beams === 0) {
+      // Separate stems (quarter notes); a flat bracket for the triplets.
+      idx.forEach((i) => staff.push({ t: "line", x1: sx(i), y1: noteY(events[i]), x2: sx(i), y2: noteY(events[i]) + dir * stemLen, w: 1.3, c: "ink" }));
+      if (perBeat === 3 && idx.length === 3) {
+        const ends = idx.map((i) => noteY(events[i]) + dir * stemLen);
+        const ty = (down ? Math.max(...ends) : Math.min(...ends)) + dir * 8;
+        const xF = sx(idx[0]);
+        const xL = sx(idx[2]);
+        const xc = (xF + xL) / 2;
+        const tick = -dir * 4;
+        staff.push({ t: "line", x1: xF, y1: ty, x2: xc - 7, y2: ty, w: 1, c: "muted" });
+        staff.push({ t: "line", x1: xc + 7, y1: ty, x2: xL, y2: ty, w: 1, c: "muted" });
+        staff.push({ t: "line", x1: xF, y1: ty, x2: xF, y2: ty + tick, w: 1, c: "muted" });
+        staff.push({ t: "line", x1: xL, y1: ty, x2: xL, y2: ty + tick, w: 1, c: "muted" });
+        staff.push({ t: "text", x: xc, y: ty + 4, s: "3", size: 12, c: "muted", anchor: "middle", italic: true });
+      }
+      return;
+    }
     if (idx.length === 1) {
       const i = idx[0];
       const y0 = noteY(events[i]);
@@ -123,7 +143,6 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
     });
     const by = (x: number) => lineAt(x) - dir * shift;
     idx.forEach((i) => staff.push({ t: "line", x1: sx(i), y1: noteY(events[i]), x2: sx(i), y2: by(sx(i)), w: 1.3, c: "ink" }));
-    const beams = perBeat >= 4 ? 2 : 1;
     for (let b = 0; b < beams; b++) {
       const off = -dir * b * 5;
       staff.push({ t: "line", x1: xF, y1: by(xF) + off, x2: xL, y2: by(xL) + off, w: 3.4, c: "ink" });

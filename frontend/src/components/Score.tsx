@@ -17,11 +17,12 @@ export function useScore(
   rootPc: number,
   formula: Formula,
   showTab: boolean,
+  slow = false,
 ): { model: ScoreModel; layout: ScoreLayout } {
   const { settings } = useSettings();
   const model = useMemo(
-    () => buildScoreModel({ steps, kind, perBeat, rootPc, formula, accidental: settings.accidental, notation: settings.notation }),
-    [steps, kind, perBeat, rootPc, formula, settings.accidental, settings.notation],
+    () => buildScoreModel({ steps, kind, perBeat, slow, rootPc, formula, accidental: settings.accidental, notation: settings.notation }),
+    [steps, kind, perBeat, slow, rootPc, formula, settings.accidental, settings.notation],
   );
   const layout = useMemo(() => layoutScore(model, { showTab }), [model, showTab]);
   return { model, layout };

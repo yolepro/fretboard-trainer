@@ -100,6 +100,9 @@ export type ScoreModel = {
   events: ScoreEvent[];
   groups: ScoreGroup[];
   perBeat: number;
+  /** Slow pace: a group lasts 2 beats (quarter notes, quarter-note triplets, eighth notes): 2 groups per bar. */
+  slow: boolean;
+  groupsPerBar: number;
   keySig: KeySignature;
   /** Pitch letters of the key signature accidentals in drawing order (for the layout). */
   barCount: number;
@@ -149,6 +152,7 @@ export type ScoreInput = {
   steps: PathStep[];
   kind: ExerciseId | "path";
   perBeat: number;
+  slow?: boolean;
   rootPc: number;
   formula: Formula;
   accidental: "sharp" | "flat";
@@ -162,10 +166,11 @@ export function buildScoreModel(inp: ScoreInput): ScoreModel {
   const groups: ScoreGroup[] = [];
   let state = new Map<number, number>(); // step -> accidental currently in force in the bar
   let bar = 0;
+  const groupsPerBar = inp.slow ? 2 : 4;
 
   inp.steps.forEach((st, i) => {
     const group = Math.floor(i / inp.perBeat);
-    const newBar = Math.floor(group / 4);
+    const newBar = Math.floor(group / groupsPerBar);
     if (newBar !== bar) {
       bar = newBar;
       state = new Map();
@@ -198,5 +203,5 @@ export function buildScoreModel(inp: ScoreInput): ScoreModel {
     const end = Math.min(inp.steps.length, start + inp.perBeat) - 1;
     groups.push({ start, end, label: groupLabel(inp.kind, inp.steps.slice(start, end + 1), inp.perBeat, spelled, inp.notation) });
   }
-  return { events, groups, perBeat: inp.perBeat, keySig: sig, barCount: Math.ceil(groupCount / 4) };
+  return { events, groups, perBeat: inp.perBeat, slow: !!inp.slow, groupsPerBar, keySig: sig, barCount: Math.ceil(groupCount / groupsPerBar) };
 }
