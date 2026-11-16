@@ -268,9 +268,8 @@ export default function FretboardScreen() {
         {midiToFreq(active.midi, settings.a4).toFixed(1)} Hz
       </Text>
     </>
-  ) : (
-    <Text style={styles.infoMeta}>{beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: 4 }) : ""}</Text>
-  );
+  ) : null;
+
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fretboard-screen">
@@ -281,13 +280,8 @@ export default function FretboardScreen() {
             {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
           </Text>
         </View>
-        {isLandscape ? (
-          <View style={styles.infoInline} testID="note-info-bar">
-            {infoContent}
-          </View>
-        ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        <TempoButton bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
+        <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
         {compactHeader ? (
           <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={mode === "scale" ? tr("Gamme") : tr("Accord")}>
             <List size={20} color={colors.onSurface} weight="bold" />
@@ -308,12 +302,6 @@ export default function FretboardScreen() {
           {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
         </Pressable>
       </View>
-
-      {!isLandscape ? (
-        <View style={styles.infoBar} testID="note-info-bar">
-          {infoContent}
-        </View>
-      ) : null}
 
       <Fretboard
         fretScale={fretScale}
@@ -425,6 +413,13 @@ export default function FretboardScreen() {
           })}
         </View>
       ) : null}
+
+      {/* Details of the touched / played note: at the very bottom, in portrait (where there is room). */}
+      {!isLandscape && infoContent ? (
+        <View style={[styles.infoBottom, { paddingBottom: bottomChrome + spacing.sm }]} testID="note-info-bar">
+          {infoContent}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -440,7 +435,7 @@ const useStyles = makeStyles((c) => ({
   },
   headerText: { flex: 1 },
   legendDivider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
-  headerTextCompact: { flexShrink: 0, maxWidth: 260 },
+  headerTextCompact: { flex: 1, minWidth: 0 },
   titleCompact: { fontSize: 20 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
   roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
@@ -478,6 +473,7 @@ const useStyles = makeStyles((c) => ({
     paddingHorizontal: spacing.lg,
   },
   infoDot: { width: 10, height: 10, borderRadius: 5 },
+  infoBottom: { marginTop: "auto", flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 36, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   infoNote: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   infoMeta: { flex: 1, fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
   panelScroll: { flex: 1 },

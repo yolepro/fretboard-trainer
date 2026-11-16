@@ -472,11 +472,12 @@ export default function FingeringScreen() {
         {stepIdx !== null ? tr(" · Note {i}/{n}", { i: stepIdx + 1, n: sequence.length }) : ""}
       </Text>
     </>
-  ) : (
+  ) : empty ? (
     <Text style={styles.infoMeta} numberOfLines={1}>
-      {beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: pulse.barPulses }) : empty ? (horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")) : ""}
+      {horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")}
     </Text>
-  );
+  ) : null;
+
 
   const arpOther = ARP_SHAPES[(arpShape + (towardBody ? 1 : ARP_SHAPES.length - 1)) % ARP_SHAPES.length];
   const arpBadge = (horizontal ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}` : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })) + (arpList.length > 1 ? ` · ${arpV + 1}/${arpList.length}` : "");
@@ -491,13 +492,9 @@ export default function FingeringScreen() {
             {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)} · {positionBadge}</Text>
           </Text>
         </View>
-        {isLandscape ? (
-          <View style={styles.infoInline} testID="fingering-info">
-            {infoContent}
-          </View>
-        ) : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
         <TempoButton
+          count={beat}
           bpm={bpm}
           min={MIN_BPM}
           max={maxBpm}
@@ -526,12 +523,6 @@ export default function FingeringScreen() {
           {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Jouer")}</Text> : null}
         </Pressable>
       </View>
-
-      {!isLandscape ? (
-        <View style={styles.infoBar} testID="fingering-info">
-          {infoContent}
-        </View>
-      ) : null}
 
       <Fretboard
         fretScale={fretScale}
@@ -594,6 +585,13 @@ export default function FingeringScreen() {
           ))}
         </ChipRow>
       ) : null}
+
+      {/* Details of the touched / played note: at the very bottom, in portrait (where there is room). */}
+      {!isLandscape && infoContent ? (
+        <View style={[styles.infoBottom, { paddingBottom: bottomChrome + spacing.sm }]} testID="fingering-info">
+          {infoContent}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -607,7 +605,7 @@ const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
   headerText: { flex: 1 },
-  headerTextCompact: { flexShrink: 0, maxWidth: 260 },
+  headerTextCompact: { flex: 1, minWidth: 0 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
   roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   pickerBtn: {
@@ -639,6 +637,7 @@ const useStyles = makeStyles((c) => ({
   pressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
   dim: { opacity: 0.4 },
   infoBar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, height: 40, paddingHorizontal: spacing.lg },
+  infoBottom: { marginTop: "auto", flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 36, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   infoNote: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   infoMeta: { flex: 1, fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
   bpmRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.sm },

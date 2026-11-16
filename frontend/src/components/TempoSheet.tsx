@@ -19,6 +19,8 @@ type Props = {
   onLoop: (v: boolean) => void;
   metronome: boolean;
   onMetronome: (v: boolean) => void;
+  /** Count-in in progress: this beat number replaces the tempo in the button. */
+  count?: number | null;
   testID?: string;
 };
 
@@ -26,17 +28,23 @@ const PRESETS = [60, 80, 100, 120];
 
 /** Round header button showing the tempo; opens the "Tempo et lecture" sheet (tempo, note pace, loop, metronome). */
 export function TempoButton(props: Props) {
-  const { bpm, half, testID = "tempo-button" } = props;
+  const { bpm, half, count, testID = "tempo-button" } = props;
   const styles = useStyles();
   const [open, setOpen] = useState(false);
   return (
     <>
       <Pressable testID={testID} onPress={() => setOpen(true)} style={({ pressed }) => [styles.button, pressed && styles.pressed]} accessibilityLabel={tr("Tempo")}>
-        <View style={styles.note}>
-          <View style={[styles.noteHead, half && styles.noteHeadHalf]} />
-          <View style={styles.noteStem} />
-        </View>
-        <Text style={styles.buttonText}>{bpm}</Text>
+        {count != null ? (
+          <Text style={styles.countText} testID="tempo-count">{count}</Text>
+        ) : (
+          <>
+            <View style={styles.note}>
+              <View style={[styles.noteHead, half && styles.noteHeadHalf]} />
+              <View style={styles.noteStem} />
+            </View>
+            <Text style={styles.buttonText}>{bpm}</Text>
+          </>
+        )}
       </Pressable>
       <TempoSheet {...props} visible={open} onClose={() => setOpen(false)} />
     </>
@@ -142,6 +150,7 @@ function TempoSheet({ visible, onClose, bpm, min, max, half, defaultBpm, onBpm, 
 const useStyles = makeStyles((c) => ({
   button: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.brandPrimary, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   buttonText: { fontFamily: fonts.display, fontSize: 13, fontWeight: "700", color: c.onSurface, marginTop: 1 },
+  countText: { fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.brandPrimary },
   note: { width: 10, height: 11, marginTop: -2 },
   noteHead: { position: "absolute", left: 0, bottom: 0, width: 7, height: 5, borderRadius: 3, backgroundColor: c.brandPrimary, transform: [{ rotate: "-20deg" }] },
   noteHeadHalf: { backgroundColor: "transparent", borderWidth: 1.3, borderColor: c.brandPrimary },
