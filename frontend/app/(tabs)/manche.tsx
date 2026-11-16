@@ -274,7 +274,7 @@ export default function FretboardScreen() {
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fretboard-screen">
       <StudioBackground />
-      <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
+      <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
@@ -301,7 +301,7 @@ export default function FretboardScreen() {
         <Pressable
           testID="play-formula-button"
           onPress={playFormula}
-          style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.playBtn, compactHeader && styles.playBtnRound, pressed && styles.pressed]}
         >
           {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
           {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
@@ -439,12 +439,15 @@ const useStyles = makeStyles((c) => ({
     paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  headerText: { flex: 1 },
+  headerText: { flex: 1, flexShrink: 1, minWidth: 0 },
+  // Phones in portrait: 4 round buttons of the same size, closer together, that never shrink or get pushed out.
+  headerCompact: { gap: spacing.sm },
+  playBtnRound: { width: 44, paddingHorizontal: 0, justifyContent: "center", flexShrink: 0 },
   legendDivider: { width: 1, height: 24, backgroundColor: c.borderStrong, marginHorizontal: spacing.xs },
   headerTextCompact: { flexShrink: 0, maxWidth: 260 },
   titleCompact: { fontSize: 20 },
   infoInline: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, minWidth: 0 },
-  roundMenuBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
+  roundMenuBtn: { flexShrink: 0, width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   pickerBtn: {
     flexDirection: "row",
     alignItems: "center",

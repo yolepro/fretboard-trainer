@@ -130,7 +130,7 @@ export function KeyWheel({ visible, rootPc, nameOf, onClose, onChange }: WheelPr
 }
 
 const useStyles = makeStyles((c) => ({
-  button: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.brandPrimary, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
+  button: { flexShrink: 0, width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.brandPrimary, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   buttonText: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onSurface },
   buttonTextLong: { fontSize: 11 },
   dot: { position: "absolute", backgroundColor: c.muted },

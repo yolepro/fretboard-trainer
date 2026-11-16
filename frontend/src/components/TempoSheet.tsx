@@ -148,7 +148,7 @@ function TempoSheet({ visible, onClose, bpm, min, max, half, defaultBpm, onBpm, 
 }
 
 const useStyles = makeStyles((c) => ({
-  button: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.brandPrimary, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
+  button: { flexShrink: 0, width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: c.brandPrimary, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   buttonText: { fontFamily: fonts.display, fontSize: 13, fontWeight: "700", color: c.onSurface, marginTop: 1 },
   countText: { fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.brandPrimary },
   note: { width: 10, height: 11, marginTop: -2 },
