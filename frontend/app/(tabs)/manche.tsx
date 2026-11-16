@@ -12,7 +12,8 @@ import { Score, useScore } from "@/src/components/Score";
 import { runSequence } from "@/src/audio/sequencer";
 import { Glass } from "@/src/components/Glass";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { playNote, initAudio } from "@/src/audio/sampler";
+import { playNote, preloadNotes, initAudio } from "@/src/audio/sampler";
+import { positionLadder } from "@/src/music/exercises";
 import {
   CHORDS,
   DEGREE_META,
@@ -54,6 +55,7 @@ export default function FretboardScreen() {
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
+  const [startOnRoot, setStartOnRoot] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -93,7 +95,22 @@ export default function FretboardScreen() {
   );
 
   // The notes "Écouter" plays: also what the score under the neck shows.
-  const path = useMemo(() => playbackPath(rootPc, formula, mode === "scale", windowRange), [rootPc, formula, mode, windowRange]);
+  // With a scale position selected: every note of the position, from its lowest note (or lowest root) upward.
+  // Otherwise: from the root up to the octave.
+  const path = useMemo(() => {
+    if (mode === "scale" && windowRange) {
+      let ladder = positionLadder(rootPc, formula, windowRange);
+      if (startOnRoot) {
+        const r = ladder.findIndex((st) => pcOf(st.midi) === pcOf(rootPc));
+        if (r > 0) ladder = ladder.slice(r);
+      }
+      if (ladder.length) return ladder;
+    }
+    return playbackPath(rootPc, formula, mode === "scale", windowRange);
+  }, [rootPc, formula, mode, windowRange, startOnRoot]);
+  useEffect(() => {
+    preloadNotes(path.map((st) => st.midi));
+  }, [path]);
   useEffect(() => {
     setStepIdx(null);
   }, [path]);
@@ -388,6 +405,16 @@ export default function FretboardScreen() {
               onPress={() => update({ showNeutral: !settings.showNeutral })}
             />
           </ChipRow>
+
+          {mode === "scale" ? (
+            <>
+              <SectionLabel>Écoute et partition : départ</SectionLabel>
+              <ChipRow testID="manche-start-selector">
+                <Chip testID="manche-start-lowest" label="Note la plus grave" selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+                <Chip testID="manche-start-root" label="Tonique" selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+              </ChipRow>
+            </>
+          ) : null}
 
           <SectionLabel>Partition</SectionLabel>
           <ChipRow testID="manche-tab-selector">

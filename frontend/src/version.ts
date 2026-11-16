@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.17.0 — Manche : avec une position sélectionnée, la partition et « Écouter » couvrent toutes les notes de la position ; sélecteur de départ (note la plus grave / tonique)
 // 1.16.2 — accueil : texte des fonctionnalités aligné à gauche, cadre centré
 // 1.16.1 — accueil centré (web), partition sans rangée d’accords quand il n’y en a pas, menu Gamme : bas du panneau sans bande noire
 // 1.16.0 — partition + tablature sous le manche (Manche et Doigté) synchronisées avec la surbrillance et l’écoute ; BPM à la noire saisi au clavier ; rythme réel (croches, triolets, doubles croches) ; métronome optionnel ; descente alignée sur les temps
@@ -31,4 +32,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.16.2";
+export const APP_VERSION = "1.17.0";
