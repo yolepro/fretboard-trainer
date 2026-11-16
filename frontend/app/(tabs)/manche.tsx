@@ -49,7 +49,7 @@ export default function FretboardScreen() {
   const [chordId, setChordId] = useState("maj7");
   // All notes share one color; selected degrees get their own color (tonic by default)
   const [colored, setColored] = useState<Set<DegreeKey>>(new Set(["root"]));
-  const [position, setPosition] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | null>(0); // scale mode opens on Pos. 1
   // Per-position variant: 0 = 1/2 (low), 1 = 2/2 (same box 12 frets higher)
   const [variants, setVariants] = useState<number[]>([]);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
@@ -83,10 +83,17 @@ export default function FretboardScreen() {
   // Scales don't have the same number of positions: drop a selection that no longer exists.
   useEffect(() => {
     if (position !== null && position >= boxes.length) {
-      setPosition(null);
+      setPosition(mode === "scale" && boxes.length > 0 ? 0 : null);
       setVariants([]);
     }
-  }, [boxes.length, position]);
+  }, [boxes.length, position, mode]);
+  // Coming back to scales (from chords): Pos. 1 again.
+  useEffect(() => {
+    if (mode === "scale") {
+      setPosition(0);
+      setVariants([]);
+    }
+  }, [mode]);
   const variant = position !== null ? variants[position] ?? 0 : 0;
   // Memoized so the Fretboard's scroll effect only fires when the window really changes.
   const windowRange = useMemo(
