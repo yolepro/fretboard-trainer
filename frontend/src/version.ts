@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.22.4 — Horizontal : plus de notes orphelines (un groupe n’existe que si toutes ses notes sont sur le manche, en bas comme en haut)
 // 1.22.3 — correctif : le mode Horizontal plantait (fonction scaleCellsOnStrings supprimée par erreur en 1.21.0)
 // 1.22.2 — décompte automatique : 1 mesure, ou une demi-mesure (affichée 3/4 puis 4/4) quand le tempo est sous 70 ; bouton Décompte supprimé
 // 1.22.1 — partition : indication de tempo au-dessus de la clé (noire ou blanche = BPM)
@@ -47,4 +48,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.22.3";
+export const APP_VERSION = "1.22.4";

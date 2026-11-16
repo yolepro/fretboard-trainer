@@ -23,7 +23,6 @@ import {
   pulseOf,
   positionLadder,
   routeWindow,
-  scaleCellsOnStrings,
   stringSetsFor,
   type Extent,
   type ExerciseId,
@@ -124,13 +123,8 @@ export default function FingeringScreen() {
     () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], extent === "all" ? -1 : 0, extent) : []),
     [horizontal, rootPc, formula, exerciseId, stringSets, setI, extent],
   );
-  const windowRange = useMemo(
-    () =>
-      horizontal
-        ? routeWindow(hGroups, extent === "all" ? scaleCellsOnStrings(rootPc, formula, stringSets[setI]) : undefined)
-        : positionWindow,
-    [horizontal, hGroups, positionWindow, extent, rootPc, formula, stringSets, setI],
-  );
+  // Only the notes actually played are lit (no orphan note without its group at the ends of the neck).
+  const windowRange = useMemo(() => (horizontal ? routeWindow(hGroups) : positionWindow), [horizontal, hGroups, positionWindow]);
   const stringSetName = (st: { strings: number[] }) => st.strings.map((s) => nameOf(pcOf(TUNING[s]))).join("·");
 
   const ladder = useMemo(() => positionLadder(rootPc, formula, positionWindow), [rootPc, formula, positionWindow]);

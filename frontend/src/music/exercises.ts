@@ -163,21 +163,16 @@ export function buildHorizontalGroups(
   const highest = TUNING[0] + FRET_COUNT;
   const ladder: number[] = [];
   for (let m = lowest; m <= highest; m++) if (pcs.has(pcOf(m))) ladder.push(m);
-  // Notes of the group starting at ladder index i, one per string. A note that would fall below the open string
-  // (or below the previous note) goes up an octave, so the lowest groups (e.g. E-F# on the low E string) exist too.
+  // Notes of the group starting at ladder index i, one per string. A group only exists when every note is really
+  // on its string (fret 0–24): no note moved to another octave, so no orphan note at either end of the neck.
   const placeGroup = (i: number): { midi: number; fret: number }[] | null => {
     const out: { midi: number; fret: number }[] = [];
-    let prev = -Infinity;
     for (let j = 0; j < def.offsets.length; j++) {
-      let p = ladder[i + def.offsets[j]];
+      const p = ladder[i + def.offsets[j]];
       if (p === undefined) return null;
-      const open = TUNING[set.strings[j]];
-      if (j === 0 && p < open) return null; // the first note is never moved: the route starts on the lowest such note
-      while (p < open || p <= prev) p += 12;
-      const fret = p - open;
-      if (fret > FRET_COUNT) return null;
+      const fret = p - TUNING[set.strings[j]];
+      if (fret < 0 || fret > FRET_COUNT) return null;
       out.push({ midi: p, fret });
-      prev = p;
     }
     return out;
   };
