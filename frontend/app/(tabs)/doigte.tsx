@@ -24,7 +24,7 @@ import {
   maxBpmFor,
   positionLadder,
   routeWindow,
-  scaleDegreesSemis,
+  scaleCellsOnStrings,
   stringSetsFor,
   type Extent,
   type ExerciseId,
@@ -33,6 +33,7 @@ import {
   DEGREE_META,
   SCALES,
   boxVariant,
+  cellKey,
   buildDegreeMap,
   degreeKeyFromNum,
   formulaDegrees,
@@ -73,7 +74,6 @@ export default function FingeringScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [horizontal, setHorizontal] = useState(false);
   const [setIdx, setSetIdx] = useState(0);
-  const [degreeIdx, setDegreeIdx] = useState(0);
   const [extent, setExtent] = useState<Extent>("octave");
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -120,13 +120,17 @@ export default function FingeringScreen() {
   // Horizontal mode: the chord groups stay on a set of adjacent strings and climb the neck.
   const stringSets = useMemo(() => stringSetsFor(exerciseId), [exerciseId]);
   const setI = Math.min(setIdx, stringSets.length - 1);
-  const degreeSemis = useMemo(() => scaleDegreesSemis(formula), [formula]);
-  const degI = Math.min(degreeIdx, degreeSemis.length - 1);
   const hGroups = useMemo(
-    () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], degI, extent) : []),
-    [horizontal, rootPc, formula, exerciseId, stringSets, setI, degI, extent],
+    () => (horizontal ? buildHorizontalGroups(rootPc, formula, exerciseId, stringSets[setI], extent === "all" ? -1 : 0, extent) : []),
+    [horizontal, rootPc, formula, exerciseId, stringSets, setI, extent],
   );
-  const windowRange = useMemo(() => (horizontal ? routeWindow(hGroups) : positionWindow), [horizontal, hGroups, positionWindow]);
+  const windowRange = useMemo(
+    () =>
+      horizontal
+        ? routeWindow(hGroups, extent === "all" ? scaleCellsOnStrings(rootPc, formula, stringSets[setI]) : undefined)
+        : positionWindow,
+    [horizontal, hGroups, positionWindow, extent, rootPc, formula, stringSets, setI],
+  );
   const stringSetName = (st: { strings: number[] }) => st.strings.map((s) => nameOf(pcOf(TUNING[s]))).join("·");
 
   const ladder = useMemo(() => positionLadder(rootPc, formula, positionWindow), [rootPc, formula, positionWindow]);
@@ -135,6 +139,18 @@ export default function FingeringScreen() {
     [horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
   );
   const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
+
+  // The group of notes being played (or about to be, during the count-in): ringed on the neck.
+  const groupSize = exercise.offsets.length;
+  const nextCells = useMemo(() => {
+    if (groupSize < 2) return null;
+    const cur = stepIdx !== null ? stepIdx : beat !== null ? 0 : null;
+    if (cur === null) return null;
+    const start = Math.floor(cur / groupSize) * groupSize;
+    const cells = new Set<string>();
+    sequence.slice(start, start + groupSize).forEach((st) => st.loc && cells.add(cellKey(st.loc.string, st.loc.fret)));
+    return cells;
+  }, [groupSize, stepIdx, beat, sequence]);
 
   // Score under the fretboard: portrait always; landscape on request (staff only, to save height).
   const showScore = !isLandscape || settings.showScoreLandscape;
@@ -348,6 +364,7 @@ export default function FingeringScreen() {
         visibleLayers={visibleLayers}
         coloredLayers={colored}
         windowRange={windowRange}
+        nextCells={nextCells}
         labelMode={settings.labelMode}
         showNeutral={false}
         nameOf={nameOf}
@@ -432,13 +449,6 @@ export default function FingeringScreen() {
               <>
                 <SectionLabel>Cordes</SectionLabel>
                 <ChipRow testID="hz-strings">{stringChips}</ChipRow>
-
-                <SectionLabel>Premier accord (degré)</SectionLabel>
-                <ChipRow testID="hz-degree">
-                  {degreeSemis.map((semi, i) => (
-                    <Chip key={i} testID={`hz-degree-${i}`} label={nameOf(pcOf(rootPc + semi))} selected={degI === i} onPress={() => setDegreeIdx(i)} />
-                  ))}
-                </ChipRow>
 
                 <SectionLabel>Étendue</SectionLabel>
                 <ChipRow testID="hz-extent">

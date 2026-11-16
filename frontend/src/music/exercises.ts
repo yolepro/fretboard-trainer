@@ -172,10 +172,11 @@ export function buildHorizontalGroups(
     return out;
   };
   const fretsOf = (i: number) => placeGroup(i);
-  const targetPc = pcOf(rootPc + semis[Math.min(startDegree, semis.length - 1)]);
+  const targetPc = pcOf(rootPc + semis[Math.max(0, Math.min(startDegree, semis.length - 1))]);
   let i0 = -1;
   for (let i = 0; i < ladder.length; i++) {
-    if (pcOf(ladder[i]) === targetPc && fretsOf(i)) {
+    // startDegree < 0: the lowest group on these strings, whatever its first note ("whole neck").
+    if ((startDegree < 0 || pcOf(ladder[i]) === targetPc) && fretsOf(i)) {
       i0 = i;
       break;
     }
@@ -197,8 +198,8 @@ export function buildHorizontalGroups(
 }
 
 /** What the fretboard lights up for a horizontal route: exactly the notes played, no tinted columns. */
-export function routeWindow(groups: PathStep[][]): BoxWindow {
-  const cells = new Set<string>();
+export function routeWindow(groups: PathStep[][], extraCells?: Set<string>): BoxWindow {
+  const cells = new Set<string>(extraCells);
   let min = Infinity;
   let max = -Infinity;
   groups.flat().forEach((st) => {
@@ -208,6 +209,11 @@ export function routeWindow(groups: PathStep[][]): BoxWindow {
     max = Math.max(max, st.loc.fret);
   });
   if (!cells.size) return { min: 0, max: 0, cells, noColumns: true };
+  extraCells?.forEach((k) => {
+    const f = Number(k.split(":")[1]);
+    min = Math.min(min, f);
+    max = Math.max(max, f);
+  });
   return { min, max, cells, noColumns: true };
 }
 
@@ -215,4 +221,12 @@ export function routeWindow(groups: PathStep[][]): BoxWindow {
 export function defaultBpmFor(id: ExerciseId): number {
   const per = (EXERCISES.find((e) => e.id === id) ?? EXERCISES[0]).perBeat;
   return per >= 4 ? 50 : per === 3 ? 60 : 80;
+}
+
+/** Every note of the scale on the given strings, over the whole neck. */
+export function scaleCellsOnStrings(rootPc: number, formula: Formula, set: StringSet): Set<string> {
+  const pcs = new Set(scaleDegreesSemis(formula).map((x) => pcOf(rootPc + x)));
+  const cells = new Set<string>();
+  for (const s of set.strings) for (let f = 0; f <= FRET_COUNT; f++) if (pcs.has(pcOf(TUNING[s] + f))) cells.add(cellKey(s, f));
+  return cells;
 }

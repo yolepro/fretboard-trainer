@@ -50,6 +50,8 @@ type Props = {
   rowH?: number;
   /** Scale position: notes outside it are faded and its frets are highlighted. With `cells`, membership is per note. */
   windowRange?: BoxWindow | null;
+  /** Notes about to be played (the current group): ringed in a second color. */
+  nextCells?: Set<string> | null;
 };
 
 type ColumnProps = {
@@ -67,6 +69,8 @@ type ColumnProps = {
   windowRange: BoxWindow | null;
   /** String of the highlighted note when it is on this fret, otherwise -1. */
   activeString: number;
+  /** Bit s set = the note on string s of this fret is in the group to come. */
+  nextMask: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   styles: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,6 +91,7 @@ const NoteColumn = memo(function NoteColumn({
   onNotePress,
   windowRange,
   activeString,
+  nextMask,
   styles,
   colors,
 }: ColumnProps) {
@@ -104,6 +109,7 @@ const NoteColumn = memo(function NoteColumn({
         const highlighted = !!(iv && key && visibleLayers.has(key) && inOct);
         const faded = highlighted && !inPosition(s);
         const isActive = activeString === s;
+        const isNext = ((nextMask >> s) & 1) === 1;
         const meta = key ? DEGREE_META[key] : null;
         const node = Math.min(NODE, rowH - 2);
         const uniform = !!(coloredLayers && key && !coloredLayers.has(key));
@@ -117,6 +123,7 @@ const NoteColumn = memo(function NoteColumn({
                   styles.node,
                   { backgroundColor: bg, width: node, height: node, borderRadius: node / 2 },
                   key === "root" && !uniform && styles.rootNode,
+                  isNext && !isActive && styles.nextNode,
                   isActive && styles.activeNode,
                   faded && !isActive && styles.faded,
                 ]}
@@ -152,6 +159,7 @@ function FretboardImpl({
   fretScale = 1,
   rowH = 34,
   windowRange = null,
+  nextCells = null,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -177,6 +185,14 @@ function FretboardImpl({
   const scrollRef = useRef<any>(null);
   const scrollX = useRef(0);
   const viewW = useRef(0);
+  const nextMasks = useMemo(() => {
+    const m = new Array(FRETS.length).fill(0);
+    nextCells?.forEach((k) => {
+      const [str, fr] = k.split(":").map(Number);
+      if (fr >= 0 && fr < m.length) m[fr] |= 1 << str;
+    });
+    return m;
+  }, [nextCells]);
   const noColumns = !!windowRange?.noColumns;
   const inColumn = (f: number) => !windowRange || (!noColumns && f >= windowRange.min && f <= windowRange.max);
 
@@ -284,6 +300,7 @@ function FretboardImpl({
                 nameOf={nameOf}
                 onNotePress={onNotePress}
                 windowRange={windowRange}
+                nextMask={nextMasks[f]}
                 activeString={activeMidi && activeMidi.fret === f ? activeMidi.string : -1}
                 styles={styles}
                 colors={colors}
@@ -343,6 +360,7 @@ const useStyles = makeStyles((c) => ({
     justifyContent: "center",
   },
   rootNode: { borderWidth: 2, borderColor: c.onSurface },
+  nextNode: { borderWidth: 3, borderColor: "#FFB020", transform: [{ scale: 1.12 }] },
   activeNode: { transform: [{ scale: 1.2 }], borderWidth: 2, borderColor: c.surfaceInverse },
   nodeText: { fontFamily: fonts.display, fontSize: 10, fontWeight: "700" },
   neutral: {
