@@ -2,7 +2,7 @@
   "expo": {
     "name": "FretStudio",
     "slug": "frontend",
-    "version": "1.28.6",
+    "version": "1.28.7",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",

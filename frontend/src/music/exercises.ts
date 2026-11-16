@@ -32,6 +32,25 @@ export function exerciseAllowed(id: ExerciseId, formula: Formula): boolean {
  * scale note that is missing (e.g. a position cut by the end of the neck), so consecutive entries are always
  * consecutive degrees of the scale.
  */
+/**
+ * Every note of the formula lit in a window, from the lowest to the highest (one entry per pitch). Unlike the ladder
+ * below, a missing note in the middle doesn't stop the list: used for chords, whose positions can have gaps.
+ */
+export function windowNotes(rootPc: number, formula: Formula, window: BoxWindow): PathStep[] {
+  const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
+  const byPitch = new Map<number, FretLoc>();
+  TUNING.forEach((open, string) => {
+    for (let fret = Math.max(0, window.min); fret <= Math.min(FRET_COUNT, window.max); fret++) {
+      const midi = open + fret;
+      if (!pcs.has(pcOf(midi))) continue;
+      if (window.cells && !window.cells.has(cellKey(string, fret))) continue;
+      const prev = byPitch.get(midi);
+      if (!prev || string > prev.string) byPitch.set(midi, { string, fret });
+    }
+  });
+  return [...byPitch.entries()].sort((a, b) => a[0] - b[0]).map(([midi, loc]) => ({ midi, loc }));
+}
+
 export function positionLadder(rootPc: number, formula: Formula, window: BoxWindow): PathStep[] {
   const pcs = new Set(formula.intervals.map((i) => pcOf(rootPc + i.semi)));
   const byPitch = new Map<number, FretLoc>();

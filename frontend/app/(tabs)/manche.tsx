@@ -13,7 +13,7 @@ import { runSequence } from "@/src/audio/sequencer";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { TempoButton } from "@/src/components/TempoSheet";
-import { positionLadder } from "@/src/music/exercises";
+import { positionLadder, windowNotes } from "@/src/music/exercises";
 import {
   CHORDS,
   DEGREE_META,
@@ -113,8 +113,9 @@ export default function FretboardScreen() {
   // With a scale position selected: every note of the position, from its lowest note (or lowest root) upward.
   // Otherwise: from the root up to the octave.
   const path = useMemo(() => {
-    if (mode === "scale" && windowRange) {
-      let ladder = positionLadder(rootPc, formula, windowRange);
+    if (windowRange) {
+      // A position is selected: every note of the position, scales (contiguous ladder) and chords (all chord tones).
+      let ladder = mode === "scale" ? positionLadder(rootPc, formula, windowRange) : windowNotes(rootPc, formula, windowRange);
       if (startOnRoot) {
         const r = ladder.findIndex((st) => pcOf(st.midi) === pcOf(rootPc));
         if (r > 0) ladder = ladder.slice(r);
@@ -388,7 +389,7 @@ export default function FretboardScreen() {
         }
         extra={
           <>
-            {mode === "scale" ? (
+            {windowRange ? (
               <>
                 <SectionLabel>{tr("Écoute et partition : départ")}</SectionLabel>
                 <ChipRow testID="manche-start-selector">
