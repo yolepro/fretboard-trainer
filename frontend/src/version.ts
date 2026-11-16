@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.28.2 — Manche : mention « Touchez une note pour l’écouter » supprimée
 // 1.28.1 — Doigté : mention « exercice · nombre de notes » supprimée de la ligne d’information
 // 1.28.0 — bouton rond Tempo dans l’en-tête : feuille « Tempo et lecture » (tempo, raccourcis, débit, boucle, métronome) ; menu en bouton rond sur téléphone
 // 1.27.3 — en-tête : bouton Écouter / Jouer sans texte sur téléphone, bandeau orange « FRETSTUDIO · … » supprimé
@@ -60,4 +61,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.28.1";
+export const APP_VERSION = "1.28.2";

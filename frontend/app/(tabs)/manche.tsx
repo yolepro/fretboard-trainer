@@ -269,7 +269,7 @@ export default function FretboardScreen() {
       </Text>
     </>
   ) : (
-    <Text style={styles.infoMeta}>{beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: 4 }) : tr("Touchez une note pour l’écouter")}</Text>
+    <Text style={styles.infoMeta}>{beat !== null ? tr("Décompte {b}/{n}…", { b: beat, n: 4 }) : ""}</Text>
   );
 
   return (
