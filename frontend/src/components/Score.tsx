@@ -18,13 +18,18 @@ export function useScore(
   formula: Formula,
   showTab: boolean,
   slow = false,
+  tempoBpm: number | null = null,
+  tempoHalf = false,
 ): { model: ScoreModel; layout: ScoreLayout } {
   const { settings } = useSettings();
   const model = useMemo(
     () => buildScoreModel({ steps, kind, perBeat, slow, rootPc, formula, accidental: settings.accidental, notation: settings.notation }),
     [steps, kind, perBeat, slow, rootPc, formula, settings.accidental, settings.notation],
   );
-  const layout = useMemo(() => layoutScore(model, { showTab }), [model, showTab]);
+  const layout = useMemo(
+    () => layoutScore(model, { showTab, tempo: tempoBpm ? { bpm: tempoBpm, half: tempoHalf } : null }),
+    [model, showTab, tempoBpm, tempoHalf],
+  );
   return { model, layout };
 }
 

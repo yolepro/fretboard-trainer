@@ -36,7 +36,9 @@ const FLAT_STEPS = [34, 37, 33, 36, 32, 35, 31]; // B4 E5 A4 D5 G4 C5 F4
 
 const noteWidth = (perBeat: number) => (perBeat >= 4 ? 22 : perBeat === 3 ? 27 : 30);
 
-export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): ScoreLayout {
+export type ScoreTempo = { bpm: number; half: boolean };
+
+export function layoutScore(model: ScoreModel, opts: { showTab: boolean; tempo?: ScoreTempo | null }): ScoreLayout {
   const { events, groups, perBeat, keySig, slow, groupsPerBar, timeSig } = model;
   // Slow pace: quarter notes (no beam), quarter-note triplets (no beam, bracket), eighth notes (one beam).
   const beams = slow ? (perBeat >= 4 ? 1 : 0) : perBeat >= 4 ? 2 : 1;
@@ -184,7 +186,7 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
     else if (s.t === "text") grow(s.y - 14, s.y + 4);
   });
   // No chord / interval symbol above the staff (plain scales, listening): don't reserve the row.
-  const CHORD_H = groups.some((g) => g.label) ? 22 : 2;
+  const CHORD_H = groups.some((g) => g.label) || opts.tempo ? 22 : 2;
   const y0 = CHORD_H + 6 - minY; // y of the staff bottom line in the final picture
   const staffBottom = y0 + maxY + 4;
   const tabTop = staffBottom + 8;
@@ -200,6 +202,14 @@ export function layoutScore(model: ScoreModel, opts: { showTab: boolean }): Scor
       default: return s;
     }
   });
+
+  // tempo mark above the clef: the pulse note (quarter or half) = BPM
+  if (opts.tempo) {
+    if (opts.tempo.half) shapes.push({ t: "path", d: "M -3.8,0.6 A 4,2.9 -20 1 0 3.8,-0.6 A 4,2.9 -20 1 0 -3.8,0.6", tx: 11, ty: 13, c: "ink", w: 1.4 });
+    else shapes.push({ t: "ellipse", cx: 11, cy: 13, rx: 4.2, ry: 3.1, rot: -20, c: "ink" });
+    shapes.push({ t: "line", x1: 14.9, y1: 12, x2: 14.9, y2: 0.5, w: 1.2, c: "ink" });
+    shapes.push({ t: "text", x: 20, y: 16.5, s: `= ${opts.tempo.bpm}`, size: 12, c: "ink", bold: true });
+  }
 
   // chord / interval labels
   groups.forEach((g) => {

@@ -137,8 +137,8 @@ export default function FretboardScreen() {
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * 22 - 6;
-  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 168);
-  const { layout } = useScore(path, "path", 2, rootPc, formula, tabOn);
+  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 188);
+  const { layout } = useScore(path, "path", 2, rootPc, formula, tabOn, false, bpm);
   const rowH = isLandscape
     ? Math.max(
         showScore ? 22 : 26,

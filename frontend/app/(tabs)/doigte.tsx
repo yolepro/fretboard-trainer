@@ -157,8 +157,8 @@ export default function FingeringScreen() {
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
-  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= (exercise.offsets.length > 2 ? 214 : 168));
-  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn, slow);
+  const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 214);
+  const { layout } = useScore(sequence, exerciseId, exercise.perBeat, rootPc, formula, tabOn, slow, bpm, pulseOf(exerciseId, slow).half);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
