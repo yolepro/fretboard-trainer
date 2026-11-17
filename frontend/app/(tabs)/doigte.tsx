@@ -3,7 +3,8 @@ import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
-import { KeyWheel } from "@/src/components/KeyWheel";
+import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
+import { shortName } from "@/src/music/shortNames";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { PositionChips } from "@/src/components/PositionChips";
@@ -210,13 +211,13 @@ export default function FingeringScreen() {
   // Score under the fretboard: portrait always; landscape on request (staff only, to save height).
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
-  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
+  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 214);
   const { layout } = useScore(sequence, pairs ? "triads" : arp ? "path" : exerciseId, exercise.perBeat, rootPc, scoreFormula, tabOn, slow, bpm, pulseOf(rhythmId, slow).half);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
-        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
+        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
       )
     : 34;
 
@@ -403,18 +404,8 @@ export default function FingeringScreen() {
     <Chip key={st.id} testID={`pair-style-${st.id}`} label={tr(st.name)} selected={pairStyle === st.id} onPress={() => setPairStyle(st.id)} />
   ));
 
-  const infoContent = active ? (
-    <>
-      <Text style={styles.infoNote}>
-        {nameOf(pcOf(active.midi))}
-        {octaveOf(active.midi)}
-      </Text>
-      <Text style={styles.infoMeta} numberOfLines={1}>
-        {tr("Corde {s} · Case {f}", { s: active.string + 1, f: active.fret })}
-        {stepIdx !== null ? tr(" · Note {i}/{n}", { i: stepIdx + 1, n: sequence.length }) : ""}
-      </Text>
-    </>
-  ) : empty ? (
+  // The played / touched note isn't written out (it goes too fast during the sequence): only a route problem is.
+  const infoContent = empty ? (
     <Text style={styles.infoMeta} numberOfLines={1}>
       {horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")}
     </Text>
@@ -433,6 +424,19 @@ export default function FingeringScreen() {
         ? tr("3 sons sur 2 cordes")
         : tr("Arpèges 4 sons")
       : tr(scaleExercise.name);
+  // Landscape: short labels, so that the whole header fits on one row next to the tab bar.
+  const exerciseShort = pairs ? tr("Paires") : arp ? (twoStrings ? tr("Triades 2 cordes") : tr("Arpèges")) : tr(scaleExercise.name);
+  const whereShort = twoStrings
+    ? withSeventh
+      ? tr("2 cordes · 7e")
+      : tr("2 cordes")
+    : arp
+      ? horizontal
+        ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}`
+        : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })
+      : horizontal
+        ? stringSetName(stringSets[setI])
+        : `Pos. ${pos + 1} · ${variant + 1}/2`;
   const modeLabel = !pairs ? (horizontal ? tr("Horizontal") : tr("Sur une position")) : null;
   const keyLabel = `${nameOf(rootPc)}${arp ? arpSymbol : ""}`;
   const paceNotes = PACE_NOTES[exercise.perBeat] ?? ["noires", "croches"];
@@ -627,25 +631,63 @@ export default function FingeringScreen() {
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
-      <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }, isLandscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
-        {/* The title is the exercise: touching it changes the exercise (until the exercise library comes). */}
-        <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [isLandscape ? styles.headerTextCompact : styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
-          {!isLandscape ? <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text> : null}
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={1}>
-              {exerciseTitle}
+      {isLandscape ? (
+        // Landscape: one row aligned with the tab bar — exercise, key, scale, position… then tempo + play.
+        <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
+          <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.titleRow, pressed && styles.pressed]} accessibilityRole="button">
+            <Text style={[styles.title, styles.titleCompact]} testID="fingering-title" numberOfLines={1}>
+              {exerciseShort}
             </Text>
-            <CaretDown size={isLandscape ? 14 : 18} color={colors.onSurfaceTertiary} weight="bold" />
-          </View>
-          {pairs && !isLandscape ? <Text style={styles.titleSub}>{tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) })}</Text> : null}
-        </Pressable>
-        {/* Landscape only: the details of the touched / played note stay in the header. */}
-        {isLandscape ? (
-          <View style={styles.infoInline} testID="fingering-info-inline">
+            <CaretDown size={14} color={colors.onSurfaceTertiary} weight="bold" />
+          </Pressable>
+          <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
+          <View style={styles.headerPills}>
+            <PillRow inset={false}>
+              {pairs ? null : arp ? (
+                <Pill testID="pill-arp-type" label={shortName(arpFormula(arpType))} onPress={() => setSheet("arpType")} />
+              ) : (
+                <Pill testID="pill-scale" label={shortName(formula)} onPress={() => setSheet("scale")} />
+              )}
+              <Pill testID="pill-where" label={whereShort} onPress={() => setSheet("where")} />
+              {pairs ? <Pill testID="pill-variant" label={pairStyle === "alt" ? tr("Alterné") : pairStyle === "up" ? "Up" : "Down"} onPress={() => setSheet("variant")} /> : null}
+            </PillRow>
             {infoContent}
           </View>
-        ) : null}
-      </View>
+          <View style={styles.transportPill} testID="transport-pill">
+            <TempoButton
+              count={beat}
+              bpm={bpm}
+              min={MIN_BPM}
+              max={maxBpm}
+              half={pulse.half}
+              defaultBpm={defaultBpmFor(rhythmId, slow)}
+              onBpm={(v) => commitBpm(String(v))}
+              pace={{ slow, onChange: setSlow, slowLabel: `${tr("Lent")} · ${tr(paceNotes[0])}`, normalLabel: `${tr("Normal")} · ${tr(paceNotes[1])}` }}
+              loop={loop}
+              onLoop={setLoop}
+              metronome={metronome}
+              onMetronome={setMetronome}
+            />
+            <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playRound, pressed && styles.pressed, empty && styles.dim]} accessibilityLabel={playing ? tr("Stop") : tr("Jouer")}>
+              {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+          {/* The title is the exercise: touching it changes the exercise (until the exercise library comes). */}
+          <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
+            <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title} testID="fingering-title" numberOfLines={1}>
+                {exerciseTitle}
+              </Text>
+              <CaretDown size={18} color={colors.onSurfaceTertiary} weight="bold" />
+            </View>
+            {pairs ? <Text style={styles.titleSub}>{tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) })}</Text> : null}
+          </Pressable>
+        </View>
+      )}
 
       {!isLandscape ? <PillRow testID="fingering-pills">{pills}</PillRow> : null}
 
@@ -666,25 +708,21 @@ export default function FingeringScreen() {
 
       {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapNote} testID="fingering-score" /> : null}
 
-      {isLandscape ? (
-        // Landscape: one row — the pills (they scroll) and the playback controls.
-        <View style={styles.landscapeRow} testID="fingering-landscape-row">
-          <PillRow inset={false}>{pills}</PillRow>
-          {playbackBar}
-        </View>
-      ) : (
+      {!isLandscape ? (
         <View style={[styles.bottom, { paddingBottom: bottomChrome + spacing.sm }]}>
           <View style={styles.bottomRow} testID="fingering-info">
             {infoContent}
           </View>
           {playbackBar}
         </View>
-      )}
+      ) : null}
 
       <KeyWheel visible={keyOpen} rootPc={rootPc} nameOf={nameOf} onClose={() => setKeyOpen(false)} onChange={setRootPc} />
 
       <Sheet visible={sheet === "exercise"} onClose={closeSheet} title={tr("Exercice")} testID="exercise-sheet" fullHeight>
         {exerciseSheet}
+        {/* Landscape: no "Affichage" pill, its settings are here. */}
+        {isLandscape ? displaySheet : null}
       </Sheet>
       <ScalePicker
         visible={sheet === "scale"}
@@ -730,6 +768,11 @@ const useStyles = makeStyles((c) => ({
   segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   segTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
   screen: { flex: 1, backgroundColor: c.surface },
+  headerLandscape: { gap: spacing.sm, paddingBottom: spacing.xs, minHeight: 48 },
+  headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  // Tempo + play grouped in one pill (landscape header).
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
+  playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   // Playback bar: loop, metronome, tempo, play — the same in portrait (bottom) and landscape (end of the pill row).

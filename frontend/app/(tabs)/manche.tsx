@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { shortName } from "@/src/music/shortNames";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { KeyButton } from "@/src/components/KeyWheel";
@@ -255,34 +256,8 @@ export default function FretboardScreen() {
     [playing, path, settings.volume],
   );
 
-  const activeIv = active ? degreeMap.get(pcOf(active.midi)) : undefined;
-  const activeKey = activeIv ? degreeKeyFromNum(activeIv.num) : null;
   const title = `${nameOf(rootPc)}${mode === "chord" ? formula.symbol : ""}`;
 
-  const infoContent = active ? (
-    <>
-      <View
-        style={[
-          styles.infoDot,
-          {
-            backgroundColor: !activeKey
-              ? colors.degreeNeutral
-              : coloredLayers && !coloredLayers.has(activeKey)
-                ? colors.degreeUniform
-                : colors[DEGREE_META[activeKey].color],
-          },
-        ]}
-      />
-      <Text style={styles.infoNote} testID="active-note-name">
-        {nameOf(pcOf(active.midi))}
-        {octaveOf(active.midi)}
-      </Text>
-      <Text style={styles.infoMeta} numberOfLines={1}>
-        {activeIv ? `${tr(DEGREE_META[activeKey!].label)} (${activeIv.label})` : tr("Hors gamme")} · {tr("Corde {s} · Case {f}", { s: active.string + 1, f: active.fret })} ·{" "}
-        {midiToFreq(active.midi, settings.a4).toFixed(1)} Hz
-      </Text>
-    </>
-  ) : null;
 
 
   return (
@@ -291,17 +266,12 @@ export default function FretboardScreen() {
       <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }, isLandscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
+            {title} <Text style={styles.titleSub}>{isLandscape ? shortName(formula) : tr(formula.name)}</Text>
           </Text>
         </View>
-        {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
-        {isLandscape ? (
-          <View style={styles.infoInline} testID="note-info-inline">
-            {infoContent}
-          </View>
-        ) : null}
+        {/* Spacer: the played / touched note isn't written out anymore (it goes too fast). */}
+        {isLandscape ? <View style={styles.infoInline} /> : null}
         <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
         {compactHeader ? (
           <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={mode === "scale" ? tr("Gamme") : tr("Accord")}>
             <List size={20} color={colors.onSurface} weight="bold" />
@@ -312,15 +282,19 @@ export default function FretboardScreen() {
             <CaretDown size={16} color={colors.onSurface} weight="bold" />
           </Pressable>
         )}
-        <Pressable
-          testID="play-formula-button"
-          onPress={playFormula}
-          style={({ pressed }) => [styles.playBtn, compactHeader && styles.playBtnRound, pressed && styles.pressed]}
-        >
-          {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
-          {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
-        </Pressable>
+        {/* Tempo + play grouped in one pill. */}
+        <View style={styles.transportPill} testID="transport-pill">
+          <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
+          <Pressable
+            testID="play-formula-button"
+            onPress={playFormula}
+            style={({ pressed }) => [styles.playBtn, (compactHeader || isLandscape) && styles.playBtnRound, pressed && styles.pressed]}
+          >
+            {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
+            {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
+            {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
+          </Pressable>
+        </View>
       </View>
 
       <Fretboard
@@ -426,18 +400,13 @@ export default function FretboardScreen() {
         </View>
       ) : null}
 
-      {/* Details of the touched / played note: at the very bottom, in portrait (where there is room). */}
-      {!isLandscape && infoContent ? (
-        <View style={[styles.infoBottom, { paddingBottom: bottomChrome + spacing.sm }]} testID="note-info-bar">
-          {infoContent}
-        </View>
-      ) : null}
     </View>
   );
 }
 
 const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
