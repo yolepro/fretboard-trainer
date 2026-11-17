@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.34.4 (refonte) — rangées de sélecteurs qui défilent : un « > » discret à droite tant qu’il reste des choix cachés (non cliquable, disparaît en fin de rangée)
 // 1.34.3 (refonte) — Explorer portrait : le titre n’affiche plus la tonalité et la gamme / l’accord (déjà sur les pastilles)
 // 1.34.2 (refonte) — Explorer : sélecteur Gammes / Accords retiré de l’écran (il reste dans le menu de la pastille Gamme / Accord)
 // 1.34.1 (refonte) — portrait : les pastilles ne sont plus écrasées quand l’écran est plein ; Explorer : partition, couleurs et intervalles défilent entre le manche et la barre de lecture
@@ -87,4 +88,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.34.3 · refonte";
+export const APP_VERSION = "1.34.4 · refonte";

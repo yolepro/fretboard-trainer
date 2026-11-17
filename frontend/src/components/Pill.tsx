@@ -1,5 +1,7 @@
 import React from "react";
-import { Pressable, ScrollView, Text } from "react-native";
+import { Pressable, Text } from "react-native";
+
+import { HintScrollRow } from "@/src/components/ScrollHint";
 import { CaretDown } from "phosphor-react-native";
 
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
@@ -25,14 +27,14 @@ export function Pill({ label, onPress, accent = false, testID }: { label: string
 export function PillRow({ children, testID, inset = true }: { children: React.ReactNode; testID?: string; inset?: boolean }) {
   const styles = useStyles();
   return (
-    <ScrollView testID={testID} horizontal showsHorizontalScrollIndicator={false} style={[styles.row, inset && styles.rowFixed]} contentContainerStyle={[styles.rowContent, inset && styles.rowInset]}>
+    <HintScrollRow testID={testID} style={[styles.row, inset && styles.rowFixed]} contentContainerStyle={[styles.rowContent, inset && styles.rowInset]}>
       {children}
-    </ScrollView>
+    </HintScrollRow>
   );
 }
 
 const useStyles = makeStyles((c) => ({
-  row: { flexGrow: 0, flexShrink: 1 },
+  row: { flexGrow: 0, flexShrink: 1, minWidth: 0 },
   // Under a header (column layout): never squeezed to nothing when the screen is full.
   rowFixed: { flexShrink: 0, minHeight: 44 },
   rowContent: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xs },
