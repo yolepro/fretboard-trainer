@@ -2,6 +2,7 @@ import React from "react";
 import { Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useRouter } from "expo-router";
 
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
@@ -18,15 +19,21 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const router = useRouter();
 
   const items = state.routes.map((route, index) => {
     const { options } = descriptors[route.key];
     const focused = state.index === index;
     const color = focused ? colors.brandPrimary : colors.muted;
     const label = typeof options.title === "string" ? options.title : route.name;
+    // Expo Router doesn't always hand the tab bar a `navigation` object (web): fall back on the router, by path.
+    const nav = (navigation ?? (descriptors[route.key] as { navigation?: typeof navigation }).navigation) as typeof navigation | undefined;
     const onPress = () => {
-      const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-      if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+      if (focused) return;
+      const event = nav?.emit?.({ type: "tabPress", target: route.key, canPreventDefault: true });
+      if (event?.defaultPrevented) return;
+      if (nav?.navigate) nav.navigate(route.name, route.params);
+      else router.navigate((route.name === "index" ? "/" : `/${route.name}`) as never);
     };
     const icon = options.tabBarIcon?.({ focused, color, size: landscape ? 20 : 24 });
     return { key: route.key, label, color, focused, onPress, icon, testID: options.tabBarButtonTestID };
