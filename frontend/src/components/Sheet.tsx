@@ -17,9 +17,11 @@ type Props = {
   title: string;
   children: ReactNode;
   testID?: string;
+  /** Keep the sheet at its full height whatever its content: switching tabs inside it doesn't move its top. */
+  fullHeight?: boolean;
 };
 
-export function Sheet({ visible, onClose, title, children, testID }: Props) {
+export function Sheet({ visible, onClose, title, children, testID, fullHeight = false }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -28,7 +30,7 @@ export function Sheet({ visible, onClose, title, children, testID }: Props) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} supportedOrientations={["portrait", "landscape"]}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTap} onPress={onClose} testID={`${testID ?? "sheet"}-backdrop`} />
-        <View testID={testID} style={[styles.sheet, { maxHeight: height * 0.88, paddingLeft: insets.left, paddingRight: insets.right }]}>
+        <View testID={testID} style={[styles.sheet, fullHeight ? { height: height * 0.88 } : null, { maxHeight: height * 0.88, paddingLeft: insets.left, paddingRight: insets.right }]}>
           {Platform.OS !== "android" ? <BlurView intensity={30} tint="dark" style={styles.fill} /> : null}
           <View style={styles.tint} />
           <View style={styles.handle} />

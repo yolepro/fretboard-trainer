@@ -82,7 +82,7 @@ export function ScalePicker({
   const groups = groupBy(mode === "scale" ? SCALES : CHORDS);
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={title ?? (mode === "scale" ? tr("Choisir une gamme") : tr("Choisir un accord"))} testID="scale-picker">
+    <Sheet visible={visible} onClose={onClose} title={title ?? (mode === "scale" ? tr("Choisir une gamme") : tr("Choisir un accord"))} testID="scale-picker" fullHeight>
           {top}
           {scalesOnly ? null : (
             <View style={styles.segment}>

@@ -411,11 +411,11 @@ export default function FingeringScreen() {
 
       {pairs ? (
         <>
+          <SectionLabel>{tr("Variante")}</SectionLabel>
+          <ChipRow testID="pair-style-selector">{pairStyleChips}</ChipRow>
           <Text style={styles.hint}>
             {tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })}
           </Text>
-          <SectionLabel>{tr("Variante")}</SectionLabel>
-          <ChipRow testID="pair-style-selector">{pairStyleChips}</ChipRow>
         </>
       ) : arp ? (
         <>
