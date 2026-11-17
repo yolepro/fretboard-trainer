@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.31.3 (refonte) — paysage : barre d’onglets compacte en haut à droite (icônes), toute la hauteur pour le manche ; barre d’onglets maison partout (plus la barre native iOS 26)
 // 1.31.2 (refonte) — reprend la 1.30.5 de main : backend FastAPI / MongoDB supprimés, app 100 % locale
 // 1.31.1 (refonte) — feuille Tempo : − / valeur / + tiennent sur petit écran, valeur centrée
 // 1.31.0 (branche refonte-ecran-exercice) — onglets Explorer / S’exercer ; S’exercer : titre = exercice, pastilles (tonalité, gamme, position, variante, affichage) qui ouvrent chacune leur réglage, barre de lecture en bas (boucle, métronome, tempo, ▶) ; en paysage pastilles + lecture sur une seule rangée
@@ -79,4 +80,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.31.2 · refonte";
+export const APP_VERSION = "1.31.3 · refonte";

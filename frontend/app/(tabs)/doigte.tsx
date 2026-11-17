@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
@@ -112,7 +113,8 @@ export default function FingeringScreen() {
   // Phones in portrait: the menu button is a round icon, the play button has no label.
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
-  const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
+  // Landscape: the tab bar sits at the top right, over the header (no bottom bar).
+  const tabBarH = usesNativeTabs || width > height ? 0 : 49 + insets.bottom;
 
   useEffect(() => {
     initAudio();
@@ -625,7 +627,7 @@ export default function FingeringScreen() {
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
-      <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
+      <View style={[styles.header, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }, isLandscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         {/* The title is the exercise: touching it changes the exercise (until the exercise library comes). */}
         <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [isLandscape ? styles.headerTextCompact : styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
           {!isLandscape ? <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text> : null}

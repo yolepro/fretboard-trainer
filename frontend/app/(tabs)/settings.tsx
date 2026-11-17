@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
+import { Pressable, ScrollView, Switch, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Eye,
@@ -71,6 +72,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const styles = useStyles();
   const { colors } = useTheme();
@@ -90,7 +92,7 @@ export default function SettingsScreen() {
   return (
     <View style={styles.screen} testID="settings-screen">
       <StudioBackground />
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }, width > height && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         <Text style={styles.title}>{tr("Réglages")}</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl }} showsVerticalScrollIndicator={false}>

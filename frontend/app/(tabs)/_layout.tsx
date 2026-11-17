@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { Ear, GearSix, Guitar, House, MusicNotes } from "phosphor-react-native";
 
 import { usesNativeTabs } from "@/src/navigation";
+import { AppTabBar } from "@/src/components/AppTabBar";
 import { fonts, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
@@ -41,6 +42,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <AppTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.brandPrimary,

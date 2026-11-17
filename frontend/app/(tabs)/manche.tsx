@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
@@ -72,7 +73,8 @@ export default function FretboardScreen() {
   const compactHeader = !isLandscape && width < 480;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
-  const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
+  // Landscape: the tab bar sits at the top right, over the header (no bottom bar).
+  const tabBarH = usesNativeTabs || width > height ? 0 : 49 + insets.bottom;
   useEffect(() => {
     initAudio();
     preloadClicks();
@@ -286,7 +288,7 @@ export default function FretboardScreen() {
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fretboard-screen">
       <StudioBackground />
-      <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
+      <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }, isLandscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
             {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
