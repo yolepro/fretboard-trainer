@@ -21,11 +21,11 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="manche">
           <NativeTabs.Trigger.Icon sf="guitars.fill" />
-          <NativeTabs.Trigger.Label>{tr("Manche")}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr("Explorer")}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="doigte">
           <NativeTabs.Trigger.Icon sf="music.note.list" />
-          <NativeTabs.Trigger.Label>{tr("Doigté")}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr("S’exercer")}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="ear">
           <NativeTabs.Trigger.Icon sf="ear.fill" />
@@ -65,7 +65,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="manche"
         options={{
-          title: tr("Manche"),
+          title: tr("Explorer"),
           tabBarButtonTestID: "tab-fretboard",
           tabBarIcon: ({ color, focused }) => <Guitar color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
         }}
@@ -73,7 +73,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="doigte"
         options={{
-          title: tr("Doigté"),
+          title: tr("S’exercer"),
           tabBarButtonTestID: "tab-fingering",
           tabBarIcon: ({ color, focused }) => <MusicNotes color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
         }}

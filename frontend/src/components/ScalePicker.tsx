@@ -41,6 +41,8 @@ type Props = {
   labelExtra?: ReactNode;
   /** Hide the list of scales / chords (a section that only needs the other filters). */
   hideList?: boolean;
+  /** Hide the "Étiquettes" row (shown elsewhere). */
+  hideLabels?: boolean;
 };
 
 function groupBy(list: Formula[]) {
@@ -76,6 +78,7 @@ export function ScalePicker({
   extra,
   labelExtra,
   hideList = false,
+  hideLabels = false,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -103,12 +106,16 @@ export function ScalePicker({
 
           {extra}
 
+          {hideLabels ? null : (
+            <>
           <SectionLabel>{tr("Étiquettes")}</SectionLabel>
           <ChipRow testID="picker-label-selector">
             <Chip testID="picker-label-note" label={tr("Noms des notes")} selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
             <Chip testID="picker-label-degree" label={tr("Degrés")} selected={labelMode === "degree"} onPress={() => onLabelModeChange("degree")} />
             {labelExtra}
           </ChipRow>
+            </>
+          )}
 
 
           <View style={styles.listContent}>

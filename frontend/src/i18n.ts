@@ -28,6 +28,12 @@ const EN: Record<string, string> = {
   Manche: "Fretboard",
   "Doigté": "Fingering",
   Oreille: "Ear",
+  Explorer: "Explore",
+  "S’exercer": "Practice",
+  Affichage: "Display",
+  "Partition en paysage": "Score in landscape",
+  "Affichée": "Shown",
+  "Masquée": "Hidden",
   "Réglages": "Settings",
   "FRETSTUDIO · DOIGTÉ": "FRETSTUDIO · FINGERING",
 

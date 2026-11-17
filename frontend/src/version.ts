@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.31.0 (branche refonte-ecran-exercice) — onglets Explorer / S’exercer ; S’exercer : titre = exercice, pastilles (tonalité, gamme, position, variante, affichage) qui ouvrent chacune leur réglage, barre de lecture en bas (boucle, métronome, tempo, ▶) ; en paysage pastilles + lecture sur une seule rangée
 // 1.30.4 — menus : même transparence que la rosace (80 %, sans flou)
 // 1.30.3 — menu Exercice : hauteur fixe (le haut du menu ne bouge plus entre Gammes / Arpèges / Paires de triades), rubriques des paires dans le même ordre
 // 1.30.2 — popups de réglage unifiés (même cadre, en-tête, marges et ordre des rubriques) ; cadre en transparence (flou sur iOS / web)
@@ -75,4 +76,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.30.4";
+export const APP_VERSION = "1.31.0 · refonte";
