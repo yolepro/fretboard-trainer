@@ -123,3 +123,60 @@ export function arpWindow(notes: ArpNote[], noColumns: boolean): BoxWindow {
   if (!cells.size) return { min: 0, max: 0, cells, noColumns: true };
   return { min, max, cells, noColumns };
 }
+
+/**
+ * "3 sons sur 2 cordes" (horizontal): the triad of the chord on pairs of strings — the root on the low string, the
+ * third and fifth on the next one — repeated on Mi-La, Ré-Sol, then Si-Mi, an octave higher each time (the same
+ * shape moving up the neck). With `withSeventh`, the 7th of the chord (∆: major 7th, others: minor 7th) comes first
+ * on the low string, just under the root. Returns one group per pair of strings (3 or 4 notes), lowest first;
+ * the route starts on the lowest root of the low E string where the 3 pairs fit on the neck.
+ */
+export function arpTwoStringGroups(type: ArpTypeId, rootPc: number, withSeventh: boolean): ArpNote[][] {
+  const f = arpFormula(type);
+  const semi = (num: number) => f.intervals.find((i) => i.num === num)!.semi;
+  const third = semi(3);
+  const fifth = semi(5);
+  const seventh = semi(7);
+  const pairs: [number, number][] = [
+    [5, 4],
+    [3, 2],
+    [1, 0],
+  ];
+  const build = (rootMidi: number): ArpNote[][] | null => {
+    const groups: ArpNote[][] = [];
+    for (let k = 0; k < pairs.length; k++) {
+      const [lo, hi] = pairs[k];
+      const r = rootMidi + 12 * k;
+      const notes: { midi: number; string: number; root: boolean }[] = [
+        ...(withSeventh ? [{ midi: r - 12 + seventh, string: lo, root: false }] : []),
+        { midi: r, string: lo, root: true },
+        { midi: r + third, string: hi, root: false },
+        { midi: r + fifth, string: hi, root: false },
+      ];
+      const g: ArpNote[] = [];
+      for (const n of notes) {
+        const fret = n.midi - TUNING[n.string];
+        if (fret < 0 || fret > FRET_COUNT) return null;
+        g.push({ midi: n.midi, loc: { string: n.string, fret }, root: n.root });
+      }
+      groups.push(g);
+    }
+    return groups;
+  };
+  for (let fret = 0; fret <= FRET_COUNT; fret++) {
+    const m = TUNING[5] + fret;
+    if (pcOf(m) !== pcOf(rootPc)) continue;
+    const g = build(m);
+    if (g) return g;
+  }
+  return [];
+}
+
+/** Up through the groups, then back down: the top group once, each lower group played backwards (aligned on beats). */
+export function arpGroupsUpDown(groups: ArpNote[][]): ArpNote[] {
+  const down = groups
+    .slice(0, -1)
+    .reverse()
+    .map((g) => [...g].reverse());
+  return [...groups, ...down].flat();
+}
