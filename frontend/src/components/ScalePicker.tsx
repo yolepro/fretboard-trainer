@@ -1,7 +1,8 @@
 import React, { type ReactNode } from "react";
-import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Check, X } from "phosphor-react-native";
+import { Pressable, Text, View } from "react-native";
+import { Check } from "phosphor-react-native";
+
+import { Sheet } from "@/src/components/Sheet";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { PositionChips } from "@/src/components/PositionChips";
@@ -78,37 +79,10 @@ export function ScalePicker({
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
   const groups = groupBy(mode === "scale" ? SCALES : CHORDS);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} supportedOrientations={["portrait", "landscape"]}>
-      <View style={styles.backdrop}>
-        <Pressable style={styles.backdropTap} onPress={onClose} testID="scale-picker-backdrop" />
-        <View
-          testID="scale-picker-sheet"
-          style={[
-            styles.sheet,
-            { maxHeight: height * 0.88, paddingLeft: insets.left, paddingRight: insets.right },
-          ]}
-        >
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>{title ?? (mode === "scale" ? tr("Choisir une gamme") : tr("Choisir un accord"))}</Text>
-            <Pressable testID="scale-picker-close" onPress={onClose} style={styles.closeBtn} hitSlop={8}>
-              <X size={20} color={colors.onSurface} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            testID="scale-picker-scroll"
-            style={styles.list}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.lg }]}
-            showsVerticalScrollIndicator
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-          >
+    <Sheet visible={visible} onClose={onClose} title={title ?? (mode === "scale" ? tr("Choisir une gamme") : tr("Choisir un accord"))} testID="scale-picker">
           {top}
           {scalesOnly ? null : (
             <View style={styles.segment}>
@@ -127,6 +101,8 @@ export function ScalePicker({
             </>
           ) : null}
 
+          {extra}
+
           <SectionLabel>{tr("Étiquettes")}</SectionLabel>
           <ChipRow testID="picker-label-selector">
             <Chip testID="picker-label-note" label={tr("Noms des notes")} selected={labelMode === "note"} onPress={() => onLabelModeChange("note")} />
@@ -134,7 +110,6 @@ export function ScalePicker({
             {labelExtra}
           </ChipRow>
 
-          {extra}
 
           <View style={styles.listContent}>
             {(hideList ? [] : groups).map((g) => (
@@ -175,37 +150,16 @@ export function ScalePicker({
               </View>
             ))}
           </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    </Sheet>
   );
 }
 
 const useStyles = makeStyles((c) => ({
-  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: c.scrimTop },
-  backdropTap: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  sheet: {
-    backgroundColor: c.surfaceSecondary,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    width: "100%",
-    maxWidth: 640,
-    alignSelf: "center",
-  },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.borderStrong, alignSelf: "center", marginTop: spacing.sm },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
-  title: { flex: 1, fontFamily: fonts.display, fontSize: 20, fontWeight: "700", color: c.onSurface },
-  closeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceTertiary },
-  segment: { flexDirection: "row", marginHorizontal: spacing.lg, padding: 4, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary },
+  segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginTop: spacing.sm, padding: 4, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary },
   segBtn: { flex: 1, height: 40, alignItems: "center", justifyContent: "center", borderRadius: radius.pill },
   segBtnActive: { backgroundColor: c.brandPrimary },
   segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   segTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
-  list: { flexShrink: 1 },
-  scrollContent: { paddingBottom: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   groupTitle: {
     fontFamily: fonts.display,

@@ -680,7 +680,7 @@ export default function FingeringScreen() {
 }
 
 const useStyles = makeStyles((c) => ({
-  segment: { flexDirection: "row", marginHorizontal: spacing.lg, padding: 4, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary },
+  segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginTop: spacing.sm, padding: 4, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary },
   segBtn: { flex: 1, height: 40, alignItems: "center", justifyContent: "center", borderRadius: radius.pill },
   segBtnActive: { backgroundColor: c.brandPrimary },
   segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },

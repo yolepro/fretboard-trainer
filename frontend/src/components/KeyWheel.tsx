@@ -136,8 +136,9 @@ const useStyles = makeStyles((c) => ({
   dot: { position: "absolute", backgroundColor: c.muted },
   dotOn: { backgroundColor: c.brandPrimary },
   pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
-  card: { backgroundColor: c.surfaceSecondary, borderRadius: radius.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: "center", gap: spacing.sm },
+  backdrop: { flex: 1, backgroundColor: "rgba(10,11,14,0.30)", alignItems: "center", justifyContent: "center" },
+  // Same see-through frame as the settings sheets.
+  card: { backgroundColor: "rgba(28,30,36,0.80)", borderWidth: 1, borderColor: c.border, borderRadius: radius.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: "center", gap: spacing.sm },
   title: { fontFamily: fonts.display, fontSize: 17, fontWeight: "700", color: c.onSurface },
   hint: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
 }));
