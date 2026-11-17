@@ -773,7 +773,8 @@ const useStyles = makeStyles((c) => ({
   headerLandscape: { gap: spacing.sm, paddingBottom: spacing.xs, minHeight: 48 },
   headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   // Tempo + play grouped in one pill (landscape header).
-  transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
+  // Landscape: metronome + play grouped in one rounded square, same look as the setting pills.
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 6, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },

@@ -471,7 +471,8 @@ const useStyles = makeStyles((c) => ({
   playbar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: spacing.sm, borderRadius: 28, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   barToggle: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   barToggleOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },
-  transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
+  // Landscape: metronome + play grouped in one rounded square, same look as the setting pills.
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 6, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
