@@ -258,7 +258,6 @@ export default function FretboardScreen() {
     [playing, path, settings.volume],
   );
 
-  const title = `${nameOf(rootPc)}${mode === "chord" ? formula.symbol : ""}`;
   const positionLabel = position === null ? tr("Tout le manche") : `Pos. ${position + 1} · ${variant + 1}/2`;
   const formulaPillLabel = `${mode === "scale" ? tr("Gamme") : tr("Accord")} · ${isLandscape ? shortName(formula) : tr(formula.name)}`;
 
@@ -350,9 +349,9 @@ export default function FretboardScreen() {
         <>
           <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
             <View style={styles.headerText}>
-              <Text style={styles.kicker}>{tr("Explorer")}</Text>
-              <Text style={styles.title} testID="fretboard-title" numberOfLines={2}>
-                {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
+              {/* The key, the scale / chord and the position are on the pills just below. */}
+              <Text style={styles.title} testID="fretboard-title" numberOfLines={1}>
+                {tr("Explorer")}
               </Text>
             </View>
           </View>
