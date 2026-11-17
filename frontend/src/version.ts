@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.30.1 — métronome : sons programmés sur l’horloge audio (Web Audio) sur le web ; une boucle dure toujours un nombre entier de temps (plus de demi-temps au raccord)
 // 1.30.0 — Doigté : nouvelle matière « Paires de triades » (IV et V de la tonalité, 5 positions, variantes Up / Down / Alterné, en triolets) ; « Arpèges 4 sons » renommé « Arpèges » ; noms d’accords des triades renversées sur la partition
 // 1.29.2 — tous les exercices : la descente est l’exact miroir de la montée (groupe du haut rejoué à l’envers)
 // 1.29.1 — arpège sur 2 cordes : la descente reprend toute la montée à l’envers (la note du haut est jouée deux fois)
@@ -71,4 +72,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.30.0";
+export const APP_VERSION = "1.30.1";

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -200,6 +201,7 @@ export default function FretboardScreen() {
       return;
     }
     if (!path.length) return;
+    resumeWebAudio();
     cancelRef.current = runSequence({
       length: path.length,
       noteMs: 60000 / bpm / 2,
@@ -208,14 +210,23 @@ export default function FretboardScreen() {
       loop,
       leadMs: 30,
       onBeat: (b) => {
-        playClick(4 - countBeats + b, settings.volume);
+        if (!webAudioScheduling) playClick(4 - countBeats + b, settings.volume);
         setBeat(4 - countBeats + b + 1);
       },
       onClick: metronome ? (k) => playClick(k % 4, settings.volume * 0.8) : undefined,
+      // Web: sounds scheduled ahead on the audio clock (notes, count-in and metronome stay exactly together).
+      audio: webAudioScheduling
+        ? {
+            beat: (b, at) => playClick(4 - countBeats + b, settings.volume, at),
+            note: (i, at) => playNote(path[i].midi, settings.volume, at),
+            click: metronome ? (k, at) => playClick(k % 4, settings.volume * 0.8, at) : undefined,
+            cancel: stopWebNotes,
+          }
+        : undefined,
       onNote: (i) => {
         if (i === 0) setBeat(null);
         const step = path[i];
-        playNote(step.midi, settings.volume);
+        if (!webAudioScheduling) playNote(step.midi, settings.volume);
         setStepIdx(i);
         setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
       },

@@ -1,5 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 
+import { loadWebBuffer, playWebBuffer, webAudioScheduling } from "@/src/audio/webAudio";
+
 // Acoustic guitar samples E2 (MIDI 40) → D5 (MIDI 74), bundled locally (works offline).
 const SAMPLES: Record<number, number> = {
   40: require("../../assets/sounds/E2.mp3"),
@@ -124,9 +126,19 @@ function fadeOut(base: number) {
   releaseTimers.set(base, timers);
 }
 
-/** Plays a note. It rings naturally until another note is played, which stops it. */
-export function playNote(midi: number, volume = 1) {
+/**
+ * Plays a note. It rings naturally until another note is played, which stops it. `atMs` (web, Date.now() time):
+ * start exactly then on the Web Audio clock — used by the sequencer, which schedules the notes a little ahead.
+ */
+export function playNote(midi: number, volume = 1, atMs?: number) {
   initAudio();
+  if (atMs !== undefined && webAudioScheduling) {
+    const { base, rate } = resolve(midi);
+    if (playWebBuffer(SAMPLES[base], atMs, volume, rate, true)) return;
+    // Not decoded yet: play it at its time with the <audio> player.
+    setTimeout(() => playNote(midi, volume), Math.max(0, atMs - Date.now()));
+    return;
+  }
   const { base, rate } = resolve(midi);
   if (current !== null && current !== base) fadeOut(current);
   current = base;
@@ -163,6 +175,7 @@ export function playSequence(midis: number[], volume = 1, gapMs = 380): () => vo
 export function preloadNotes(midis: number[]) {
   initAudio();
   new Set(midis.map((m) => resolve(m).base)).forEach((base) => {
+    if (webAudioScheduling) loadWebBuffer(SAMPLES[base]);
     try {
       getPlayer(base);
     } catch {
@@ -190,6 +203,10 @@ function clickPlayer(i: number) {
 
 export function preloadClicks() {
   initAudio();
+  if (webAudioScheduling) {
+    loadWebBuffer(CLICKS.high);
+    loadWebBuffer(CLICKS.low);
+  }
   try {
     for (let i = 0; i < CLICK_COUNT; i++) clickPlayer(i);
   } catch {
@@ -198,9 +215,14 @@ export function preloadClicks() {
 }
 
 /** Count-in click: beat 0 is the accented (higher) clave, beats 1–3 the softer one. */
-export function playClick(beat: number, volume = 1) {
+export function playClick(beat: number, volume = 1, atMs?: number) {
   initAudio();
   const i = Math.max(0, Math.min(CLICK_COUNT - 1, beat));
+  if (atMs !== undefined && webAudioScheduling) {
+    if (playWebBuffer(i === 0 ? CLICKS.high : CLICKS.low, atMs, volume)) return;
+    setTimeout(() => playClick(beat, volume), Math.max(0, atMs - Date.now()));
+    return;
+  }
   try {
     const p = clickPlayer(i);
     p.volume = volume;

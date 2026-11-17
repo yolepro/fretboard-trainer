@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton } from "@/src/components/KeyWheel";
@@ -272,10 +273,10 @@ export default function FingeringScreen() {
   );
 
   const showStep = useCallback(
-    (i: number) => {
+    (i: number, silent = false) => {
       const step = sequence[i];
       if (!step) return;
-      playNote(step.midi, settings.volume);
+      if (!silent) playNote(step.midi, settings.volume);
       setStepIdx(i);
       setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
     },
@@ -295,6 +296,7 @@ export default function FingeringScreen() {
       setStepIdx(null);
       setBeat(null);
     };
+    resumeWebAudio();
     cancelRef.current = runSequence({
       length: sequence.length,
       noteMs: 60000 / bpm / pulse.notesPerPulse,
@@ -302,14 +304,23 @@ export default function FingeringScreen() {
       beats: countBeats,
       loop,
       onBeat: (b) => {
-        playClick(countOffset + b, settings.volume);
+        if (!webAudioScheduling) playClick(countOffset + b, settings.volume);
         setBeat(countOffset + b + 1);
       },
       onNote: (n) => {
         if (n === 0) setBeat(null);
-        showStep(n);
+        showStep(n, webAudioScheduling);
       },
       onClick: metronome ? (k) => playClick(k % pulse.barPulses, settings.volume * 0.8) : undefined,
+      // Web: sounds scheduled ahead on the audio clock (notes, count-in and metronome stay exactly together).
+      audio: webAudioScheduling
+        ? {
+            beat: (b, at) => playClick(countOffset + b, settings.volume, at),
+            note: (n, at) => playNote(sequence[n].midi, settings.volume, at),
+            click: metronome ? (k, at) => playClick(k % pulse.barPulses, settings.volume * 0.8, at) : undefined,
+            cancel: stopWebNotes,
+          }
+        : undefined,
       onEnd: finish,
     });
     setPlaying(true);
