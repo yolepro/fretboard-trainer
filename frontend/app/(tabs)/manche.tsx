@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { shortName } from "@/src/music/shortNames";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
-import { KeyButton } from "@/src/components/KeyWheel";
+import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
+import { Pill, PillRow } from "@/src/components/Pill";
+import { Sheet } from "@/src/components/Sheet";
+import { PositionChips } from "@/src/components/PositionChips";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { CaretDown, List, Play, Stop } from "phosphor-react-native";
+import { Metronome, Play, Repeat, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -24,8 +27,6 @@ import {
   buildDegreeMap,
   degreeKeyFromNum,
   formulaDegrees,
-  midiToFreq,
-  octaveOf,
   pcOf,
   boxVariant,
   playbackPath,
@@ -59,7 +60,10 @@ export default function FretboardScreen() {
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [startOnRoot, setStartOnRoot] = useState(true);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // One focused sheet per pill, and the key wheel.
+  const [sheet, setSheet] = useState<null | "formula" | "where" | "display">(null);
+  const [keyOpen, setKeyOpen] = useState(false);
+  const closeSheet = () => setSheet(null);
   // Listening: eighth notes at this tempo (quarter note), with the same options as the Doigté section.
   const [bpm, setBpm] = useState(80);
   const [loop, setLoop] = useState(false);
@@ -70,8 +74,6 @@ export default function FretboardScreen() {
   // Landscape: frets 0→16 minimum fit on screen, rows sized to the available height.
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
-  // Phones in portrait: the menu button is a round icon, the play button has no label.
-  const compactHeader = !isLandscape && width < 480;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
   // Landscape: the tab bar sits at the top right, over the header (no bottom bar).
@@ -143,13 +145,13 @@ export default function FretboardScreen() {
   }, [path, bpm, loop, metronome]);
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
-  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * 22 - 6;
+  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - 6 * 22 - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 188);
   const { layout } = useScore(path, "path", 2, rootPc, formula, tabOn, false, bpm);
   const rowH = isLandscape
     ? Math.max(
         showScore ? 22 : 26,
-        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
+        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
       )
     : 34;
 
@@ -257,45 +259,118 @@ export default function FretboardScreen() {
   );
 
   const title = `${nameOf(rootPc)}${mode === "chord" ? formula.symbol : ""}`;
+  const positionLabel = position === null ? tr("Tout le manche") : `Pos. ${position + 1} · ${variant + 1}/2`;
+  const formulaPillLabel = isLandscape ? `${mode === "scale" ? tr("Gamme") : tr("Accord")} · ${shortName(formula)}` : tr(formula.name);
 
+  const legend = (
+    <ChipRow testID="layer-legend">
+      {degrees.map((d) => (
+        <Chip key={d} testID={`layer-toggle-${d}`} label={tr(DEGREE_META[d].label)} dotColor={colors[DEGREE_META[d].color]} selected={colored.has(d)} onPress={() => toggleLayer(d)} />
+      ))}
+    </ChipRow>
+  );
 
+  // ---- Sheets: one per pill ----
+  const whereSheet = (
+    <>
+      <SectionLabel>{tr("Position")}</SectionLabel>
+      <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} prefix="manche-position" />
+      {windowRange ? (
+        <>
+          <SectionLabel>{tr("Écoute et partition : départ")}</SectionLabel>
+          <ChipRow testID="manche-start-selector">
+            <Chip testID="manche-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+            <Chip testID="manche-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+          </ChipRow>
+        </>
+      ) : null}
+    </>
+  );
+  const displaySheet = (
+    <>
+      <SectionLabel>{tr("Partition")}</SectionLabel>
+      <ChipRow testID="manche-tab-selector">
+        <Chip testID="manche-tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
+        <Chip testID="manche-tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+      </ChipRow>
+      <SectionLabel>{tr("Partition en paysage")}</SectionLabel>
+      <ChipRow testID="manche-score-landscape">
+        <Chip testID="manche-score-landscape-on" label={tr("Affichée")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: true })} />
+        <Chip testID="manche-score-landscape-off" label={tr("Masquée")} selected={!settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: false })} />
+      </ChipRow>
+      <SectionLabel>{tr("Étiquettes")}</SectionLabel>
+      <ChipRow testID="manche-label-selector">
+        <Chip testID="manche-label-note" label={tr("Noms des notes")} selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
+        <Chip testID="manche-label-degree" label={tr("Degrés")} selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
+      </ChipRow>
+      {/* Landscape: the degree colors aren't under the score, they are here. */}
+      {isLandscape ? (
+        <>
+          <SectionLabel>{tr("Couleurs des degrés")}</SectionLabel>
+          {legend}
+        </>
+      ) : null}
+    </>
+  );
+
+  const playButton = (round: boolean) => (
+    <Pressable
+      testID="play-formula-button"
+      onPress={playFormula}
+      style={({ pressed }) => [round ? styles.playRound : styles.playBig, pressed && styles.pressed]}
+      accessibilityLabel={playing ? tr("Stop") : tr("Écouter")}
+    >
+      {playing ? <Stop size={round ? 20 : 22} color={colors.onBrandPrimary} weight="fill" /> : <Play size={round ? 20 : 22} color={colors.onBrandPrimary} weight="fill" />}
+    </Pressable>
+  );
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fretboard-screen">
       <StudioBackground />
-      <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }, isLandscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
-        <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fretboard-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{isLandscape ? shortName(formula) : tr(formula.name)}</Text>
+      {isLandscape ? (
+        // Landscape: one row aligned with the tab bar — like S'exercer.
+        <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
+          <Text style={[styles.title, styles.titleCompact]} testID="fretboard-title" numberOfLines={1}>
+            {tr("Explorer")}
           </Text>
+          <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
+          <View style={styles.headerPills}>
+            <PillRow inset={false}>
+              <Pill testID="pill-formula" label={formulaPillLabel} onPress={() => setSheet("formula")} />
+              {boxes.length > 0 ? <Pill testID="pill-position" label={positionLabel} onPress={() => setSheet("where")} /> : null}
+              <Pill testID="pill-display" label={tr("Affichage")} onPress={() => setSheet("display")} />
+            </PillRow>
+          </View>
+          <View style={styles.transportPill} testID="transport-pill">
+            <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
+            {playButton(true)}
+          </View>
         </View>
-        {/* Spacer: the played / touched note isn't written out anymore (it goes too fast). */}
-        {isLandscape ? <View style={styles.infoInline} /> : null}
-        <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        {compactHeader ? (
-          <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={mode === "scale" ? tr("Gamme") : tr("Accord")}>
-            <List size={20} color={colors.onSurface} weight="bold" />
-          </Pressable>
-        ) : (
-          <Pressable testID="open-scale-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
-            <Text style={styles.pickerText}>{mode === "scale" ? tr("Gamme") : tr("Accord")}</Text>
-            <CaretDown size={16} color={colors.onSurface} weight="bold" />
-          </Pressable>
-        )}
-        {/* Tempo + play grouped in one pill. */}
-        <View style={styles.transportPill} testID="transport-pill">
-          <TempoButton count={beat} bpm={bpm} min={30} max={200} defaultBpm={80} onBpm={setBpm} loop={loop} onLoop={setLoop} metronome={metronome} onMetronome={setMetronome} />
-          <Pressable
-            testID="play-formula-button"
-            onPress={playFormula}
-            style={({ pressed }) => [styles.playBtn, (compactHeader || isLandscape) && styles.playBtnRound, pressed && styles.pressed]}
-          >
-            {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-            {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
-            {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Écouter")}</Text> : null}
-          </Pressable>
-        </View>
-      </View>
+      ) : (
+        <>
+          <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+            <View style={styles.headerText}>
+              <Text style={styles.kicker}>{tr("Explorer")}</Text>
+              <Text style={styles.title} testID="fretboard-title" numberOfLines={2}>
+                {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
+              </Text>
+            </View>
+          </View>
+          <View style={styles.segment} testID="mode-selector">
+            {(["scale", "chord"] as const).map((m) => (
+              <Pressable key={m} testID={`mode-${m}`} onPress={() => setMode(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
+                <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? tr("Gammes") : tr("Accords / Triades")}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <PillRow testID="manche-pills">
+            <Pill testID="pill-key" label={nameOf(rootPc)} accent onPress={() => setKeyOpen(true)} />
+            <Pill testID="pill-formula" label={formulaPillLabel} onPress={() => setSheet("formula")} />
+            {boxes.length > 0 ? <Pill testID="pill-position" label={positionLabel} onPress={() => setSheet("where")} /> : null}
+            <Pill testID="pill-display" label={tr("Affichage")} onPress={() => setSheet("display")} />
+          </PillRow>
+        </>
+      )}
 
       <Fretboard
         fretScale={fretScale}
@@ -313,99 +388,91 @@ export default function FretboardScreen() {
 
       {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapScoreNote} testID="manche-score" /> : null}
 
-      <ChipRow testID="layer-legend">
-        {degrees.map((d) => (
-          <Chip
-            key={d}
-            testID={`layer-toggle-${d}`}
-            label={tr(DEGREE_META[d].label)}
-            dotColor={colors[DEGREE_META[d].color]}
-            selected={colored.has(d)}
-            onPress={() => toggleLayer(d)}
-          />
-        ))}
-        {isLandscape ? (
-          <Chip testID="manche-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
-        ) : null}
-        {isLandscape && boxes.length > 0 ? (
-          <>
-            <View style={styles.legendDivider} />
-            <Chip testID="landscape-position-all" label={tr("Tout")} selected={position === null} onPress={() => selectPosition(null)} />
-            {boxes.map((_, i) => {
-              const v = variants[i] ?? 0;
+      {!isLandscape ? (
+        <>
+          {legend}
+          <View style={styles.formulaRow} testID="formula-intervals">
+            {formula.intervals.map((i) => {
+              const k = degreeKeyFromNum(i.num);
               return (
-                <Chip
-                  key={`p${i}`}
-                  testID={`landscape-position-${i + 1}`}
-                  label={`Pos. ${i + 1}`}
-                  badge={`${v + 1}/2`}
-                  badgeTone={v === 1 ? "accent" : "primary"}
-                  selected={position === i}
-                  onPress={() => selectPosition(i)}
-                />
+                <View key={`${i.semi}-${i.label}`} style={[styles.ivPill, { borderColor: colors[DEGREE_META[k].color] }]}>
+                  <Text style={[styles.ivLabel, { color: colors[DEGREE_META[k].color] }]}>{i.label}</Text>
+                  <Text style={styles.ivNote}>{nameOf(rootPc + i.semi)}</Text>
+                </View>
               );
             })}
-          </>
-        ) : null}
-      </ChipRow>
+          </View>
+          {/* Playback bar: the same as in S'exercer (loop, metronome, tempo, play). */}
+          <View style={[styles.bottom, { paddingBottom: bottomChrome + spacing.sm }]}>
+            <View style={styles.playbar} testID="playback-bar">
+              <Pressable testID="loop-toggle" onPress={() => setLoop(!loop)} style={({ pressed }) => [styles.barToggle, loop && styles.barToggleOn, pressed && styles.pressed]} accessibilityLabel={tr("Boucle")} accessibilityState={{ selected: loop }}>
+                <Repeat size={20} color={loop ? colors.onBrandTertiary : colors.onSurfaceTertiary} weight="bold" />
+              </Pressable>
+              <Pressable testID="metronome-toggle" onPress={() => setMetronome(!metronome)} style={({ pressed }) => [styles.barToggle, metronome && styles.barToggleOn, pressed && styles.pressed]} accessibilityLabel={tr("Métronome")} accessibilityState={{ selected: metronome }}>
+                <Metronome size={20} color={metronome ? colors.onBrandTertiary : colors.onSurfaceTertiary} weight="bold" />
+              </Pressable>
+              <TempoButton
+                variant="bar"
+                playbackInSheet={false}
+                count={beat}
+                bpm={bpm}
+                min={30}
+                max={200}
+                subLabel={tr("croches")}
+                defaultBpm={80}
+                onBpm={setBpm}
+                loop={loop}
+                onLoop={setLoop}
+                metronome={metronome}
+                onMetronome={setMetronome}
+              />
+              {playButton(false)}
+            </View>
+          </View>
+        </>
+      ) : null}
 
+      <KeyWheel visible={keyOpen} rootPc={rootPc} nameOf={nameOf} onClose={() => setKeyOpen(false)} onChange={setRootPc} />
       <ScalePicker
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        visible={sheet === "formula"}
+        onClose={closeSheet}
         mode={mode}
         onModeChange={setMode}
+        hideLabels
         rootPc={rootPc}
         onRootChange={setRootPc}
         selectedId={mode === "scale" ? scaleId : chordId}
         onSelect={(id) => (mode === "scale" ? setScaleId(id) : setChordId(id))}
         nameOf={nameOf}
-        positions={boxes}
+        positions={[]}
         selectedPosition={position}
         positionVariants={variants}
         onPositionChange={selectPosition}
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
-        title={mode === "scale" ? tr("Gamme et affichage") : tr("Accord et affichage")}
-        extra={
-          <>
-            {windowRange ? (
-              <>
-                <SectionLabel>{tr("Écoute et partition : départ")}</SectionLabel>
-                <ChipRow testID="manche-start-selector">
-                  <Chip testID="manche-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-                  <Chip testID="manche-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-                </ChipRow>
-              </>
-            ) : null}
-            <SectionLabel>{tr("Partition")}</SectionLabel>
-            <ChipRow testID="manche-tab-selector">
-              <Chip testID="manche-tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
-              <Chip testID="manche-tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
-            </ChipRow>
-          </>
-        }
+        title={mode === "scale" ? tr("Gamme") : tr("Accord")}
       />
-
-      {!isLandscape ? (
-        <View style={styles.formulaRow} testID="formula-intervals">
-          {formula.intervals.map((i) => {
-            const k = degreeKeyFromNum(i.num);
-            return (
-              <View key={`${i.semi}-${i.label}`} style={[styles.ivPill, { borderColor: colors[DEGREE_META[k].color] }]}>
-                <Text style={[styles.ivLabel, { color: colors[DEGREE_META[k].color] }]}>{i.label}</Text>
-                <Text style={styles.ivNote}>{nameOf(rootPc + i.semi)}</Text>
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
-
+      <Sheet visible={sheet === "where"} onClose={closeSheet} title={tr("Position")} testID="manche-where-sheet">
+        {whereSheet}
+      </Sheet>
+      <Sheet visible={sheet === "display"} onClose={closeSheet} title={tr("Affichage")} testID="manche-display-sheet">
+        {displaySheet}
+      </Sheet>
     </View>
   );
 }
 
 const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
+  kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
+  headerLandscape: { gap: spacing.sm, paddingBottom: spacing.xs, minHeight: 48 },
+  headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  playBig: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  bottom: { marginTop: "auto", paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  playbar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: spacing.sm, borderRadius: 28, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  barToggle: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  barToggleOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },
   transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
   header: {
     flexDirection: "row",
@@ -466,6 +533,7 @@ const useStyles = makeStyles((c) => ({
   segment: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,
+    marginBottom: spacing.xs,
     padding: 4,
     borderRadius: radius.pill,
     backgroundColor: c.surfaceTertiary,

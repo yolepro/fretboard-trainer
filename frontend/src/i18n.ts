@@ -31,6 +31,7 @@ const EN: Record<string, string> = {
   Explorer: "Explore",
   "S’exercer": "Practice",
   Affichage: "Display",
+  "Couleurs des degrés": "Degree colors",
   "Exercices": "Exercises",
   "Montée et descente": "Up and down",
   "Sur une position · toutes les gammes": "In one position · every scale",
