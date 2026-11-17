@@ -260,7 +260,7 @@ export default function FretboardScreen() {
 
   const title = `${nameOf(rootPc)}${mode === "chord" ? formula.symbol : ""}`;
   const positionLabel = position === null ? tr("Tout le manche") : `Pos. ${position + 1} · ${variant + 1}/2`;
-  const formulaPillLabel = isLandscape ? `${mode === "scale" ? tr("Gamme") : tr("Accord")} · ${shortName(formula)}` : tr(formula.name);
+  const formulaPillLabel = `${mode === "scale" ? tr("Gamme") : tr("Accord")} · ${isLandscape ? shortName(formula) : tr(formula.name)}`;
 
   const legend = (
     <ChipRow testID="layer-legend">
@@ -355,13 +355,6 @@ export default function FretboardScreen() {
                 {title} <Text style={styles.titleSub}>{tr(formula.name)}</Text>
               </Text>
             </View>
-          </View>
-          <View style={styles.segment} testID="mode-selector">
-            {(["scale", "chord"] as const).map((m) => (
-              <Pressable key={m} testID={`mode-${m}`} onPress={() => setMode(m)} style={[styles.segBtn, mode === m && styles.segBtnActive]}>
-                <Text style={[styles.segText, mode === m && styles.segTextActive]}>{m === "scale" ? tr("Gammes") : tr("Accords / Triades")}</Text>
-              </Pressable>
-            ))}
           </View>
           <PillRow testID="manche-pills">
             <Pill testID="pill-key" label={nameOf(rootPc)} accent onPress={() => setKeyOpen(true)} />
