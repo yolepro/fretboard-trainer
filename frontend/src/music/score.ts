@@ -140,12 +140,16 @@ function groupLabel(
   const midis = notes.map((n) => n.midi);
   // Thirds exercise: no symbol (the pairs are not chords).
   if ((kind === "triads" && notes.length === 3) || (kind === "sevenths" && notes.length === 4)) {
-    const lowest = Math.min(...midis);
-    const rel = [...new Set(midis.map((m) => mod12(m - lowest)))].filter((x) => x !== 0).sort((a, b) => a - b);
-    const q = (kind === "triads" ? TRIAD_Q : SEVENTH_Q)[rel.join(",")];
-    const sp = spelled.get(pcOf(lowest));
-    if (q === undefined || !sp) return null;
-    return noteName(sp, notation) + q;
+    // The chord root is the note from which the other notes stack as a known chord: works for inversions too
+    // (G C E → C), the lowest note first so root positions keep their usual reading.
+    const sorted = [...midis].sort((x, y) => x - y);
+    for (const cand of sorted) {
+      const rel = [...new Set(midis.map((m) => mod12(m - cand)))].filter((x) => x !== 0).sort((x, y) => x - y);
+      const q = (kind === "triads" ? TRIAD_Q : SEVENTH_Q)[rel.join(",")];
+      const sp = spelled.get(pcOf(cand));
+      if (q !== undefined && sp) return noteName(sp, notation) + q;
+    }
+    return null;
   }
   return null;
 }

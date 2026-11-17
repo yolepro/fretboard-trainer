@@ -36,8 +36,8 @@ const EN: Record<string, string> = {
   "Maîtrisez votre manche de guitare": "Master your guitar fretboard",
   "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme avec partition et tablature.":
     "See scales, modes, pentatonics, blues and chords over the whole neck. 5 fixed positions in every key (and their 2/2 version), notes colored by degree, scale playback with score and tablature.",
-  "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle. Arpèges 4 sons (∆, 7, m7, Ø) en 5 schémas, sur une position ou en enchaînant deux schémas le long du manche.":
-    "Practice in one position or horizontally (same strings, moving up the neck): full scale, thirds, triads (1-3-5) and seventh arpeggios (1-3-5-7), up and down, with synced score + tablature, adjustable tempo, slow or normal pace, count-in, metronome and loop. 4-note arpeggios (∆, 7, m7, Ø) in 5 shapes, in one position or linking two shapes along the neck.",
+  "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle. Arpèges 4 sons (∆, 7, m7, Ø) en 5 schémas, sur une position ou en enchaînant deux schémas le long du manche. Paires de triades (IV et V de la tonalité) à travers les renversements, dans les 5 positions.":
+    "Practice in one position or horizontally (same strings, moving up the neck): full scale, thirds, triads (1-3-5) and seventh arpeggios (1-3-5-7), up and down, with synced score + tablature, adjustable tempo, slow or normal pace, count-in, metronome and loop. 4-note arpeggios (∆, 7, m7, Ø) in 5 shapes, in one position or linking two shapes along the neck. Triad pairs (IV and V of the key) through their inversions, in the 5 positions.",
   "Entraînez-vous avec votre guitare : jouer la note demandée sur une corde, écouter et rejouer, degrés d’accord, intervalles. Détection par micro.":
     "Train with your guitar: play the requested note on a string, listen and play back, chord degrees, intervals. Detected through the microphone.",
   "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.":
@@ -134,6 +134,14 @@ const EN: Record<string, string> = {
   "Exercice et gamme": "Exercise and scale",
   "Exercice et arpège": "Exercise and arpeggio",
   "Matière": "Subject",
+  "Arpèges": "Arpeggios",
+  "Paires de triades": "Triad pairs",
+  "Paire {a} & {b}": "Pair {a} & {b}",
+  Variante: "Variation",
+  "Up (grave → aigu)": "Up (low → high)",
+  "Down (aigu → grave)": "Down (high → low)",
+  "Alterné": "Alternating",
+  "Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.": "The major triads on degrees IV and V of the key ({a} and {b}), through their inversions, in a position of the major scale. Also works for the melodic minor.",
   "Arpège horizontal": "Horizontal arpeggio",
   "4 sons (schémas)": "4 notes (shapes)",
   "3 sons sur 2 cordes": "Triad on 2 strings",

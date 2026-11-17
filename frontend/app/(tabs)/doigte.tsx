@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { ARP_SHAPES, ARP_TYPES, arpFormula, arpGroupsUpDown, arpTwoStringGroups, arpRoutes, arpShapePlacements, arpUpDown, arpWindow, type ArpNote, type ArpTypeId } from "@/src/music/arpeggios";
@@ -85,8 +86,11 @@ export default function FingeringScreen() {
   const [stringCount, setStringCount] = useState<number | null>(null);
   const [extent, setExtent] = useState<Extent>("octave");
   // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
-  const [subject, setSubject] = useState<"scale" | "arp">("scale");
+  const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
   const arp = subject === "arp";
+  // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
+  const pairs = subject === "pairs";
+  const [pairStyle, setPairStyle] = useState<PairStyle>("up");
   const [arpType, setArpType] = useState<ArpTypeId>("maj7");
   const [arpShape, setArpShape] = useState(0);
   const [arpVariant, setArpVariant] = useState(0);
@@ -112,16 +116,18 @@ export default function FingeringScreen() {
 
   const formula = useMemo(() => SCALES.find((s) => s.id === scaleId)!, [scaleId]);
   // What is shown on the neck and written on the score: the scale, or the chord of the arpeggio.
-  const shown = useMemo(() => (arp ? arpFormula(arpType) : formula), [arp, arpType, formula]);
+  const shown = useMemo(() => (pairs ? PAIR_FORMULA : arp ? arpFormula(arpType) : formula), [pairs, arp, arpType, formula]);
+  // The score spells the notes from a 7-note scale (key signature): the major scale for the triad pairs.
+  const scoreFormula = pairs ? MAJOR : shown;
   // Arpeggios are played 4 notes per beat (like the seventh arpeggios): same pulse, tempo and groups.
   const twoStrings = arp && horizontal && arpKind === "twoStrings";
   // Arpeggios: 4 notes per beat; the triad on 2 strings without its 7th: 3 notes per beat (triplets).
-  const rhythmId: ExerciseId = arp ? (twoStrings && !withSeventh ? "triads" : "sevenths") : exerciseId;
+  const rhythmId: ExerciseId = pairs ? "triads" : arp ? (twoStrings && !withSeventh ? "triads" : "sevenths") : exerciseId;
   const degreeMap = useMemo(() => buildDegreeMap(rootPc, shown), [rootPc, shown]);
   const degrees = useMemo(() => formulaDegrees(shown), [shown]);
   const visibleLayers = useMemo(() => new Set(degrees), [degrees]);
   const colored = useMemo(() => new Set<DegreeKey>(["root"]), []);
-  const boxes = useMemo(() => scaleBoxes(rootPc, formula, true), [rootPc, formula, settings.fretCount]);
+  const boxes = useMemo(() => scaleBoxes(rootPc, pairs ? MAJOR : formula, true), [rootPc, pairs, formula, settings.fretCount]);
   const pos = Math.min(position, boxes.length - 1);
   const variant = variants[pos] ?? 0;
   const positionWindow = useMemo(() => boxVariant(boxes[pos], variant), [boxes, pos, variant]);
@@ -132,7 +138,7 @@ export default function FingeringScreen() {
   }, [formula, exerciseId]);
 
   // Horizontal mode: needs groups of 2+ notes (no single-note scale) and a 7-note or pentatonic scale (no special scale).
-  const horizontalOk = arp || !formula.special;
+  const horizontalOk = !pairs && (arp || !formula.special);
   useEffect(() => {
     if (horizontal && !horizontalOk) setHorizontal(false);
   }, [horizontal, horizontalOk]);
@@ -176,8 +182,8 @@ export default function FingeringScreen() {
 
   const ladder = useMemo(() => positionLadder(rootPc, formula, positionWindow), [rootPc, formula, positionWindow]);
   const sequence = useMemo(
-    () => (twoStrings ? arpGroupsUpDown(twoStringGroups) : arp ? arpUpDown(arpNotes, !horizontal && startOnRoot) : horizontal ? hGroups.flat() : buildExercise(ladder, exerciseId, rootPc, startOnRoot)),
-    [twoStrings, twoStringGroups, arp, arpNotes, horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
+    () => (pairs ? pairSequence(rootPc, positionWindow, pairStyle) : twoStrings ? arpGroupsUpDown(twoStringGroups) : arp ? arpUpDown(arpNotes, !horizontal && startOnRoot) : horizontal ? hGroups.flat() : buildExercise(ladder, exerciseId, rootPc, startOnRoot)),
+    [pairs, positionWindow, pairStyle, twoStrings, twoStringGroups, arp, arpNotes, horizontal, hGroups, ladder, exerciseId, rootPc, startOnRoot],
   );
   const exercise = EXERCISES.find((e) => e.id === rhythmId)!;
 
@@ -198,7 +204,7 @@ export default function FingeringScreen() {
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
   const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 214);
-  const { layout } = useScore(sequence, arp ? "path" : exerciseId, exercise.perBeat, rootPc, shown, tabOn, slow, bpm, pulseOf(rhythmId, slow).half);
+  const { layout } = useScore(sequence, pairs ? "triads" : arp ? "path" : exerciseId, exercise.perBeat, rootPc, scoreFormula, tabOn, slow, bpm, pulseOf(rhythmId, slow).half);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
@@ -375,17 +381,32 @@ export default function FingeringScreen() {
     />
   ));
 
+  const [pairA, pairB] = pairRoots(rootPc);
+  const pairStyleChips = PAIR_STYLES.map((st) => (
+    <Chip key={st.id} testID={`pair-style-${st.id}`} label={tr(st.name)} selected={pairStyle === st.id} onPress={() => setPairStyle(st.id)} />
+  ));
+
   const pickerTop = (
     <>
       <View style={styles.segment} testID="subject-selector">
-        {(["scale", "arp"] as const).map((m) => (
+        {(["scale", "arp", "pairs"] as const).map((m) => (
           <Pressable key={m} testID={`subject-${m}`} onPress={() => setSubject(m)} style={[styles.segBtn, subject === m && styles.segBtnActive]}>
-            <Text style={[styles.segText, subject === m && styles.segTextActive]}>{m === "scale" ? tr("Gammes") : tr("Arpèges 4 sons")}</Text>
+            <Text style={[styles.segText, subject === m && styles.segTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {m === "scale" ? tr("Gammes") : m === "arp" ? tr("Arpèges") : tr("Paires de triades")}
+            </Text>
           </Pressable>
         ))}
       </View>
 
-      {arp ? (
+      {pairs ? (
+        <>
+          <Text style={styles.hint}>
+            {tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })}
+          </Text>
+          <SectionLabel>{tr("Variante")}</SectionLabel>
+          <ChipRow testID="pair-style-selector">{pairStyleChips}</ChipRow>
+        </>
+      ) : arp ? (
         <>
           <SectionLabel>{tr("Type d’arpège")}</SectionLabel>
           <ChipRow testID="arp-type-selector">{arpTypeChips}</ChipRow>
@@ -398,8 +419,12 @@ export default function FingeringScreen() {
         </>
       )}
 
-      <SectionLabel>{tr("Mode")}</SectionLabel>
-      <ChipRow testID="mode-selector">{modeChips}</ChipRow>
+      {!pairs ? (
+        <>
+          <SectionLabel>{tr("Mode")}</SectionLabel>
+          <ChipRow testID="mode-selector">{modeChips}</ChipRow>
+        </>
+      ) : null}
       {horizontal ? (
         <Text style={styles.hint}>
           {arp ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.") : tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}
@@ -474,13 +499,15 @@ export default function FingeringScreen() {
           </ChipRow>
         </>
       ) : (
+        pairs ? null : (
         <>
-          <SectionLabel>{tr("Départ")}</SectionLabel>
-          <ChipRow testID="start-selector">
-            <Chip testID="start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-            <Chip testID="start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-          </ChipRow>
-        </>
+            <SectionLabel>{tr("Départ")}</SectionLabel>
+            <ChipRow testID="start-selector">
+              <Chip testID="start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+              <Chip testID="start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+            </ChipRow>
+          </>
+        )
       )}
 
       <SectionLabel>{tr("Partition")}</SectionLabel>
@@ -521,7 +548,7 @@ export default function FingeringScreen() {
       <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
         <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
           <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{arp ? tr("Arpège") : tr(formula.name)}{isLandscape ? ` · ${positionBadge}` : ""}</Text>
+            {title} <Text style={styles.titleSub}>{pairs ? tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) }) : arp ? tr("Arpège") : tr(formula.name)}{isLandscape ? ` · ${positionBadge}` : ""}</Text>
           </Text>
         </View>
         {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
@@ -586,8 +613,8 @@ export default function FingeringScreen() {
         onModeChange={() => {}}
         scalesOnly
         hideAllPosition
-        title={arp ? tr("Exercice et arpège") : tr("Exercice et gamme")}
-        hideList={arp}
+        title={pairs ? tr("Paires de triades") : arp ? tr("Exercice et arpège") : tr("Exercice et gamme")}
+        hideList={arp || pairs}
         top={pickerTop}
         extra={pickerExtra}
         rootPc={rootPc}
@@ -605,10 +632,14 @@ export default function FingeringScreen() {
 
       {isLandscape ? (
         <ChipRow testID="fingering-landscape-row">
-          {arp ? arpTypeChips : exerciseChips}
+          {pairs ? pairStyleChips : arp ? arpTypeChips : exerciseChips}
           <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
-          <View style={styles.divider} />
-          {modeChips}
+          {!pairs ? (
+            <>
+              <View style={styles.divider} />
+              {modeChips}
+            </>
+          ) : null}
           <View style={styles.divider} />
           {twoStrings ? (
             <Chip testID="arp-seventh-toggle" label={withSeventh ? tr("7e : oui") : tr("7e : non")} selected={withSeventh} onPress={() => setWithSeventh(!withSeventh)} />
