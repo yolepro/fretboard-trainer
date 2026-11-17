@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.33.0 (refonte) — S’exercer s’ouvre sur la bibliothèque d’exercices (cartes par famille : Gammes, Arpèges, Triades ; filtres) ; une carte ouvre l’écran d’exercice réglé ; bouton retour ; le titre montre la description de l’exercice
 // 1.32.0 (refonte) — paysage S’exercer : une rangée en haut (exercice, tonalité, gamme abrégée, position, tempo + ▶ dans une pastille), plus de rangée en bas ; Explorer : tempo + ▶ dans une pastille, gamme abrégée en paysage ; note jouée plus écrite (trop rapide)
 // 1.31.4 (refonte) — correctif : toucher un onglet plantait (navigation absente sur le web) ; repli sur le routeur
 // 1.31.3 (refonte) — paysage : barre d’onglets compacte en haut à droite (icônes), toute la hauteur pour le manche ; barre d’onglets maison partout (plus la barre native iOS 26)
@@ -82,4 +83,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.32.0 · refonte";
+export const APP_VERSION = "1.33.0 · refonte";

@@ -4,6 +4,7 @@ import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/we
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
+import { ExerciseLibrary, PRESETS, type ExercisePreset } from "@/src/components/ExerciseLibrary";
 import { shortName } from "@/src/music/shortNames";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
@@ -12,7 +13,7 @@ import { ARP_SHAPES, ARP_TYPES, arpFormula, arpGroupsUpDown, arpTwoStringGroups,
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { CaretDown, Metronome, Play, Repeat, Stop } from "phosphor-react-native";
+import { CaretLeft, Info, Metronome, Play, Repeat, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -96,6 +97,9 @@ export default function FingeringScreen() {
   const [extent, setExtent] = useState<Extent>("octave");
   // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
+  // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
+  const [view, setView] = useState<"library" | "exercise">("library");
+  const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
   const pairs = subject === "pairs";
@@ -291,6 +295,21 @@ export default function FingeringScreen() {
     [sequence, settings.volume],
   );
 
+  const pickPreset = (p: ExercisePreset) => {
+    stop();
+    setSubject(p.subject);
+    if (p.exerciseId) setExerciseId(p.exerciseId);
+    setHorizontal(p.horizontal);
+    if (p.arpKind) setArpKind(p.arpKind);
+    setPresetId(p.id);
+    setView("exercise");
+  };
+  const backToLibrary = () => {
+    stop();
+    setSheet(null);
+    setView("library");
+  };
+
   const togglePlay = () => {
     if (playing) {
       stop();
@@ -417,7 +436,8 @@ export default function FingeringScreen() {
   const twoBadge = withSeventh ? tr("2 cordes · avec 7e") : tr("2 cordes · triade");
   const positionBadge = twoStrings ? twoBadge : arp ? arpBadge : horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
   const scaleExercise = EXERCISES.find((e) => e.id === exerciseId)!;
-  const exerciseTitle = pairs
+  const preset = PRESETS.find((p) => p.id === presetId);
+  const exerciseTitle = preset ? tr(preset.name) : pairs
     ? tr("Paires de triades")
     : arp
       ? twoStrings
@@ -442,48 +462,22 @@ export default function FingeringScreen() {
   const paceNotes = PACE_NOTES[exercise.perBeat] ?? ["noires", "croches"];
 
   // ---- Sheet contents ----
+  // Title sheet: what the exercise is (and, in landscape, the display settings).
   const exerciseSheet = (
     <>
-      <View style={styles.segment} testID="subject-selector">
-        {(["scale", "arp", "pairs"] as const).map((m) => (
-          <Pressable key={m} testID={`subject-${m}`} onPress={() => setSubject(m)} style={[styles.segBtn, subject === m && styles.segBtnActive]}>
-            <Text style={[styles.segText, subject === m && styles.segTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              {m === "scale" ? tr("Gammes") : m === "arp" ? tr("Arpèges") : tr("Paires de triades")}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      {pairs ? (
-        <Text style={styles.hint}>
-          {tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })}
-        </Text>
-      ) : arp ? null : (
-        <>
-          <SectionLabel>{tr("Exercice")}</SectionLabel>
-          <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
-          <Text style={styles.hint}>{tr(scaleExercise.description)}</Text>
-        </>
-      )}
-      {!pairs ? (
-        <>
-          <SectionLabel>{tr("Mode")}</SectionLabel>
-          <ChipRow testID="mode-selector">{modeChips}</ChipRow>
-          {horizontal ? (
-            <Text style={styles.hint}>
-              {arp ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.") : tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}
-            </Text>
-          ) : null}
-        </>
-      ) : null}
-      {arp && horizontal ? (
-        <>
-          <SectionLabel>{tr("Arpège horizontal")}</SectionLabel>
-          <ChipRow testID="arp-kind-selector">
-            <Chip testID="arp-kind-shapes" label={tr("4 sons (schémas)")} selected={arpKind === "shapes"} onPress={() => setArpKind("shapes")} />
-            <Chip testID="arp-kind-two" label={tr("3 sons sur 2 cordes")} selected={arpKind === "twoStrings"} onPress={() => setArpKind("twoStrings")} />
-          </ChipRow>
-        </>
-      ) : null}
+      <Text style={styles.hint}>
+        {pairs
+          ? tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })
+          : twoStrings
+            ? tr("La triade sur Mi-La, Ré-Sol puis Si-Mi : fondamentale sur la corde grave, tierce et quinte sur la suivante.")
+            : arp
+              ? horizontal
+                ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.")
+                : tr("5 schémas · ∆7, 7, m7, Ø")
+              : horizontal
+                ? `${tr(scaleExercise.description)} ${tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}`
+                : tr(scaleExercise.description)}
+      </Text>
     </>
   );
 
@@ -628,17 +622,22 @@ export default function FingeringScreen() {
     </View>
   );
 
+  if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
+
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
       {isLandscape ? (
         // Landscape: one row aligned with the tab bar — exercise, key, scale, position… then tempo + play.
         <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
+<Pressable testID="back-to-library" onPress={backToLibrary} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercices")} hitSlop={6}>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
           <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.titleRow, pressed && styles.pressed]} accessibilityRole="button">
             <Text style={[styles.title, styles.titleCompact]} testID="fingering-title" numberOfLines={1}>
               {exerciseShort}
             </Text>
-            <CaretDown size={14} color={colors.onSurfaceTertiary} weight="bold" />
+            <Info size={14} color={colors.onSurfaceTertiary} weight="bold" />
           </Pressable>
           <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
           <View style={styles.headerPills}>
@@ -675,14 +674,17 @@ export default function FingeringScreen() {
         </View>
       ) : (
         <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-          {/* The title is the exercise: touching it changes the exercise (until the exercise library comes). */}
+          <Pressable testID="back-to-library" onPress={backToLibrary} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercices")} hitSlop={6}>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
+          {/* The title is the exercise: touching it tells what the exercise is. */}
           <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
             <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text>
             <View style={styles.titleRow}>
               <Text style={styles.title} testID="fingering-title" numberOfLines={1}>
                 {exerciseTitle}
               </Text>
-              <CaretDown size={18} color={colors.onSurfaceTertiary} weight="bold" />
+              <Info size={18} color={colors.onSurfaceTertiary} weight="bold" />
             </View>
             {pairs ? <Text style={styles.titleSub}>{tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) })}</Text> : null}
           </Pressable>
@@ -719,7 +721,7 @@ export default function FingeringScreen() {
 
       <KeyWheel visible={keyOpen} rootPc={rootPc} nameOf={nameOf} onClose={() => setKeyOpen(false)} onChange={setRootPc} />
 
-      <Sheet visible={sheet === "exercise"} onClose={closeSheet} title={tr("Exercice")} testID="exercise-sheet" fullHeight>
+      <Sheet visible={sheet === "exercise"} onClose={closeSheet} title={exerciseTitle} testID="exercise-sheet">
         {exerciseSheet}
         {/* Landscape: no "Affichage" pill, its settings are here. */}
         {isLandscape ? displaySheet : null}
@@ -773,6 +775,7 @@ const useStyles = makeStyles((c) => ({
   // Tempo + play grouped in one pill (landscape header).
   transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 2, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", flexShrink: 0 },
   playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   // Playback bar: loop, metronome, tempo, play — the same in portrait (bottom) and landscape (end of the pill row).
