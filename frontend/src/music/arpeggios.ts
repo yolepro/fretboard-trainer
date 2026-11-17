@@ -100,14 +100,15 @@ export function arpRoutes(type: ArpTypeId, shape: number, rootPc: number, toward
   return out.sort((x, y) => Math.min(...x.map((q) => q.loc.fret)) - Math.min(...y.map((q) => q.loc.fret)));
 }
 
-/** Up then back down (the top note once). With `startOnRoot`, the lowest notes under the first root are left out. */
+/** Up then back down, the exact mirror (the top note twice). With `startOnRoot`, the lowest notes under the first root are left out. */
 export function arpUpDown(notes: ArpNote[], startOnRoot: boolean): PathStep[] {
   let up: ArpNote[] = notes;
   if (startOnRoot) {
     const r = up.findIndex((x) => x.root);
     if (r > 0) up = up.slice(r);
   }
-  return [...up, ...up.slice(0, -1).reverse()];
+  // Exact mirror of the way up (the top note is played twice).
+  return [...up, ...[...up].reverse()];
 }
 
 /** What the fretboard lights up: the exact notes; fret columns tinted for a position, not for a route. */

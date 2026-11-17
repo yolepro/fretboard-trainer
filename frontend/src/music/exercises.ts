@@ -120,8 +120,8 @@ export function buildExerciseGroups(
   const up: PathStep[][] = [];
   for (let i = 0; i + span < ladder.length; i++) up.push(def.offsets.map((o) => ladder[i + o]));
   if (!up.length) return [];
-  const down = up
-    .slice(0, -1)
+  // Exact mirror of the way up: every group, the top one included, played backwards.
+  const down = [...up]
     .reverse()
     .map((g) => [...g].reverse());
   return [...up, ...down];
@@ -179,7 +179,7 @@ export function scaleDegreesSemis(formula: Formula): number[] {
  * Chord groups climbing the neck on one set of strings: each group stacks scale thirds (per the exercise), the 1st
  * note on the lowest string, the next ones on the strings above. The first group is the LOWEST one on these strings
  * that starts on the chosen scale degree; then the next degrees follow, one octave, two octaves or as far as the
- * neck allows. The way down mirrors the way up (groups reversed, each played backwards, top group once).
+ * neck allows. The way down mirrors the way up (groups reversed, each played backwards, top group included).
  */
 export function buildHorizontalGroups(
   rootPc: number,
@@ -259,8 +259,8 @@ export function buildHorizontalGroups(
     if (!frets) break;
     up.push(frets.map((n) => ({ midi: n.midi, loc: { string: n.string, fret: n.fret } })));
   }
-  const down = up
-    .slice(0, -1)
+  // Exact mirror of the way up: every group, the top one included, played backwards.
+  const down = [...up]
     .reverse()
     .map((g) => [...g].reverse());
   return [...up, ...down];

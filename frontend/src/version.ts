@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.29.2 — tous les exercices : la descente est l’exact miroir de la montée (groupe du haut rejoué à l’envers)
 // 1.29.1 — arpège sur 2 cordes : la descente reprend toute la montée à l’envers (la note du haut est jouée deux fois)
 // 1.29.0 — Arpèges horizontaux : « 3 sons sur 2 cordes » (triade sur Mi-La, Ré-Sol, Si-Mi), avec ou sans la 7e en tête de groupe, pour ∆, 7, m7 et Ø
 // 1.28.8 — Manche : choix « Notes neutres » retiré du menu (il reste dans Réglages)
@@ -69,4 +70,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.29.1";
+export const APP_VERSION = "1.29.2";
