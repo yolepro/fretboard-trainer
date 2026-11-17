@@ -172,10 +172,12 @@ export function arpTwoStringGroups(type: ArpTypeId, rootPc: number, withSeventh:
   return [];
 }
 
-/** Up through the groups, then back down: the top group once, each lower group played backwards (aligned on beats). */
+/**
+ * Up through the groups, then the exact mirror on the way down: every group, the top one included, played backwards
+ * (so the top note is played twice). Each group stays on its own beat, up and down.
+ */
 export function arpGroupsUpDown(groups: ArpNote[][]): ArpNote[] {
-  const down = groups
-    .slice(0, -1)
+  const down = [...groups]
     .reverse()
     .map((g) => [...g].reverse());
   return [...groups, ...down].flat();
