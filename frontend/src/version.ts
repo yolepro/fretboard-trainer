@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.34.1 (refonte) — portrait : les pastilles ne sont plus écrasées quand l’écran est plein ; Explorer : partition, couleurs et intervalles défilent entre le manche et la barre de lecture
 // 1.34.0 (refonte) — Explorer harmonisé avec S’exercer : portrait = titre, Gammes / Accords, pastilles (tonalité, gamme, position, affichage), barre de lecture en bas ; paysage = une rangée en haut (Explorer, tonalité, Gamme · abrégé, position, affichage, tempo + ▶), couleurs des degrés dans Affichage
 // 1.33.0 (refonte) — S’exercer s’ouvre sur la bibliothèque d’exercices (cartes par famille : Gammes, Arpèges, Triades ; filtres) ; une carte ouvre l’écran d’exercice réglé ; bouton retour ; le titre montre la description de l’exercice
 // 1.32.0 (refonte) — paysage S’exercer : une rangée en haut (exercice, tonalité, gamme abrégée, position, tempo + ▶ dans une pastille), plus de rangée en bas ; Explorer : tempo + ▶ dans une pastille, gamme abrégée en paysage ; note jouée plus écrite (trop rapide)
@@ -84,4 +85,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.34.0 · refonte";
+export const APP_VERSION = "1.34.1 · refonte";

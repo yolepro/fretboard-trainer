@@ -6,7 +6,7 @@ import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { PositionChips } from "@/src/components/PositionChips";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Metronome, Play, Repeat, Stop } from "phosphor-react-native";
@@ -386,10 +386,13 @@ export default function FretboardScreen() {
         onNotePress={onNotePress}
       />
 
-      {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapScoreNote} testID="manche-score" /> : null}
+      {isLandscape && showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapScoreNote} testID="manche-score" /> : null}
 
       {!isLandscape ? (
         <>
+          {/* Portrait: score, degree colors and intervals scroll between the neck and the playback bar (small phones). */}
+          <ScrollView style={styles.middle} contentContainerStyle={styles.middleContent} showsVerticalScrollIndicator={false}>
+          {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapScoreNote} testID="manche-score" /> : null}
           {legend}
           <View style={styles.formulaRow} testID="formula-intervals">
             {formula.intervals.map((i) => {
@@ -402,6 +405,7 @@ export default function FretboardScreen() {
               );
             })}
           </View>
+          </ScrollView>
           {/* Playback bar: the same as in S'exercer (loop, metronome, tempo, play). */}
           <View style={[styles.bottom, { paddingBottom: bottomChrome + spacing.sm }]}>
             <View style={styles.playbar} testID="playback-bar">
@@ -469,7 +473,9 @@ const useStyles = makeStyles((c) => ({
   headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   playBig: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  bottom: { marginTop: "auto", paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  middle: { flex: 1 },
+  middleContent: { paddingBottom: spacing.sm },
+  bottom: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   playbar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: spacing.sm, borderRadius: 28, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   barToggle: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   barToggleOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },

@@ -25,7 +25,7 @@ export function Pill({ label, onPress, accent = false, testID }: { label: string
 export function PillRow({ children, testID, inset = true }: { children: React.ReactNode; testID?: string; inset?: boolean }) {
   const styles = useStyles();
   return (
-    <ScrollView testID={testID} horizontal showsHorizontalScrollIndicator={false} style={styles.row} contentContainerStyle={[styles.rowContent, inset && styles.rowInset]}>
+    <ScrollView testID={testID} horizontal showsHorizontalScrollIndicator={false} style={[styles.row, inset && styles.rowFixed]} contentContainerStyle={[styles.rowContent, inset && styles.rowInset]}>
       {children}
     </ScrollView>
   );
@@ -33,6 +33,8 @@ export function PillRow({ children, testID, inset = true }: { children: React.Re
 
 const useStyles = makeStyles((c) => ({
   row: { flexGrow: 0, flexShrink: 1 },
+  // Under a header (column layout): never squeezed to nothing when the screen is full.
+  rowFixed: { flexShrink: 0, minHeight: 44 },
   rowContent: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xs },
   rowInset: { paddingHorizontal: spacing.lg },
   pill: {
