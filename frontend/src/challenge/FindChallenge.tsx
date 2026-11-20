@@ -11,6 +11,7 @@ import {
   DEFAULT_CHALLENGE,
   DEGREE_SCALES,
   SCALE_CHOICES,
+  ROUND_CHOICES,
   buildRound,
   cellId,
   challengeBestKey,
@@ -23,6 +24,7 @@ import {
   type ChallengeKind,
   type ChallengeOptions,
   type Round,
+  type RoundSetting,
 } from "@/src/challenge/rounds";
 import { Chip, SectionLabel } from "@/src/components/Chip";
 import { KeyButton } from "@/src/components/KeyWheel";
@@ -43,7 +45,6 @@ import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 type Props = { kind: ChallengeKind; onBack: () => void };
 type Phase = "setup" | "running" | "done";
 
-const ROUND_CHOICES = [3, 5, 10];
 const TITLES: Record<ChallengeKind, string> = { degree: "Trouve le degré", scale: "Trouve la gamme" };
 
 /** “Trouve le degré” / “Trouve la gamme”: fill a position by playing (mic) or touching the notes. */
@@ -58,7 +59,7 @@ export function FindChallenge({ kind, onBack }: Props) {
 
   const [tab, setTab] = useState<"play" | "results">("play");
   const [phase, setPhase] = useState<Phase>("setup");
-  const [opts, setOpts] = useState<ChallengeOptions>({ ...DEFAULT_CHALLENGE, degrees: kind === "degree" ? ["3"] : [] });
+  const [opts, setOpts] = useState<ChallengeOptions>({ ...DEFAULT_CHALLENGE, rounds: kind === "degree" ? 10 : 1 });
   const [round, setRound] = useState<Round | null>(null);
   const [roundIdx, setRoundIdx] = useState(0);
   const [found, setFound] = useState<Cell[]>([]);
@@ -128,9 +129,8 @@ export function FindChallenge({ kind, onBack }: Props) {
     } else playFeedback(k, vol);
   };
 
-  const startRound = (idx: number, prev?: { rootPc: number; position: number }) => {
-    const set = nextSetting(optsRef.current, prev);
-    const r = buildRound(kind, optsRef.current, set.rootPc, set.position);
+  const startRound = (idx: number, prev?: RoundSetting) => {
+    const r = buildRound(kind, nextSetting(kind, optsRef.current, prev));
     roundRef.current = r;
     roundIdxRef.current = idx;
     foundRef.current = [];
@@ -203,7 +203,7 @@ export function FindChallenge({ kind, onBack }: Props) {
       s: challengeSection(kind),
       key: `b${c.string}-${c.fret}`,
       label: c.label,
-      sub: optsRef.current.scaleId,
+      sub: roundRef.current?.scaleId ?? optsRef.current.scaleId,
       string: c.string,
       fret: c.fret,
       ms: now - lastFindAt.current,
@@ -224,7 +224,7 @@ export function FindChallenge({ kind, onBack }: Props) {
       setMessage({ text: tr("Manche réussie !"), bad: false });
       later(() => {
         if (idx + 1 >= optsRef.current.rounds) finish();
-        else startRound(idx + 1, { rootPc: r.rootPc, position: r.position });
+        else startRound(idx + 1, r);
       }, 1100);
     }
   };
@@ -294,7 +294,7 @@ export function FindChallenge({ kind, onBack }: Props) {
   usePitchDetector(listening, onFrame);
 
   // ---------- Views ----------
-  const scaleName = tr(scaleOf(opts.scaleId).name).toLowerCase();
+
   const header = (title: string, onLeft: () => void, icon: "back" | "close") => (
     <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingRight: navInset + spacing.lg }]}>
       <Pressable testID="challenge-back" onPress={onLeft} style={styles.roundBtn} accessibilityLabel={icon === "back" ? tr("Retour") : tr("Arrêter")}>
@@ -310,7 +310,8 @@ export function FindChallenge({ kind, onBack }: Props) {
   if (phase === "running" && round) {
     const pct = round.targets.length ? found.length / round.targets.length : 0;
     const keyName = nameOf(round.rootPc);
-    const big = kind === "degree" ? opts.degrees.map(prettyLabel).join(" · ") : `${keyName} ${scaleName}`;
+    const scaleName = tr(scaleOf(round.scaleId).name).toLowerCase();
+    const big = kind === "degree" ? round.degrees.map(prettyLabel).join(" · ") : `${keyName} ${scaleName}`;
     const prompt = kind === "degree" ? tr("Trouve toutes les notes de degré") : tr("Joue toutes les notes de");
     const sub =
       kind === "degree"
@@ -396,7 +397,6 @@ export function FindChallenge({ kind, onBack }: Props) {
   }
 
   // ---------- Setup ----------
-  const choices = kind === "degree" ? DEGREE_SCALES : SCALE_CHOICES;
   const degreeLabels = scaleOf(opts.scaleId).intervals.map((i) => i.label);
   const toggleDegree = (l: string) => {
     const has = opts.degrees.includes(l);
@@ -408,7 +408,12 @@ export function FindChallenge({ kind, onBack }: Props) {
     const labels = scaleOf(id).intervals.map((i) => i.label);
     const nums = new Set(opts.degrees.map((l) => l.replace(/[^0-9]/g, "")));
     const degrees = labels.filter((l) => nums.has(l.replace(/[^0-9]/g, "")));
-    setOpts({ ...opts, scaleId: id, degrees: kind === "degree" ? (degrees.length ? degrees : [labels[2]]) : opts.degrees });
+    setOpts({ ...opts, scaleId: id, degrees: degrees.length ? degrees : [labels[2]] });
+  };
+  const toggleScale = (id: string) => {
+    const has = opts.scales.includes(id);
+    if (has && opts.scales.length === 1) return;
+    setOpts({ ...opts, scales: has ? opts.scales.filter((x) => x !== id) : [...opts.scales, id] });
   };
 
   return (
@@ -431,24 +436,46 @@ export function FindChallenge({ kind, onBack }: Props) {
             <Chip testID="challenge-random-key" label={tr("Tonalité au hasard")} selected={opts.randomKey} onPress={() => setOpts({ ...opts, randomKey: !opts.randomKey })} />
           </View>
 
-          <SectionLabel>{kind === "degree" ? tr("Tonalité") : tr("Gamme")}</SectionLabel>
+          <SectionLabel>{tr("Manches")}</SectionLabel>
           <View style={styles.wrap}>
-            {choices.map((id) => (
-              <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scaleId === id} onPress={() => pickScale(id)} />
+            {ROUND_CHOICES[kind].map((n) => (
+              <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
             ))}
           </View>
 
           {kind === "degree" ? (
             <>
-              <SectionLabel>{tr("Degrés à trouver (plusieurs possibles)")}</SectionLabel>
+              <SectionLabel>{tr("Tonalité")}</SectionLabel>
+              <View style={styles.wrap}>
+                {DEGREE_SCALES.map((id) => (
+                  <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scaleId === id} onPress={() => pickScale(id)} />
+                ))}
+              </View>
+              <SectionLabel>{tr("Degrés")}</SectionLabel>
               <View style={styles.wrap}>
                 {degreeLabels.map((l) => (
                   <Chip key={l} testID={`challenge-degree-${l}`} label={l === "1" ? tr("Tonique (1)") : prettyLabel(l)} selected={opts.degrees.includes(l)} onPress={() => toggleDegree(l)} />
                 ))}
               </View>
+              <View style={styles.wrap}>
+                <Chip testID="challenge-degree-mix" label={tr("Un degré par manche, mélangés")} selected={opts.degreeMode === "mix"} onPress={() => setOpts({ ...opts, degreeMode: "mix" })} />
+                <Chip testID="challenge-degree-all" label={tr("Tous à la fois")} selected={opts.degreeMode === "all"} onPress={() => setOpts({ ...opts, degreeMode: "all" })} />
+              </View>
+              <Text style={styles.muted}>
+                {opts.degreeMode === "mix"
+                  ? tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")
+                  : tr("Chaque manche demande tous les degrés choisis en même temps.")}
+              </Text>
             </>
           ) : (
             <>
+              <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque manche)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
+              <View style={styles.wrap}>
+                {SCALE_CHOICES.map((id) => (
+                  <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scales.includes(id)} onPress={() => toggleScale(id)} />
+                ))}
+              </View>
+              {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque manche.")}</Text> : null}
               <SectionLabel>{tr("Ordre")}</SectionLabel>
               <View style={styles.wrap}>
                 <Chip testID="challenge-order-free" label={tr("Libre")} selected={opts.order === "free"} onPress={() => setOpts({ ...opts, order: "free" })} />
@@ -463,13 +490,6 @@ export function FindChallenge({ kind, onBack }: Props) {
               <Chip key={p} testID={`challenge-pos-${p}`} label={tr("Pos. {n}", { n: p + 1 })} selected={opts.position === p} onPress={() => setOpts({ ...opts, position: p })} />
             ))}
             <Chip testID="challenge-pos-random" label={tr("Au hasard")} selected={opts.position < 0} onPress={() => setOpts({ ...opts, position: -1 })} />
-          </View>
-
-          <SectionLabel>{tr("Manches")}</SectionLabel>
-          <View style={styles.wrap}>
-            {ROUND_CHOICES.map((n) => (
-              <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
-            ))}
           </View>
 
           <SectionLabel>{tr("Répondre")}</SectionLabel>

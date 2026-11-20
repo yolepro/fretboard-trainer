@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.41.0 — Challenges : « Trouve le degré » mélange les degrés (un degré différent à chaque manche, ou tous à la fois), 5/10/20 manches ; « Trouve la gamme » : 1 manche par défaut, et avec plusieurs manches une gamme différente à chaque manche
 // 1.40.0 (refonte) — S’exercer : famille Challenges (Trouve le degré, Trouve la gamme) : position à remplir en jouant (micro) ou en touchant, tonique affichée pour les degrés, ordre libre ou montant, manches 3/5/10, records, résultats par degré et carte du manche
 // 1.39.0 (refonte) — Oreille : « Travailler cette zone » sur la carte du manche, étiquette « Point faible · raison » pendant le challenge, encadré « Tes progrès » au bilan ; paysage : chrono et bouton Arrêter à côté du menu
 // 1.38.0 (refonte) — Oreille : mode « Mes points faibles » (score de faiblesse : ratés récents, lenteur vs ta médiane, oubli ; 7 notes sur 10 parmi les points faibles) ; choix Au hasard / Mes points faibles + bouton dans Mes notes
@@ -99,4 +100,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.40.0";
+export const APP_VERSION = "1.41.0";

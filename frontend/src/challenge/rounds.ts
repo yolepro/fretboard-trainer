@@ -8,8 +8,10 @@ export type InputMode = "both" | "touch" | "mic";
 export type ChallengeOptions = {
   rootPc: number;
   randomKey: boolean;
-  scaleId: string;
-  degrees: string[]; // interval labels to find (degree kind), e.g. ["3"], ["3", "7"]
+  scaleId: string; // degree kind: the key context (major / minor)
+  degrees: string[]; // degree kind: the pool of interval labels, e.g. ["2", "3", "5", "7"]
+  degreeMode: "mix" | "all"; // mix: one degree per round, changing every round · all: every pooled degree at once
+  scales: string[]; // scale kind: the pool; with several rounds the scale changes every round
   position: number; // 0..4, or -1 = random each round
   order: Order; // scale kind only
   rounds: number;
@@ -20,7 +22,9 @@ export const DEFAULT_CHALLENGE: ChallengeOptions = {
   rootPc: 0,
   randomKey: false,
   scaleId: "major",
-  degrees: ["3"],
+  degrees: ["2", "3", "4", "5", "6", "7"],
+  degreeMode: "mix",
+  scales: ["major", "minor", "pentamin", "dorian", "mixolydian"],
   position: 0,
   order: "free",
   rounds: 5,
@@ -39,14 +43,17 @@ export const cellId = (c: { string: number; fret: number }) => `${c.string}-${c.
 export type Round = {
   rootPc: number;
   position: number; // 0..4
+  scaleId: string;
+  degrees: string[]; // degree kind: asked in this round
   min: number;
   max: number;
   targets: Cell[]; // what must be found (ascending pitch when the order matters)
   tonics: Cell[]; // degree kind, tonic not asked: shown as landmarks
 };
 
-export function buildRound(kind: ChallengeKind, o: ChallengeOptions, rootPc: number, position: number): Round {
-  const formula = scaleOf(o.scaleId);
+export function buildRound(kind: ChallengeKind, s: RoundSetting): Round {
+  const { rootPc, position, scaleId, degrees } = s;
+  const formula = scaleOf(scaleId);
   const box = scaleBoxes(rootPc, formula, true)[position];
   const degMap = buildDegreeMap(rootPc, formula);
   const cells: Cell[] = [];
@@ -57,23 +64,36 @@ export function buildRound(kind: ChallengeKind, o: ChallengeOptions, rootPc: num
     if (iv) cells.push({ string, fret, midi, label: iv.label, num: iv.num });
   });
   cells.sort((a, b) => a.midi - b.midi);
-  const targets = kind === "degree" ? cells.filter((c) => o.degrees.includes(c.label)) : cells;
-  const tonics = kind === "degree" && !o.degrees.includes("1") ? cells.filter((c) => c.label === "1") : [];
-  return { rootPc, position, min: box.min, max: box.max, targets, tonics };
+  const targets = kind === "degree" ? cells.filter((c) => degrees.includes(c.label)) : cells;
+  const tonics = kind === "degree" && !degrees.includes("1") ? cells.filter((c) => c.label === "1") : [];
+  return { rootPc, position, scaleId, degrees, min: box.min, max: box.max, targets, tonics };
 }
 
-/** Next round's key and position (random ones change every round, never twice the same in a row). */
-export function nextSetting(o: ChallengeOptions, prev?: { rootPc: number; position: number }) {
+export type RoundSetting = { rootPc: number; position: number; scaleId: string; degrees: string[] };
+
+/**
+ * Next round. Random key / position change every round; degree challenges in “mix” ask one degree per round,
+ * scale challenges pick a scale from the pool — never the same twice in a row.
+ */
+export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, prev?: RoundSetting): RoundSetting {
   const rnd = (n: number, avoid?: number) => {
     let x = Math.floor(Math.random() * n);
     if (n > 1 && x === avoid) x = (x + 1 + Math.floor(Math.random() * (n - 1))) % n;
     return x;
   };
+  const pickOther = <T,>(list: T[], last?: T) => (list.length ? list[rnd(list.length, last === undefined ? undefined : list.indexOf(last))] : undefined);
+  const scaleId = kind === "scale" ? (pickOther(o.scales, prev?.scaleId) ?? "major") : o.scaleId;
+  const pool = o.degrees.length ? o.degrees : ["3"];
+  const degrees = kind === "degree" && o.degreeMode === "mix" ? [pickOther(pool, prev?.degrees.length === 1 ? prev.degrees[0] : undefined)!] : pool;
   return {
     rootPc: o.randomKey ? rnd(12, prev?.rootPc) : o.rootPc,
     position: o.position < 0 ? rnd(5, prev?.position) : o.position,
+    scaleId,
+    degrees,
   };
 }
+
+export const ROUND_CHOICES: Record<ChallengeKind, number[]> = { degree: [5, 10, 20], scale: [1, 3, 5] };
 
 export const challengeSection = (kind: ChallengeKind) => `find-${kind}`;
 export const challengeBestKey = (kind: ChallengeKind, rounds: number) => `fretstudio_chbest_${kind}_${rounds}`;
