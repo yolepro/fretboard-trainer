@@ -5,7 +5,7 @@ import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
 
-import { playNote, restorePlaybackMode, stopAll } from "@/src/audio/sampler";
+import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMode, stopAll } from "@/src/audio/sampler";
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
@@ -144,6 +144,29 @@ export default function EarScreen() {
     }
   }, []);
 
+  // Success / error sound. Same care as the reference note: on native the mic pauses while it plays, and the
+  // detector ignores what it hears meanwhile (the sound must not count as a played note).
+  const feedbackSound = (kind: "success" | "error") => {
+    const vol = settingsRef.current.volume;
+    const ms = FEEDBACK_MS[kind];
+    ignoreUntil.current = Math.max(ignoreUntil.current, Date.now() + ms + 400);
+    if (listeningRef.current && Platform.OS !== "web") {
+      const token = ++suspendToken.current;
+      setSuspended(true);
+      later(async () => {
+        try {
+          await restorePlaybackMode();
+        } catch {
+          // playback may still work
+        }
+        if (token === suspendToken.current) playFeedback(kind, vol);
+      }, 120);
+      later(() => {
+        if (token === suspendToken.current) setSuspended(false);
+      }, ms + 250);
+    } else playFeedback(kind, vol);
+  };
+
   const newQuestion = () => {
     const q = makeQuestion(sectionRef.current, optsRef.current, nameRef.current);
     qRef.current = q;
@@ -189,6 +212,7 @@ export default function EarScreen() {
     record(true);
     setRevealed(true);
     setFeedback({ kind: "correct", text: tr("Bravo !") });
+    feedbackSound("success");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     later(advance, 550);
   };
@@ -200,6 +224,7 @@ export default function EarScreen() {
     const name = nameRef.current;
     const played = `${name(pcOf(midi))}${octaveOf(midi)}`;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    feedbackSound("error");
     if (attemptsRef.current >= 2) {
       answeredRef.current = true;
       record(false);
@@ -289,6 +314,7 @@ export default function EarScreen() {
 
   const start = async () => {
     if (!(await ensureMic())) return;
+    preloadFeedback();
     setPerm("granted");
     clearTimers();
     resultsRef.current = [];
