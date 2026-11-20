@@ -50,6 +50,8 @@ export type Question = {
   badge?: string;
   string?: number;
   fret?: number;
+  /** What the results dashboard groups by (see stats.ts). */
+  stat: { key: string; midi?: number; label?: string; sub?: string };
 };
 
 export const STRING_NAMES = ["Mi aigu", "Si", "Sol", "Ré", "La", "Mi grave"];
@@ -134,6 +136,7 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
       autoPlay: false,
       string: s,
       fret,
+      stat: { key: `b${s}-${fret}`, midi },
     };
   }
   if (section === "listen") {
@@ -147,6 +150,7 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
       hidden: true,
       playMidi: midi,
       autoPlay: true,
+      stat: { key: `l${midi}`, midi },
     };
   }
   if (section === "degree") {
@@ -167,6 +171,7 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
       autoPlay: false,
       degree: key,
       badge: iv.label,
+      stat: { key: `d${chord.id}:${iv.label}`, label: degName, sub: chord.name },
     };
   }
   // interval
@@ -185,11 +190,12 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
     autoPlay: true,
     degree: degreeKeyFromNum(iv.num),
     badge: iv.label,
+    stat: { key: `i${iv.label}`, label: iv.label },
   };
 }
 
 export const bestKey = (s: Section, count: number) => `fretstudio_best_${s}_${count}`;
-export type Best = { score: number; timeMs: number };
+export type Best = { score: number; timeMs: number; at?: number };
 
 export function formatTime(ms: number) {
   const t = Math.max(0, ms);

@@ -24,6 +24,7 @@ import { playNote } from "@/src/audio/sampler";
 import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
+import { clearHistory } from "@/src/ear/stats";
 import { storage } from "@/src/utils/storage";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
@@ -215,17 +216,18 @@ export default function SettingsScreen() {
           <Row
             testID="setting-reset-best"
             icon={Trash}
-            title={tr("Réinitialiser le record")}
-            subtitle={resetDone ? tr("Record remis à zéro") : tr("Records des challenges Oreille")}
+            title={tr("Réinitialiser les résultats")}
+            subtitle={resetDone ? tr("Résultats effacés") : tr("Records et historique des challenges Oreille")}
             right={
               <Pressable
                 testID="reset-best-button"
                 onPress={async () => {
-                  await Promise.all(
-                    ["board", "listen", "degree", "interval"].flatMap((s) =>
+                  await Promise.all([
+                    ...["board", "listen", "degree", "interval"].flatMap((s) =>
                       [5, 10, 20].map((n) => storage.removeItem(`fretstudio_best_${s}_${n}`)),
                     ),
-                  );
+                    clearHistory(),
+                  ]);
                   setResetDone(true);
                 }}
                 style={({ pressed }) => [styles.smallBtn, styles.dangerBtn, pressed && styles.pressed]}

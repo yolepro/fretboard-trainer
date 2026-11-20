@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -10,6 +10,8 @@ import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
 import { SetupPanel } from "@/src/ear/SetupPanel";
+import { ResultsPanel } from "@/src/ear/ResultsPanel";
+import { saveAttempt, saveSession } from "@/src/ear/stats";
 import {
   DEFAULT_OPTIONS,
   SECTIONS,
@@ -28,7 +30,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
-import { fonts, makeStyles, spacing } from "@/src/theme";
+import { fonts, makeStyles, radius, spacing } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
 type Phase = "setup" | "running" | "done";
@@ -63,6 +65,8 @@ export default function EarScreen() {
   // Missed twice: the answer is shown and the player must play it to move on; the chrono is paused meanwhile.
   const correctingRef = useRef(false);
   const pausedAtRef = useRef<number | null>(null);
+  const qStartRef = useRef(0);
+  const [tab, setTab] = useState<"play" | "results">("play");
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -176,6 +180,7 @@ export default function EarScreen() {
     answeredRef.current = false;
     attemptsRef.current = 0;
     correctingRef.current = false;
+    qStartRef.current = Date.now();
     stable.current = { midi: -1, count: 0 };
     setQuestion(q);
     setFeedback(null);
@@ -193,8 +198,9 @@ export default function EarScreen() {
     const prev = bestRef.current;
     const better = score > 0 && (!prev || score > prev.score || (score === prev.score && t < prev.timeMs));
     setIsRecord(better);
+    saveSession({ t: Date.now(), s: sectionRef.current, count: optsRef.current.count, score, ms: t });
     if (better) {
-      const next = { score, timeMs: t };
+      const next = { score, timeMs: t, at: Date.now() };
       setBest(next);
       storage.setItem(bestKey(sectionRef.current, optsRef.current.count), JSON.stringify(next));
     }
@@ -211,9 +217,26 @@ export default function EarScreen() {
     setResults(resultsRef.current);
   };
 
+  // One line per answered question for the results dashboard.
+  const logAttempt = (errors: number, skipped = false) => {
+    const q = qRef.current;
+    if (!q) return;
+    saveAttempt({
+      t: Date.now(),
+      s: sectionRef.current,
+      ...q.stat,
+      string: q.string,
+      fret: q.fret,
+      ms: Date.now() - qStartRef.current,
+      errors,
+      ...(skipped ? { skipped } : {}),
+    });
+  };
+
   const onCorrect = () => {
     answeredRef.current = true;
     record(true);
+    logAttempt(attemptsRef.current);
     setRevealed(true);
     setFeedback({ kind: "correct", text: tr("Bravo !") });
     feedbackSound("success");
@@ -268,6 +291,7 @@ export default function EarScreen() {
       pauseChrono();
       stable.current = { midi: -1, count: 0 };
       record(false);
+      logAttempt(2);
       setRevealed(true);
       const pos = q.string !== undefined && q.fret !== undefined ? { string: q.string, fret: q.fret } : lowestPosition(q.targetMidi, q.pitchClassOnly);
       const answer = `${name(pcOf(q.targetMidi))}${q.pitchClassOnly ? "" : octaveOf(q.targetMidi)}`;
@@ -387,6 +411,7 @@ export default function EarScreen() {
     if (answeredRef.current) return;
     answeredRef.current = true;
     record(false);
+    logAttempt(attemptsRef.current, true);
     advance();
   };
 
@@ -425,7 +450,18 @@ export default function EarScreen() {
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
           <Text style={styles.title}>{tr("Oreille")}</Text>
-          {phase === "done" ? (
+          {phase !== "done" ? (
+            <View style={styles.segment} testID="ear-tab">
+              {(["play", "results"] as const).map((k) => (
+                <Pressable key={k} testID={`ear-tab-${k}`} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segBtnOn]}>
+                  <Text style={[styles.segText, tab === k && styles.segTextOn]}>{k === "play" ? tr("Jouer") : tr("Résultats")}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {phase !== "done" && tab === "results" ? (
+            <ResultsPanel section={section} onSection={setSection} nameOf={nameOf} bottomPad={bottomChrome + spacing.xl} />
+          ) : phase === "done" ? (
             <View style={[styles.flex, { paddingBottom: bottomChrome + spacing.lg }]}>
               <ResultView
                 sectionLabel={sectionLabel}
@@ -461,4 +497,9 @@ const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   flex: { flex: 1 },
   title: { fontFamily: fonts.display, fontSize: 28, fontWeight: "700", color: c.onSurface, paddingHorizontal: spacing.lg, paddingBottom: spacing.xs },
+  segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginBottom: spacing.xs, padding: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  segBtn: { flex: 1, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
+  segBtnOn: { backgroundColor: c.brandPrimary },
+  segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
+  segTextOn: { color: c.onBrandPrimary, fontWeight: "700" },
 }));
