@@ -11,12 +11,14 @@ import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
 import { SetupPanel } from "@/src/ear/SetupPanel";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
-import { saveAttempt, saveSession } from "@/src/ear/stats";
+import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
+import { pickWeakKey, weaknessScores } from "@/src/ear/weakness";
 import {
   DEFAULT_OPTIONS,
   SECTIONS,
   bestKey,
   lowestPosition,
+  candidateKeys,
   makeQuestion,
   positionText,
   type Best,
@@ -66,6 +68,8 @@ export default function EarScreen() {
   const correctingRef = useRef(false);
   const pausedAtRef = useRef<number | null>(null);
   const qStartRef = useRef(0);
+  // Weak-points mode: this section's answers, kept up to date during the challenge.
+  const historyRef = useRef<Attempt[]>([]);
   const [tab, setTab] = useState<"play" | "results">("play");
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
@@ -175,7 +179,12 @@ export default function EarScreen() {
   };
 
   const newQuestion = () => {
-    const q = makeQuestion(sectionRef.current, optsRef.current, nameRef.current);
+    let forced: string | undefined;
+    if (optsRef.current.weak) {
+      const scores = weaknessScores(candidateKeys(sectionRef.current, optsRef.current), historyRef.current);
+      forced = pickWeakKey(scores, qRef.current?.stat.key)?.key;
+    }
+    const q = makeQuestion(sectionRef.current, optsRef.current, nameRef.current, forced);
     qRef.current = q;
     answeredRef.current = false;
     attemptsRef.current = 0;
@@ -221,7 +230,7 @@ export default function EarScreen() {
   const logAttempt = (errors: number, skipped = false) => {
     const q = qRef.current;
     if (!q) return;
-    saveAttempt({
+    const a: Attempt = {
       t: Date.now(),
       s: sectionRef.current,
       ...q.stat,
@@ -230,7 +239,9 @@ export default function EarScreen() {
       ms: Date.now() - qStartRef.current,
       errors,
       ...(skipped ? { skipped } : {}),
-    });
+    };
+    historyRef.current.push(a);
+    saveAttempt(a);
   };
 
   const onCorrect = () => {
@@ -384,6 +395,7 @@ export default function EarScreen() {
 
   const start = async () => {
     if (!(await ensureMic())) return;
+    historyRef.current = optsRef.current.weak ? (await loadHistory()).attempts.filter((a) => a.s === sectionRef.current) : [];
     preloadFeedback();
     setPerm("granted");
     clearTimers();
@@ -460,7 +472,19 @@ export default function EarScreen() {
             </View>
           ) : null}
           {phase !== "done" && tab === "results" ? (
-            <ResultsPanel section={section} onSection={setSection} nameOf={nameOf} bottomPad={bottomChrome + spacing.xl} />
+            <ResultsPanel
+              section={section}
+              onSection={setSection}
+              nameOf={nameOf}
+              bottomPad={bottomChrome + spacing.xl}
+              onTrainWeak={() => {
+                // Straight into a weak-points challenge for this section, with the current settings.
+                optsRef.current = { ...optsRef.current, weak: true };
+                setOpts(optsRef.current);
+                setTab("play");
+                start();
+              }}
+            />
           ) : phase === "done" ? (
             <View style={[styles.flex, { paddingBottom: bottomChrome + spacing.lg }]}>
               <ResultView

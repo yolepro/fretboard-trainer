@@ -27,6 +27,7 @@ export type Options = {
   scaleId: string;
   intervals: string[]; // interval labels (from the scale) in play
   level: number; // 1..5
+  weak: boolean; // “Mes points faibles”: questions drawn from the weak targets (see weakness.ts)
 };
 
 export const DEFAULT_OPTIONS: Options = {
@@ -35,6 +36,7 @@ export const DEFAULT_OPTIONS: Options = {
   scaleId: "major",
   intervals: ["5"],
   level: 1,
+  weak: false,
 };
 
 export type Question = {
@@ -119,11 +121,22 @@ export const positionText = (p: { string: number; fret: number }) =>
 // ---- Generators ----
 const QUIZ_CHORDS = CHORDS.filter((c) => ["maj", "min", "dom7", "maj7", "m7", "m7b5", "dom9", "m9", "dom11", "dom13", "six", "sus4"].includes(c.id));
 
-export function makeQuestion(section: Section, opts: Options, name: (pc: number) => string): Question {
+/** Every target a challenge can ask with these options, as stat keys (see Question.stat). */
+export function candidateKeys(section: Section, opts: Options): string[] {
+  if (section === "board") return (opts.strings.length ? opts.strings : [5]).flatMap((s) => Array.from({ length: 13 }, (_, f) => `b${s}-${f}`));
+  if (section === "listen") return Array.from({ length: 25 }, (_, i) => `l${40 + i}`);
+  if (section === "degree") return QUIZ_CHORDS.flatMap((c) => c.intervals.filter((i) => i.num !== 1).map((i) => `d${c.id}:${i.label}`));
+  const pool = scaleIntervals(opts.scaleId).filter((i) => opts.intervals.includes(i.label));
+  return (pool.length ? pool : scaleIntervals(opts.scaleId)).map((i) => `i${i.label}`);
+}
+
+/** `forced`: a stat key to ask (weak-points mode); otherwise a random target. */
+export function makeQuestion(section: Section, opts: Options, name: (pc: number) => string, forced?: string): Question {
   const full = (m: number) => `${name(pcOf(m))}${octaveOf(m)}`;
   if (section === "board") {
-    const s = pick(opts.strings.length ? opts.strings : [5]);
-    const fret = rand(0, 12);
+    const fm = forced?.match(/^b(\d)-(\d+)$/);
+    const s = fm ? Number(fm[1]) : pick(opts.strings.length ? opts.strings : [5]);
+    const fret = fm ? Number(fm[2]) : rand(0, 12);
     const midi = TUNING[s] + fret;
     return {
       targetMidi: midi,
@@ -140,7 +153,8 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
     };
   }
   if (section === "listen") {
-    const midi = rand(40, 64);
+    const lm = forced?.match(/^l(\d+)$/);
+    const midi = lm ? Number(lm[1]) : rand(40, 64);
     return {
       targetMidi: midi,
       pitchClassOnly: false,
@@ -155,8 +169,10 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
   }
   if (section === "degree") {
     const root = rand(0, 11);
-    const chord = pick(QUIZ_CHORDS);
-    const iv = pick(chord.intervals.filter((i) => i.num !== 1));
+    const dm = forced?.match(/^d([^:]+):(.+)$/);
+    const chord = (dm && QUIZ_CHORDS.find((c) => c.id === dm[1])) || pick(QUIZ_CHORDS);
+    const ivs = chord.intervals.filter((i) => i.num !== 1);
+    const iv = (dm && ivs.find((i) => i.label === dm[2])) || pick(ivs);
     const key = degreeKeyFromNum(iv.num);
     const degName = ({ "6": "sixte", "4": "quarte", "2": "seconde" } as Record<string, string>)[iv.label] ?? DEGREE_META[key].name;
     const target = 48 + pcOf(root + iv.semi);
@@ -176,7 +192,8 @@ export function makeQuestion(section: Section, opts: Options, name: (pc: number)
   }
   // interval
   const pool = scaleIntervals(opts.scaleId).filter((i) => opts.intervals.includes(i.label));
-  const iv = pick(pool.length ? pool : scaleIntervals(opts.scaleId));
+  const avail = pool.length ? pool : scaleIntervals(opts.scaleId);
+  const iv = (forced && avail.find((i) => `i${i.label}` === forced)) || pick(avail);
   const root = rand(40, 55);
   const target = root + iv.semi;
   return {

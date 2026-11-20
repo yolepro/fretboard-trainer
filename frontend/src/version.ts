@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.38.0 (refonte) — Oreille : mode « Mes points faibles » (score de faiblesse : ratés récents, lenteur vs ta médiane, oubli ; 7 notes sur 10 parmi les points faibles) ; choix Au hasard / Mes points faibles + bouton dans Mes notes
 // 1.37.1 (refonte) — Oreille : bouton « Voir mes résultats » sur le bilan de fin de challenge
 // 1.37.0 (refonte) — Oreille : onglet Résultats (records 5/10/20 avec date, courbe des dernières parties, carte du manche Vitesse/Justesse, tops rapides/lentes/sûres/fragiles) ; historique local des réponses, effaçable dans Réglages
 // 1.36.1 (refonte) — Oreille : bonne note à la mauvaise hauteur → « trop grave / trop aiguë, joue-la plus aiguë / grave (sur la corde …) », sans numéro d’octave
@@ -96,4 +97,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.37.1 · refonte";
+export const APP_VERSION = "1.38.0 · refonte";

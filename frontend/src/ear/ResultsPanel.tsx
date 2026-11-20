@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Circle, Line, Polyline } from "react-native-svg";
-import { CaretLeft, CaretRight } from "phosphor-react-native";
+import { CaretLeft, CaretRight, Crosshair } from "phosphor-react-native";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { SECTIONS, bestKey, formatTime, intervalName, positionText, type Best, type Section } from "@/src/ear/questions";
@@ -16,6 +16,7 @@ type Props = {
   onSection: (s: Section) => void;
   nameOf: (pc: number) => string;
   bottomPad: number;
+  onTrainWeak: () => void;
 };
 
 type View_ = "home" | "map" | "tops";
@@ -49,7 +50,7 @@ function rateBucket(rate: number) {
   return rate <= RATE_STEPS[0] ? 0 : rate < RATE_STEPS[1] ? 1 : rate < RATE_STEPS[2] ? 2 : 3;
 }
 
-export function ResultsPanel({ section, onSection, nameOf, bottomPad }: Props) {
+export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWeak }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const [view, setView] = useState<View_>("home");
@@ -266,6 +267,10 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad }: Props) {
               </View>
             ))
           )}
+          <Pressable testID="results-train-weak" onPress={onTrainWeak} style={({ pressed }) => [styles.trainBtn, pressed && styles.pressed]}>
+            <Crosshair size={18} color={colors.brandPrimary} weight="bold" />
+            <Text style={styles.trainText}>{tr("Travailler mes points faibles")}</Text>
+          </Pressable>
           <Text style={styles.foot}>{tr("Une note n’est classée qu’après 3 essais. Temps = médiane, sans les pauses du chrono. Une note passée compte comme ratée.")}</Text>
         </ScrollView>
       </View>
@@ -450,5 +455,7 @@ const useStyles = makeStyles((c) => ({
   barTrack: { height: 4, borderRadius: 2, backgroundColor: c.surfaceTertiary },
   bar: { height: 4, borderRadius: 2 },
   topValue: { minWidth: 56, textAlign: "right", fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onSurface, fontVariant: ["tabular-nums"] },
+  trainBtn: { height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: c.brandPrimary, backgroundColor: c.brandTertiary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  trainText: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onSurface },
   pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
 }));
