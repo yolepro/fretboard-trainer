@@ -251,3 +251,51 @@ export function playClick(beat: number, volume = 1, atMs?: number) {
     // ignore
   }
 }
+
+// ---- Answer feedback (Oreille): crystal ping when right, soft low “no” when wrong ----
+const FEEDBACK = {
+  success: require("../../assets/sounds/success.wav"),
+  error: require("../../assets/sounds/error.wav"),
+};
+// The “wrong” sound is kept quieter so a mistake never feels harsh.
+const FEEDBACK_GAIN = { success: 0.55, error: 0.6 };
+export const FEEDBACK_MS = { success: 800, error: 600 };
+const feedbackPlayers: Partial<Record<keyof typeof FEEDBACK, AudioPlayer>> = {};
+
+function feedbackPlayer(kind: keyof typeof FEEDBACK) {
+  let p = feedbackPlayers[kind];
+  if (!p) {
+    p = createAudioPlayer(FEEDBACK[kind]);
+    feedbackPlayers[kind] = p;
+  }
+  return p;
+}
+
+export function preloadFeedback() {
+  initAudio();
+  if (webAudioScheduling) {
+    loadWebBuffer(FEEDBACK.success);
+    loadWebBuffer(FEEDBACK.error);
+  }
+  try {
+    feedbackPlayer("success");
+    feedbackPlayer("error");
+  } catch {
+    // ignore
+  }
+}
+
+export function playFeedback(kind: keyof typeof FEEDBACK, volume = 1) {
+  initAudio();
+  const v = volume * FEEDBACK_GAIN[kind];
+  if (webAudioScheduling && playWebBuffer(FEEDBACK[kind], Date.now(), v)) return;
+  try {
+    const p = feedbackPlayer(kind);
+    p.volume = v;
+    Promise.resolve(p.seekTo(0))
+      .catch(() => {})
+      .then(() => p.play());
+  } catch {
+    // ignore
+  }
+}

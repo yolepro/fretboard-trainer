@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { HintScrollRow } from "@/src/components/ScrollHint";
+import { Pressable, Text, View } from "react-native";
 
 import { fonts, makeStyles, radius, spacing } from "@/src/theme";
 
@@ -46,15 +47,9 @@ export function Chip({ label, selected, onPress, testID, dotColor, dim, badge, b
 export function ChipRow({ children, testID }: { children: React.ReactNode; testID?: string }) {
   const styles = useStyles();
   return (
-    <ScrollView
-      testID={testID}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.row}
-      contentContainerStyle={styles.rowContent}
-    >
+    <HintScrollRow testID={testID} style={styles.row} contentContainerStyle={styles.rowContent}>
       {children}
-    </ScrollView>
+    </HintScrollRow>
   );
 }
 

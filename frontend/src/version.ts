@@ -2,6 +2,29 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.40.0 (refonte) — S’exercer : famille Challenges (Trouve le degré, Trouve la gamme) : position à remplir en jouant (micro) ou en touchant, tonique affichée pour les degrés, ordre libre ou montant, manches 3/5/10, records, résultats par degré et carte du manche
+// 1.39.0 (refonte) — Oreille : « Travailler cette zone » sur la carte du manche, étiquette « Point faible · raison » pendant le challenge, encadré « Tes progrès » au bilan ; paysage : chrono et bouton Arrêter à côté du menu
+// 1.38.0 (refonte) — Oreille : mode « Mes points faibles » (score de faiblesse : ratés récents, lenteur vs ta médiane, oubli ; 7 notes sur 10 parmi les points faibles) ; choix Au hasard / Mes points faibles + bouton dans Mes notes
+// 1.37.1 (refonte) — Oreille : bouton « Voir mes résultats » sur le bilan de fin de challenge
+// 1.37.0 (refonte) — Oreille : onglet Résultats (records 5/10/20 avec date, courbe des dernières parties, carte du manche Vitesse/Justesse, tops rapides/lentes/sûres/fragiles) ; historique local des réponses, effaçable dans Réglages
+// 1.36.1 (refonte) — Oreille : bonne note à la mauvaise hauteur → « trop grave / trop aiguë, joue-la plus aiguë / grave (sur la corde …) », sans numéro d’octave
+// 1.36.0 (refonte) — Oreille : après 2 ratés, la réponse reste affichée jusqu’à ce que la bonne note soit jouée (chrono en pause pendant ce temps ; « Passer » reste possible)
+// 1.35.2 (refonte) — Oreille : son de réussite plus doux (deux notes rondes montantes, moins fort)
+// 1.35.1 (refonte) — Oreille : son cristal quand la note est juste, son grave et doux quand elle est fausse (micro en pause pendant le son)
+// 1.35.0 (refonte) — Oreille/Manche : après 2 ratés, petit manche (cases 0–12) sous la note pendant 3 s ; encadré « Joue la note sur ta guitare » retiré
+// 1.34.5 (refonte) — paysage : métronome et Jouer regroupés dans un carré arrondi au style des pastilles de réglage
+// 1.34.4 (refonte) — rangées de sélecteurs qui défilent : un « > » discret à droite tant qu’il reste des choix cachés (non cliquable, disparaît en fin de rangée)
+// 1.34.3 (refonte) — Explorer portrait : le titre n’affiche plus la tonalité et la gamme / l’accord (déjà sur les pastilles)
+// 1.34.2 (refonte) — Explorer : sélecteur Gammes / Accords retiré de l’écran (il reste dans le menu de la pastille Gamme / Accord)
+// 1.34.1 (refonte) — portrait : les pastilles ne sont plus écrasées quand l’écran est plein ; Explorer : partition, couleurs et intervalles défilent entre le manche et la barre de lecture
+// 1.34.0 (refonte) — Explorer harmonisé avec S’exercer : portrait = titre, Gammes / Accords, pastilles (tonalité, gamme, position, affichage), barre de lecture en bas ; paysage = une rangée en haut (Explorer, tonalité, Gamme · abrégé, position, affichage, tempo + ▶), couleurs des degrés dans Affichage
+// 1.33.0 (refonte) — S’exercer s’ouvre sur la bibliothèque d’exercices (cartes par famille : Gammes, Arpèges, Triades ; filtres) ; une carte ouvre l’écran d’exercice réglé ; bouton retour ; le titre montre la description de l’exercice
+// 1.32.0 (refonte) — paysage S’exercer : une rangée en haut (exercice, tonalité, gamme abrégée, position, tempo + ▶ dans une pastille), plus de rangée en bas ; Explorer : tempo + ▶ dans une pastille, gamme abrégée en paysage ; note jouée plus écrite (trop rapide)
+// 1.31.4 (refonte) — correctif : toucher un onglet plantait (navigation absente sur le web) ; repli sur le routeur
+// 1.31.3 (refonte) — paysage : barre d’onglets compacte en haut à droite (icônes), toute la hauteur pour le manche ; barre d’onglets maison partout (plus la barre native iOS 26)
+// 1.31.2 (refonte) — reprend la 1.30.5 de main : backend FastAPI / MongoDB supprimés, app 100 % locale
+// 1.31.1 (refonte) — feuille Tempo : − / valeur / + tiennent sur petit écran, valeur centrée
+// 1.31.0 (branche refonte-ecran-exercice) — onglets Explorer / S’exercer ; S’exercer : titre = exercice, pastilles (tonalité, gamme, position, variante, affichage) qui ouvrent chacune leur réglage, barre de lecture en bas (boucle, métronome, tempo, ▶) ; en paysage pastilles + lecture sur une seule rangée
 // 1.30.5 — suppression du backend FastAPI et de la base MongoDB (jamais utilisés) : l’app est 100 % locale
 // 1.30.4 — menus : même transparence que la rosace (80 %, sans flou)
 // 1.30.3 — menu Exercice : hauteur fixe (le haut du menu ne bouge plus entre Gammes / Arpèges / Paires de triades), rubriques des paires dans le même ordre
@@ -76,4 +99,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.30.5";
+export const APP_VERSION = "1.40.0 · refonte";

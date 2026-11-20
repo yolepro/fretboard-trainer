@@ -75,6 +75,17 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
           ))}
         </View>
 
+        <SectionLabel>{tr("Notes demandées")}</SectionLabel>
+        <View style={styles.wrapRow}>
+          <Chip testID="ear-pick-random" label={tr("Au hasard")} selected={!opts.weak} onPress={() => setOpts({ ...opts, weak: false })} />
+          <Chip testID="ear-pick-weak" label={tr("Mes points faibles")} selected={opts.weak} onPress={() => setOpts({ ...opts, weak: true })} />
+        </View>
+        {opts.weak ? (
+          <Text style={styles.note} testID="ear-weak-note">
+            {tr("7 notes sur 10 parmi tes points faibles (lentes, ratées, peu ou pas encore demandées), les autres parmi celles que tu connais. Une note en sort après 3 bonnes réponses rapides d’affilée.")}
+          </Text>
+        ) : null}
+
         {section === "board" ? (
           <>
             <SectionLabel>{tr("Cordes")}</SectionLabel>

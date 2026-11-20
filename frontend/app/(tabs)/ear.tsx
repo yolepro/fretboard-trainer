@@ -1,20 +1,26 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
 
-import { playNote, restorePlaybackMode, stopAll } from "@/src/audio/sampler";
+import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMode, stopAll } from "@/src/audio/sampler";
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
 import { SetupPanel } from "@/src/ear/SetupPanel";
+import { ResultsPanel } from "@/src/ear/ResultsPanel";
+import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
+import { pickWeakKey, sessionProgress, weaknessScores } from "@/src/ear/weakness";
+import { reasonText } from "@/src/ear/labels";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import {
   DEFAULT_OPTIONS,
   SECTIONS,
   bestKey,
   lowestPosition,
+  candidateKeys,
   makeQuestion,
   positionText,
   type Best,
@@ -23,12 +29,12 @@ import {
   type Section,
 } from "@/src/ear/questions";
 import type { PitchFrame } from "@/src/music/yin";
-import { freqToMidiFloat, octaveOf, pcOf } from "@/src/music/theory";
+import { STRING_LABELS, freqToMidiFloat, octaveOf, pcOf } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
-import { fonts, makeStyles, spacing } from "@/src/theme";
+import { fonts, makeStyles, radius, spacing } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
 type Phase = "setup" | "running" | "done";
@@ -37,6 +43,9 @@ type Timer = ReturnType<typeof setTimeout>;
 
 export default function EarScreen() {
   const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+  // Landscape: the tab bar is a pill in the top-right corner; keep the header controls beside it.
+  const navInset = winW > winH && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const styles = useStyles();
   const { settings, nameOf } = useSettings();
@@ -60,6 +69,18 @@ export default function EarScreen() {
   const qRef = useRef<Question | null>(null);
   const answeredRef = useRef(false);
   const attemptsRef = useRef(0);
+  // Missed twice: the answer is shown and the player must play it to move on; the chrono is paused meanwhile.
+  const correctingRef = useRef(false);
+  const pausedAtRef = useRef<number | null>(null);
+  const qStartRef = useRef(0);
+  // Weak-points mode: this section's answers, kept up to date during the challenge.
+  const historyRef = useRef<Attempt[]>([]);
+  const beforeRef = useRef<Attempt[]>([]); // answers before this challenge (for “Tes progrès”)
+  const sessionRef = useRef<Attempt[]>([]); // answers of this challenge
+  // “Travailler cette zone”: the stat keys of the chosen frets (Manche), else null.
+  const zoneRef = useRef<string[] | null>(null);
+  const [progress, setProgress] = useState<ReturnType<typeof sessionProgress> | null>(null);
+  const [tab, setTab] = useState<"play" | "results">("play");
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -144,11 +165,46 @@ export default function EarScreen() {
     }
   }, []);
 
+  // Success / error sound. Same care as the reference note: on native the mic pauses while it plays, and the
+  // detector ignores what it hears meanwhile (the sound must not count as a played note).
+  const feedbackSound = (kind: "success" | "error") => {
+    const vol = settingsRef.current.volume;
+    const ms = FEEDBACK_MS[kind];
+    ignoreUntil.current = Math.max(ignoreUntil.current, Date.now() + ms + 400);
+    if (listeningRef.current && Platform.OS !== "web") {
+      const token = ++suspendToken.current;
+      setSuspended(true);
+      later(async () => {
+        try {
+          await restorePlaybackMode();
+        } catch {
+          // playback may still work
+        }
+        if (token === suspendToken.current) playFeedback(kind, vol);
+      }, 120);
+      later(() => {
+        if (token === suspendToken.current) setSuspended(false);
+      }, ms + 250);
+    } else playFeedback(kind, vol);
+  };
+
+  const targetKeys = () => (zoneRef.current && sectionRef.current === "board" ? zoneRef.current : candidateKeys(sectionRef.current, optsRef.current));
+
   const newQuestion = () => {
-    const q = makeQuestion(sectionRef.current, optsRef.current, nameRef.current);
+    let forced: string | undefined;
+    let focus: Question["focus"];
+    if (optsRef.current.weak) {
+      const scores = weaknessScores(targetKeys(), historyRef.current);
+      const picked = pickWeakKey(scores, qRef.current?.stat.key);
+      forced = picked?.key;
+      if (picked) focus = { weak: picked.weak, text: picked.weak ? reasonText(picked.reason) : tr("Révision · tu la connais bien") };
+    }
+    const q = { ...makeQuestion(sectionRef.current, optsRef.current, nameRef.current, forced), focus };
     qRef.current = q;
     answeredRef.current = false;
     attemptsRef.current = 0;
+    correctingRef.current = false;
+    qStartRef.current = Date.now();
     stable.current = { midi: -1, count: 0 };
     setQuestion(q);
     setFeedback(null);
@@ -166,8 +222,10 @@ export default function EarScreen() {
     const prev = bestRef.current;
     const better = score > 0 && (!prev || score > prev.score || (score === prev.score && t < prev.timeMs));
     setIsRecord(better);
+    saveSession({ t: Date.now(), s: sectionRef.current, count: optsRef.current.count, score, ms: t });
+    setProgress(optsRef.current.weak ? sessionProgress(targetKeys(), beforeRef.current, sessionRef.current) : null);
     if (better) {
-      const next = { score, timeMs: t };
+      const next = { score, timeMs: t, at: Date.now() };
       setBest(next);
       storage.setItem(bestKey(sectionRef.current, optsRef.current.count), JSON.stringify(next));
     }
@@ -184,13 +242,68 @@ export default function EarScreen() {
     setResults(resultsRef.current);
   };
 
+  // One line per answered question for the results dashboard.
+  const logAttempt = (errors: number, skipped = false) => {
+    const q = qRef.current;
+    if (!q) return;
+    const a: Attempt = {
+      t: Date.now(),
+      s: sectionRef.current,
+      ...q.stat,
+      string: q.string,
+      fret: q.fret,
+      ms: Date.now() - qStartRef.current,
+      errors,
+      ...(skipped ? { skipped } : {}),
+    };
+    historyRef.current.push(a);
+    sessionRef.current.push(a);
+    saveAttempt(a);
+  };
+
   const onCorrect = () => {
     answeredRef.current = true;
     record(true);
+    logAttempt(attemptsRef.current);
     setRevealed(true);
     setFeedback({ kind: "correct", text: tr("Bravo !") });
+    feedbackSound("success");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     later(advance, 550);
+  };
+
+  const pauseChrono = () => {
+    if (pausedAtRef.current === null) pausedAtRef.current = Date.now();
+  };
+  const resumeChrono = () => {
+    if (pausedAtRef.current === null) return;
+    startRef.current += Date.now() - pausedAtRef.current;
+    pausedAtRef.current = null;
+  };
+
+  // The shown answer has been played: on to the next note (the question stays counted as missed).
+  const onCorrected = () => {
+    correctingRef.current = false;
+    answeredRef.current = true;
+    resumeChrono();
+    setFeedback({ kind: "correct", text: tr("C’est ça !") });
+    feedbackSound("success");
+    later(advance, 550);
+  };
+
+  // Right note name at the wrong height: said in plain words (too low / too high), no octave numbers.
+  const octaveHint = (q: Question, midi: number) => {
+    if (q.pitchClassOnly || pcOf(midi) !== pcOf(q.targetMidi) || midi === q.targetMidi) return null;
+    const higher = q.targetMidi > midi;
+    const far = Math.abs(q.targetMidi - midi) > 12;
+    const base = higher
+      ? far
+        ? tr("Bonne note, mais beaucoup trop grave — joue-la bien plus aiguë")
+        : tr("Bonne note, mais trop grave — joue-la plus aiguë")
+      : far
+        ? tr("Bonne note, mais beaucoup trop aiguë — joue-la bien plus grave")
+        : tr("Bonne note, mais trop aiguë — joue-la plus grave");
+    return q.string !== undefined ? `${base}, ${tr("sur la corde {s} ({l})", { s: q.string + 1, l: STRING_LABELS[q.string] })}` : base;
   };
 
   const onWrong = (midi: number) => {
@@ -200,22 +313,23 @@ export default function EarScreen() {
     const name = nameRef.current;
     const played = `${name(pcOf(midi))}${octaveOf(midi)}`;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    feedbackSound("error");
     if (attemptsRef.current >= 2) {
-      answeredRef.current = true;
+      correctingRef.current = true;
+      pauseChrono();
+      stable.current = { midi: -1, count: 0 };
       record(false);
+      logAttempt(2);
       setRevealed(true);
       const pos = q.string !== undefined && q.fret !== undefined ? { string: q.string, fret: q.fret } : lowestPosition(q.targetMidi, q.pitchClassOnly);
       const answer = `${name(pcOf(q.targetMidi))}${q.pitchClassOnly ? "" : octaveOf(q.targetMidi)}`;
-      setFeedback({ kind: "miss", text: tr("Raté — c’était {answer}", { answer }) + (pos ? ` · ${positionText(pos)}` : "") });
-      later(advance, 1800);
+      // “Manche”: the small neck under the note already shows where it is.
+      const where = pos && q.string === undefined ? ` · ${positionText(pos)}` : "";
+      setFeedback({ kind: "miss", text: `${tr("Raté — c’était {answer}", { answer })}${where} · ${tr("joue-la pour continuer")}` });
       return;
     }
-    let text = tr("Tu joues {note} — encore 1 chance", { note: played });
-    if (!q.pitchClassOnly && pcOf(midi) === pcOf(q.targetMidi)) {
-      const diff = octaveOf(q.targetMidi) - octaveOf(midi);
-      text = tr(`Bonne note, mauvaise octave — vise {n} octave${Math.abs(diff) > 1 ? "s" : ""} plus ${diff > 0 ? "haut" : "bas"} (encore 1 chance)`, { n: Math.abs(diff) });
-    }
-    setFeedback({ kind: "wrong", text });
+    const hint = octaveHint(q, midi);
+    setFeedback({ kind: "wrong", text: hint ? `${hint} · ${tr("encore 1 chance")}` : tr("Tu joues {note} — encore 1 chance", { note: played }) });
   };
 
   const onFrame = (f: PitchFrame) => {
@@ -232,6 +346,14 @@ export default function EarScreen() {
     if (stable.current.midi === midi) stable.current.count += 1;
     else stable.current = { midi, count: 1 };
     const match = q.pitchClassOnly ? pcOf(midi) === pcOf(q.targetMidi) : midi === q.targetMidi;
+    if (correctingRef.current) {
+      if (match && stable.current.count === 3) onCorrected();
+      else if (!match && stable.current.count === 6) {
+        const hint = octaveHint(q, midi);
+        if (hint) setFeedback({ kind: "miss", text: hint });
+      }
+      return;
+    }
     if (match && stable.current.count === 3) onCorrect();
     else if (!match && stable.current.count === 6) onWrong(midi);
   };
@@ -246,6 +368,7 @@ export default function EarScreen() {
     setSuspended(false);
     setDetected(null);
     setPhase("setup");
+    zoneRef.current = null;
     stopAll();
   }, []);
 
@@ -264,7 +387,9 @@ export default function EarScreen() {
 
   useEffect(() => {
     if (phase !== "running") return;
-    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 100);
+    const id = setInterval(() => {
+      if (pausedAtRef.current === null) setElapsed(Date.now() - startRef.current);
+    }, 100);
     return () => clearInterval(id);
   }, [phase]);
 
@@ -288,6 +413,10 @@ export default function EarScreen() {
 
   const start = async () => {
     if (!(await ensureMic())) return;
+    historyRef.current = optsRef.current.weak ? (await loadHistory()).attempts.filter((a) => a.s === sectionRef.current) : [];
+    beforeRef.current = [...historyRef.current];
+    sessionRef.current = [];
+    preloadFeedback();
     setPerm("granted");
     clearTimers();
     resultsRef.current = [];
@@ -295,6 +424,7 @@ export default function EarScreen() {
     setIsRecord(false);
     setElapsed(0);
     startRef.current = Date.now();
+    pausedAtRef.current = null;
     phaseRef.current = "running";
     setPhase("running");
     setListening(true);
@@ -302,13 +432,24 @@ export default function EarScreen() {
   };
 
   const skip = () => {
+    if (correctingRef.current) {
+      // Already counted as missed: just move on.
+      correctingRef.current = false;
+      answeredRef.current = true;
+      resumeChrono();
+      advance();
+      return;
+    }
     if (answeredRef.current) return;
     answeredRef.current = true;
     record(false);
+    logAttempt(attemptsRef.current, true);
     advance();
   };
 
-  const sectionLabel = tr(SECTIONS.find((s) => s.id === section)!.label);
+  const sectionLabel =
+    tr(SECTIONS.find((s) => s.id === section)!.label) +
+    (zoneRef.current && section === "board" ? ` · ${tr("Zone")}` : opts.weak ? ` · ${tr("Points faibles")}` : "");
   const micText = suspended
     ? tr("Écoute…")
     : status === "starting"
@@ -338,12 +479,45 @@ export default function EarScreen() {
             onReplay={() => playRef(question.playMidi)}
             onSkip={skip}
             onStop={stop}
+            navInset={navInset}
           />
         </View>
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
-          <Text style={styles.title}>{tr("Oreille")}</Text>
-          {phase === "done" ? (
+          <Text style={[styles.title, { paddingRight: navInset + spacing.lg }]}>{tr("Oreille")}</Text>
+          {phase !== "done" ? (
+            <View style={styles.segment} testID="ear-tab">
+              {(["play", "results"] as const).map((k) => (
+                <Pressable key={k} testID={`ear-tab-${k}`} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segBtnOn]}>
+                  <Text style={[styles.segText, tab === k && styles.segTextOn]}>{k === "play" ? tr("Jouer") : tr("Résultats")}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {phase !== "done" && tab === "results" ? (
+            <ResultsPanel
+              section={section}
+              onSection={setSection}
+              nameOf={nameOf}
+              bottomPad={bottomChrome + spacing.xl}
+              onTrainZone={(keys) => {
+                // “Travailler cette zone”: weak-points draw restricted to these frets.
+                zoneRef.current = keys;
+                optsRef.current = { ...optsRef.current, weak: true };
+                setOpts(optsRef.current);
+                setTab("play");
+                start();
+              }}
+              onTrainWeak={() => {
+                // Straight into a weak-points challenge for this section, with the current settings.
+                zoneRef.current = null;
+                optsRef.current = { ...optsRef.current, weak: true };
+                setOpts(optsRef.current);
+                setTab("play");
+                start();
+              }}
+            />
+          ) : phase === "done" ? (
             <View style={[styles.flex, { paddingBottom: bottomChrome + spacing.lg }]}>
               <ResultView
                 sectionLabel={sectionLabel}
@@ -353,7 +527,19 @@ export default function EarScreen() {
                 best={best}
                 isRecord={isRecord}
                 onReplay={start}
-                onSetup={() => setPhase("setup")}
+                replayLabel={zoneRef.current ? tr("Rejouer cette zone") : opts.weak ? tr("Rejouer mes points faibles") : tr("Rejouer")}
+                progress={progress}
+                nameOf={nameOf}
+                onSetup={() => {
+                  zoneRef.current = null;
+                  setTab("play");
+                  setPhase("setup");
+                }}
+                onResults={() => {
+                  zoneRef.current = null;
+                  setTab("results");
+                  setPhase("setup");
+                }}
               />
             </View>
           ) : (
@@ -379,4 +565,9 @@ const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   flex: { flex: 1 },
   title: { fontFamily: fonts.display, fontSize: 28, fontWeight: "700", color: c.onSurface, paddingHorizontal: spacing.lg, paddingBottom: spacing.xs },
+  segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginBottom: spacing.xs, padding: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  segBtn: { flex: 1, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
+  segBtnOn: { backgroundColor: c.brandPrimary },
+  segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
+  segTextOn: { color: c.onBrandPrimary, fontWeight: "700" },
 }));

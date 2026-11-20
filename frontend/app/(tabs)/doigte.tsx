@@ -1,13 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/webAudio";
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
-import { KeyButton } from "@/src/components/KeyWheel";
+import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
+import { ExerciseLibrary, PRESETS, type ExercisePreset } from "@/src/components/ExerciseLibrary";
+import { FindChallenge } from "@/src/challenge/FindChallenge";
+import { shortName } from "@/src/music/shortNames";
+import { Pill, PillRow } from "@/src/components/Pill";
+import { Sheet } from "@/src/components/Sheet";
+import { PositionChips } from "@/src/components/PositionChips";
 import { ARP_SHAPES, ARP_TYPES, arpFormula, arpGroupsUpDown, arpTwoStringGroups, arpRoutes, arpShapePlacements, arpUpDown, arpWindow, type ArpNote, type ArpTypeId } from "@/src/music/arpeggios";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { CaretDown, List, Play, Stop } from "phosphor-react-native";
+import { CaretLeft, Info, Metronome, Play, Repeat, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -80,7 +87,10 @@ export default function FingeringScreen() {
   const [playing, setPlaying] = useState(false);
   const [stepIdx, setStepIdx] = useState<number | null>(null);
   const [active, setActive] = useState<{ midi: number; string: number; fret: number } | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // One focused sheet per pill ("exercise" = the title), and the key wheel.
+  const [sheet, setSheet] = useState<null | "exercise" | "scale" | "arpType" | "where" | "variant" | "display">(null);
+  const [keyOpen, setKeyOpen] = useState(false);
+  const closeSheet = () => setSheet(null);
   const [horizontal, setHorizontal] = useState(false);
   const [setIdx, setSetIdx] = useState(0);
   // Horizontal: number of strings a group is spread over (null = one note per string).
@@ -88,6 +98,10 @@ export default function FingeringScreen() {
   const [extent, setExtent] = useState<Extent>("octave");
   // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
+  // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
+  const [view, setView] = useState<"library" | "exercise" | "challenge">("library");
+  const [challenge, setChallenge] = useState<"degree" | "scale">("degree");
+  const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
   const pairs = subject === "pairs";
@@ -104,10 +118,10 @@ export default function FingeringScreen() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   // Phones in portrait: the menu button is a round icon, the play button has no label.
-  const compactHeader = !isLandscape && width < 480;
   const usableW = width - insets.left - insets.right - 8;
   const fretScale = isLandscape ? fitScale(usableW, 16) : 1;
-  const tabBarH = usesNativeTabs ? 0 : 49 + insets.bottom;
+  // Landscape: the tab bar sits at the top right, over the header (no bottom bar).
+  const tabBarH = usesNativeTabs || width > height ? 0 : 49 + insets.bottom;
 
   useEffect(() => {
     initAudio();
@@ -203,13 +217,13 @@ export default function FingeringScreen() {
   // Score under the fretboard: portrait always; landscape on request (staff only, to save height).
   const showScore = !isLandscape || settings.showScoreLandscape;
   // Landscape: the tablature is shown only when the screen is tall enough (tablets); phones keep the staff alone.
-  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
+  const landscapeRoom = height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - 6 * LANDSCAPE_ROW_MIN - 6;
   const tabOn = settings.showTab && (!isLandscape || landscapeRoom >= 214);
   const { layout } = useScore(sequence, pairs ? "triads" : arp ? "path" : exerciseId, exercise.perBeat, rootPc, scoreFormula, tabOn, slow, bpm, pulseOf(rhythmId, slow).half);
   const rowH = isLandscape
     ? Math.max(
         showScore ? LANDSCAPE_ROW_MIN : 26,
-        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
+        Math.min(34, Math.floor((height - insets.top - tabBarH - bottomChrome - 52 - 22 - 8 - (showScore ? layout.height + 6 : 0)) / 6)),
       )
     : 34;
 
@@ -283,6 +297,27 @@ export default function FingeringScreen() {
     [sequence, settings.volume],
   );
 
+  const pickPreset = (p: ExercisePreset) => {
+    stop();
+    if (p.subject === "challenge") {
+      setPresetId(p.id);
+      setChallenge(p.challenge ?? "degree");
+      setView("challenge");
+      return;
+    }
+    setSubject(p.subject);
+    if (p.exerciseId) setExerciseId(p.exerciseId);
+    setHorizontal(p.horizontal);
+    if (p.arpKind) setArpKind(p.arpKind);
+    setPresetId(p.id);
+    setView("exercise");
+  };
+  const backToLibrary = () => {
+    stop();
+    setSheet(null);
+    setView("library");
+  };
+
   const togglePlay = () => {
     if (playing) {
       stop();
@@ -350,7 +385,6 @@ export default function FingeringScreen() {
     }
   };
   const arpSymbol = ARP_TYPES.find((t) => t.id === arpType)!.symbol;
-  const title = `${nameOf(rootPc)}${arp ? arpSymbol : ""}`;
   const empty = sequence.length === 0;
 
   const exerciseChips = EXERCISES.map((e) => {
@@ -397,208 +431,276 @@ export default function FingeringScreen() {
     <Chip key={st.id} testID={`pair-style-${st.id}`} label={tr(st.name)} selected={pairStyle === st.id} onPress={() => setPairStyle(st.id)} />
   ));
 
-  const pickerTop = (
-    <>
-      <View style={styles.segment} testID="subject-selector">
-        {(["scale", "arp", "pairs"] as const).map((m) => (
-          <Pressable key={m} testID={`subject-${m}`} onPress={() => setSubject(m)} style={[styles.segBtn, subject === m && styles.segBtnActive]}>
-            <Text style={[styles.segText, subject === m && styles.segTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              {m === "scale" ? tr("Gammes") : m === "arp" ? tr("Arpèges") : tr("Paires de triades")}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {pairs ? (
-        <>
-          <SectionLabel>{tr("Variante")}</SectionLabel>
-          <ChipRow testID="pair-style-selector">{pairStyleChips}</ChipRow>
-          <Text style={styles.hint}>
-            {tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })}
-          </Text>
-        </>
-      ) : arp ? (
-        <>
-          <SectionLabel>{tr("Type d’arpège")}</SectionLabel>
-          <ChipRow testID="arp-type-selector">{arpTypeChips}</ChipRow>
-        </>
-      ) : (
-        <>
-          <SectionLabel>{tr("Exercice")}</SectionLabel>
-          <ChipRow testID="exercise-selector">{exerciseChips}</ChipRow>
-          <Text style={styles.hint}>{tr(exercise.description)}</Text>
-        </>
-      )}
-
-      {!pairs ? (
-        <>
-          <SectionLabel>{tr("Mode")}</SectionLabel>
-          <ChipRow testID="mode-selector">{modeChips}</ChipRow>
-        </>
-      ) : null}
-      {horizontal ? (
-        <Text style={styles.hint}>
-          {arp ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.") : tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}
-        </Text>
-      ) : null}
-
-    </>
-  );
-  const pickerExtra = (
-    <>
-      {arp ? (
-        <>
-          {horizontal ? (
-            <>
-              <SectionLabel>{tr("Arpège horizontal")}</SectionLabel>
-              <ChipRow testID="arp-kind-selector">
-                <Chip testID="arp-kind-shapes" label={tr("4 sons (schémas)")} selected={arpKind === "shapes"} onPress={() => setArpKind("shapes")} />
-                <Chip testID="arp-kind-two" label={tr("3 sons sur 2 cordes")} selected={arpKind === "twoStrings"} onPress={() => setArpKind("twoStrings")} />
-              </ChipRow>
-            </>
-          ) : null}
-          {twoStrings ? (
-            <>
-              <Text style={styles.hint}>{tr("La triade sur Mi-La, Ré-Sol puis Si-Mi : fondamentale sur la corde grave, tierce et quinte sur la suivante.")}</Text>
-              <SectionLabel>{tr("7e")}</SectionLabel>
-              <ChipRow testID="arp-seventh-selector">
-                <Chip testID="arp-seventh-on" label={tr("Avec la 7e (elle commence)")} selected={withSeventh} onPress={() => setWithSeventh(true)} />
-                <Chip testID="arp-seventh-off" label={tr("Sans la 7e")} selected={!withSeventh} onPress={() => setWithSeventh(false)} />
-              </ChipRow>
-            </>
-          ) : (
-          <>
-          <SectionLabel>{tr("Schéma")}</SectionLabel>
-          <ChipRow testID="arp-shape-selector">{arpShapeChips}</ChipRow>
-          {horizontal ? (
-            <>
-              <SectionLabel>{tr("Déplacement")}</SectionLabel>
-              <ChipRow testID="arp-direction">
-                <Chip testID="arp-toward-body" label={tr("Vers la caisse")} selected={towardBody} onPress={() => setTowardBody(true)} />
-                <Chip testID="arp-toward-nut" label={tr("Vers le sillet")} selected={!towardBody} onPress={() => setTowardBody(false)} />
-              </ChipRow>
-            </>
-          ) : (
-            <>
-              <SectionLabel>{tr("Départ")}</SectionLabel>
-              <ChipRow testID="arp-start-selector">
-                <Chip testID="arp-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-                <Chip testID="arp-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-              </ChipRow>
-            </>
-          )}
-          </>
-          )}
-        </>
-      ) : horizontal ? (
-        <>
-          <SectionLabel>{tr("Cordes")}</SectionLabel>
-          {stringCounts.length > 1 ? (
-            <ChipRow testID="hz-string-count">
-              {stringCounts.map((n) => (
-                <Chip key={n} testID={`hz-string-count-${n}`} label={tr("Sur {n} cordes", { n })} selected={nStrings === n} onPress={() => { setStringCount(n); setSetIdx(0); }} />
-              ))}
-            </ChipRow>
-          ) : null}
-          <ChipRow testID="hz-strings">{stringChips}</ChipRow>
-
-          <SectionLabel>{tr("Étendue")}</SectionLabel>
-          <ChipRow testID="hz-extent">
-            {EXTENTS.map((e) => (
-              <Chip key={e.id} testID={`hz-extent-${e.id}`} label={tr(e.name)} selected={extent === e.id} onPress={() => setExtent(e.id)} />
-            ))}
-          </ChipRow>
-        </>
-      ) : (
-        pairs ? null : (
-        <>
-            <SectionLabel>{tr("Départ")}</SectionLabel>
-            <ChipRow testID="start-selector">
-              <Chip testID="start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
-              <Chip testID="start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
-            </ChipRow>
-          </>
-        )
-      )}
-
-      <SectionLabel>{tr("Partition")}</SectionLabel>
-      <ChipRow testID="tab-selector">
-        <Chip testID="tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
-        <Chip testID="tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
-      </ChipRow>
-
-    </>
-  );
-
-  const infoContent = active ? (
-    <>
-      <Text style={styles.infoNote}>
-        {nameOf(pcOf(active.midi))}
-        {octaveOf(active.midi)}
-      </Text>
-      <Text style={styles.infoMeta} numberOfLines={1}>
-        {tr("Corde {s} · Case {f}", { s: active.string + 1, f: active.fret })}
-        {stepIdx !== null ? tr(" · Note {i}/{n}", { i: stepIdx + 1, n: sequence.length }) : ""}
-      </Text>
-    </>
-  ) : empty ? (
+  // The played / touched note isn't written out (it goes too fast during the sequence): only a route problem is.
+  const infoContent = empty ? (
     <Text style={styles.infoMeta} numberOfLines={1}>
       {horizontal ? tr("Parcours impossible sur ces cordes.") : tr("Position trop courte : essayez 1/2.")}
     </Text>
   ) : null;
 
-
+  // ---- What each pill says: the screen shows everything that is set ----
   const arpOther = ARP_SHAPES[(arpShape + (towardBody ? 1 : ARP_SHAPES.length - 1)) % ARP_SHAPES.length];
   const arpBadge = (horizontal ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}` : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })) + (arpList.length > 1 ? ` · ${arpV + 1}/${arpList.length}` : "");
   const twoBadge = withSeventh ? tr("2 cordes · avec 7e") : tr("2 cordes · triade");
   const positionBadge = twoStrings ? twoBadge : arp ? arpBadge : horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const scaleExercise = EXERCISES.find((e) => e.id === exerciseId)!;
+  const preset = PRESETS.find((p) => p.id === presetId);
+  const exerciseTitle = preset ? tr(preset.name) : pairs
+    ? tr("Paires de triades")
+    : arp
+      ? twoStrings
+        ? tr("3 sons sur 2 cordes")
+        : tr("Arpèges 4 sons")
+      : tr(scaleExercise.name);
+  // Landscape: short labels, so that the whole header fits on one row next to the tab bar.
+  const exerciseShort = pairs ? tr("Paires") : arp ? (twoStrings ? tr("Triades 2 cordes") : tr("Arpèges")) : tr(scaleExercise.name);
+  const whereShort = twoStrings
+    ? withSeventh
+      ? tr("2 cordes · 7e")
+      : tr("2 cordes")
+    : arp
+      ? horizontal
+        ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}`
+        : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })
+      : horizontal
+        ? stringSetName(stringSets[setI])
+        : `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const modeLabel = !pairs ? (horizontal ? tr("Horizontal") : tr("Sur une position")) : null;
+  const keyLabel = `${nameOf(rootPc)}${arp ? arpSymbol : ""}`;
+  const paceNotes = PACE_NOTES[exercise.perBeat] ?? ["noires", "croches"];
+
+  // ---- Sheet contents ----
+  // Title sheet: what the exercise is (and, in landscape, the display settings).
+  const exerciseSheet = (
+    <>
+      <Text style={styles.hint}>
+        {pairs
+          ? tr("Les triades majeures des degrés IV et V de la tonalité ({a} et {b}), à travers les renversements, dans une position de la gamme majeure. Aussi valable en mineur mélodique.", { a: nameOf(pairA), b: nameOf(pairB) })
+          : twoStrings
+            ? tr("La triade sur Mi-La, Ré-Sol puis Si-Mi : fondamentale sur la corde grave, tierce et quinte sur la suivante.")
+            : arp
+              ? horizontal
+                ? tr("L’arpège passe du schéma choisi au schéma voisin en se déplaçant sur le manche.")
+                : tr("5 schémas · ∆7, 7, m7, Ø")
+              : horizontal
+                ? `${tr(scaleExercise.description)} ${tr("Les groupes restent sur les mêmes cordes et montent le long du manche.")}`
+                : tr(scaleExercise.description)}
+      </Text>
+    </>
+  );
+
+  const whereSheet = twoStrings ? (
+    <>
+      <Text style={styles.hint}>{tr("La triade sur Mi-La, Ré-Sol puis Si-Mi : fondamentale sur la corde grave, tierce et quinte sur la suivante.")}</Text>
+      <SectionLabel>{tr("7e")}</SectionLabel>
+      <ChipRow testID="arp-seventh-selector">
+        <Chip testID="arp-seventh-on" label={tr("Avec la 7e (elle commence)")} selected={withSeventh} onPress={() => setWithSeventh(true)} />
+        <Chip testID="arp-seventh-off" label={tr("Sans la 7e")} selected={!withSeventh} onPress={() => setWithSeventh(false)} />
+      </ChipRow>
+    </>
+  ) : arp ? (
+    <>
+      <SectionLabel>{tr("Schéma")}</SectionLabel>
+      <ChipRow testID="arp-shape-selector">{arpShapeChips}</ChipRow>
+      {horizontal ? (
+        <>
+          <SectionLabel>{tr("Déplacement")}</SectionLabel>
+          <ChipRow testID="arp-direction">
+            <Chip testID="arp-toward-body" label={tr("Vers la caisse")} selected={towardBody} onPress={() => setTowardBody(true)} />
+            <Chip testID="arp-toward-nut" label={tr("Vers le sillet")} selected={!towardBody} onPress={() => setTowardBody(false)} />
+          </ChipRow>
+        </>
+      ) : (
+        <>
+          <SectionLabel>{tr("Départ")}</SectionLabel>
+          <ChipRow testID="arp-start-selector">
+            <Chip testID="arp-start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+            <Chip testID="arp-start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+          </ChipRow>
+        </>
+      )}
+    </>
+  ) : horizontal ? (
+    <>
+      <SectionLabel>{tr("Cordes")}</SectionLabel>
+      {stringCounts.length > 1 ? (
+        <ChipRow testID="hz-string-count">
+          {stringCounts.map((n) => (
+            <Chip
+              key={n}
+              testID={`hz-string-count-${n}`}
+              label={tr("Sur {n} cordes", { n })}
+              selected={nStrings === n}
+              onPress={() => {
+                setStringCount(n);
+                setSetIdx(0);
+              }}
+            />
+          ))}
+        </ChipRow>
+      ) : null}
+      <ChipRow testID="hz-strings">{stringChips}</ChipRow>
+      <SectionLabel>{tr("Étendue")}</SectionLabel>
+      <ChipRow testID="hz-extent">
+        {EXTENTS.map((e) => (
+          <Chip key={e.id} testID={`hz-extent-${e.id}`} label={tr(e.name)} selected={extent === e.id} onPress={() => setExtent(e.id)} />
+        ))}
+      </ChipRow>
+    </>
+  ) : (
+    <>
+      <SectionLabel>{tr("Position")}</SectionLabel>
+      <PositionChips boxes={boxes} selected={pos} variants={variants} onChange={selectPosition} prefix="fingering-position" hideAll />
+      {!pairs ? (
+        <>
+          <SectionLabel>{tr("Départ")}</SectionLabel>
+          <ChipRow testID="start-selector">
+            <Chip testID="start-lowest" label={tr("Note la plus grave")} selected={!startOnRoot} onPress={() => setStartOnRoot(false)} />
+            <Chip testID="start-root" label={tr("Tonique")} selected={startOnRoot} onPress={() => setStartOnRoot(true)} />
+          </ChipRow>
+        </>
+      ) : null}
+    </>
+  );
+
+  const displaySheet = (
+    <>
+      <SectionLabel>{tr("Partition")}</SectionLabel>
+      <ChipRow testID="tab-selector">
+        <Chip testID="tab-on" label={tr("Notes + tablature")} selected={settings.showTab} onPress={() => update({ showTab: true })} />
+        <Chip testID="tab-off" label={tr("Notes seules")} selected={!settings.showTab} onPress={() => update({ showTab: false })} />
+      </ChipRow>
+      <SectionLabel>{tr("Partition en paysage")}</SectionLabel>
+      <ChipRow testID="score-landscape-selector">
+        <Chip testID="score-landscape-on" label={tr("Affichée")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: true })} />
+        <Chip testID="score-landscape-off" label={tr("Masquée")} selected={!settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: false })} />
+      </ChipRow>
+      <SectionLabel>{tr("Étiquettes")}</SectionLabel>
+      <ChipRow testID="label-selector">
+        <Chip testID="label-note" label={tr("Noms des notes")} selected={settings.labelMode === "note"} onPress={() => update({ labelMode: "note" })} />
+        <Chip testID="label-degree" label={tr("Degrés")} selected={settings.labelMode === "degree"} onPress={() => update({ labelMode: "degree" })} />
+      </ChipRow>
+    </>
+  );
+
+  // ---- The pills: one per setting, each opens only that setting ----
+  const pills = (
+    <>
+      <Pill testID="pill-key" label={keyLabel} accent onPress={() => setKeyOpen(true)} />
+      {pairs ? null : arp ? (
+        <Pill testID="pill-arp-type" label={tr(arpFormula(arpType).name)} onPress={() => setSheet("arpType")} />
+      ) : (
+        <Pill testID="pill-scale" label={tr(formula.name)} onPress={() => setSheet("scale")} />
+      )}
+      <Pill testID="pill-where" label={positionBadge} onPress={() => setSheet("where")} />
+      {pairs ? <Pill testID="pill-variant" label={tr(PAIR_STYLES.find((p) => p.id === pairStyle)!.name)} onPress={() => setSheet("variant")} /> : null}
+      <Pill testID="pill-display" label={tr("Affichage")} onPress={() => setSheet("display")} />
+    </>
+  );
+
+  // ---- The playback bar: loop, metronome, tempo (+ count-in), play ----
+  const playbackBar = (
+    <View style={[styles.playbar, isLandscape && styles.playbarLandscape]} testID="playback-bar">
+      <Pressable testID="loop-toggle" onPress={() => setLoop(!loop)} style={({ pressed }) => [styles.barToggle, loop && styles.barToggleOn, pressed && styles.pressed]} accessibilityLabel={tr("Boucle")} accessibilityState={{ selected: loop }}>
+        <Repeat size={20} color={loop ? colors.onBrandTertiary : colors.onSurfaceTertiary} weight="bold" />
+      </Pressable>
+      <Pressable testID="metronome-toggle" onPress={() => setMetronome(!metronome)} style={({ pressed }) => [styles.barToggle, metronome && styles.barToggleOn, pressed && styles.pressed]} accessibilityLabel={tr("Métronome")} accessibilityState={{ selected: metronome }}>
+        <Metronome size={20} color={metronome ? colors.onBrandTertiary : colors.onSurfaceTertiary} weight="bold" />
+      </Pressable>
+      <TempoButton
+        variant="bar"
+        playbackInSheet={false}
+        count={beat}
+        bpm={bpm}
+        min={MIN_BPM}
+        max={maxBpm}
+        half={pulse.half}
+        subLabel={tr(slow ? paceNotes[0] : paceNotes[1])}
+        defaultBpm={defaultBpmFor(rhythmId, slow)}
+        onBpm={(v) => commitBpm(String(v))}
+        pace={{ slow, onChange: setSlow, slowLabel: `${tr("Lent")} · ${tr(paceNotes[0])}`, normalLabel: `${tr("Normal")} · ${tr(paceNotes[1])}` }}
+        loop={loop}
+        onLoop={setLoop}
+        metronome={metronome}
+        onMetronome={setMetronome}
+      />
+      <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBig, pressed && styles.pressed, empty && styles.dim]} accessibilityLabel={playing ? tr("Stop") : tr("Jouer")}>
+        {playing ? <Stop size={22} color={colors.onBrandPrimary} weight="fill" /> : <Play size={22} color={colors.onBrandPrimary} weight="fill" />}
+      </Pressable>
+    </View>
+  );
+
+  if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
+  if (view === "challenge") return <FindChallenge key={challenge} kind={challenge} onBack={backToLibrary} />;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
       <StudioBackground />
-      <View style={[styles.header, compactHeader && styles.headerCompact, { paddingTop: insets.top + (isLandscape ? spacing.xs : spacing.sm) }]}>
-        <View style={isLandscape ? styles.headerTextCompact : styles.headerText}>
-          <Text style={[styles.title, isLandscape && styles.titleCompact]} testID="fingering-title" numberOfLines={isLandscape ? 1 : 2}>
-            {title} <Text style={styles.titleSub}>{pairs ? tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) }) : arp ? tr("Arpège") : tr(formula.name)}{isLandscape ? ` · ${positionBadge}` : ""}</Text>
-          </Text>
-        </View>
-        {/* Landscape only: the details of the touched / played note stay in the header (also the spacer). */}
-        {isLandscape ? (
-          <View style={styles.infoInline} testID="fingering-info-inline">
+      {isLandscape ? (
+        // Landscape: one row aligned with the tab bar — exercise, key, scale, position… then tempo + play.
+        <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
+<Pressable testID="back-to-library" onPress={backToLibrary} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercices")} hitSlop={6}>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
+          <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.titleRow, pressed && styles.pressed]} accessibilityRole="button">
+            <Text style={[styles.title, styles.titleCompact]} testID="fingering-title" numberOfLines={1}>
+              {exerciseShort}
+            </Text>
+            <Info size={14} color={colors.onSurfaceTertiary} weight="bold" />
+          </Pressable>
+          <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
+          <View style={styles.headerPills}>
+            <PillRow inset={false}>
+              {pairs ? null : arp ? (
+                <Pill testID="pill-arp-type" label={shortName(arpFormula(arpType))} onPress={() => setSheet("arpType")} />
+              ) : (
+                <Pill testID="pill-scale" label={shortName(formula)} onPress={() => setSheet("scale")} />
+              )}
+              <Pill testID="pill-where" label={whereShort} onPress={() => setSheet("where")} />
+              {pairs ? <Pill testID="pill-variant" label={pairStyle === "alt" ? tr("Alterné") : pairStyle === "up" ? "Up" : "Down"} onPress={() => setSheet("variant")} /> : null}
+            </PillRow>
             {infoContent}
           </View>
-        ) : null}
-        <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
-        <TempoButton
-          count={beat}
-          bpm={bpm}
-          min={MIN_BPM}
-          max={maxBpm}
-          half={pulse.half}
-          defaultBpm={defaultBpmFor(rhythmId, slow)}
-          onBpm={(v) => commitBpm(String(v))}
-          pace={{ slow, onChange: setSlow, slowLabel: `${tr("Lent")} · ${tr(PACE_NOTES[exercise.perBeat]?.[0] ?? "noires")}`, normalLabel: `${tr("Normal")} · ${tr(PACE_NOTES[exercise.perBeat]?.[1] ?? "croches")}` }}
-          loop={loop}
-          onLoop={setLoop}
-          metronome={metronome}
-          onMetronome={setMetronome}
-        />
-        {compactHeader ? (
-          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.roundMenuBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercice")}>
-            <List size={20} color={colors.onSurface} weight="bold" />
+          <View style={styles.transportPill} testID="transport-pill">
+            <TempoButton
+              count={beat}
+              bpm={bpm}
+              min={MIN_BPM}
+              max={maxBpm}
+              half={pulse.half}
+              defaultBpm={defaultBpmFor(rhythmId, slow)}
+              onBpm={(v) => commitBpm(String(v))}
+              pace={{ slow, onChange: setSlow, slowLabel: `${tr("Lent")} · ${tr(paceNotes[0])}`, normalLabel: `${tr("Normal")} · ${tr(paceNotes[1])}` }}
+              loop={loop}
+              onLoop={setLoop}
+              metronome={metronome}
+              onMetronome={setMetronome}
+            />
+            <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playRound, pressed && styles.pressed, empty && styles.dim]} accessibilityLabel={playing ? tr("Stop") : tr("Jouer")}>
+              {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+          <Pressable testID="back-to-library" onPress={backToLibrary} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Exercices")} hitSlop={6}>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
           </Pressable>
-        ) : (
-          <Pressable testID="open-fingering-picker" onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.pickerBtn, pressed && styles.pressed]}>
-            <Text style={styles.pickerText}>{tr("Exercice")}</Text>
-            <CaretDown size={16} color={colors.onSurface} weight="bold" />
+          {/* The title is the exercise: touching it tells what the exercise is. */}
+          <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
+            <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title} testID="fingering-title" numberOfLines={1}>
+                {exerciseTitle}
+              </Text>
+              <Info size={18} color={colors.onSurfaceTertiary} weight="bold" />
+            </View>
+            {pairs ? <Text style={styles.titleSub}>{tr("Paire {a} & {b}", { a: nameOf(pairA), b: nameOf(pairB) })}</Text> : null}
           </Pressable>
-        )}
-        <Pressable testID="fingering-play" onPress={togglePlay} style={({ pressed }) => [styles.playBtn, compactHeader && styles.playBtnRound, pressed && styles.pressed, empty && styles.dim]}>
-          {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}
-          {/* Icon only on phones: the label is kept for wide portrait screens (tablets). */}
-          {!isLandscape && width >= 480 ? <Text style={styles.playText}>{playing ? tr("Stop") : tr("Jouer")}</Text> : null}
-        </Pressable>
-      </View>
+        </View>
+      )}
+
+      {!isLandscape ? <PillRow testID="fingering-pills">{pills}</PillRow> : null}
 
       <Fretboard
         fretScale={fretScale}
@@ -617,64 +719,55 @@ export default function FingeringScreen() {
 
       {showScore ? <Score layout={layout} activeIndex={stepIdx} onNotePress={tapNote} testID="fingering-score" /> : null}
 
+      {!isLandscape ? (
+        <View style={[styles.bottom, { paddingBottom: bottomChrome + spacing.sm }]}>
+          <View style={styles.bottomRow} testID="fingering-info">
+            {infoContent}
+          </View>
+          {playbackBar}
+        </View>
+      ) : null}
+
+      <KeyWheel visible={keyOpen} rootPc={rootPc} nameOf={nameOf} onClose={() => setKeyOpen(false)} onChange={setRootPc} />
+
+      <Sheet visible={sheet === "exercise"} onClose={closeSheet} title={exerciseTitle} testID="exercise-sheet">
+        {exerciseSheet}
+        {/* Landscape: no "Affichage" pill, its settings are here. */}
+        {isLandscape ? displaySheet : null}
+      </Sheet>
       <ScalePicker
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        visible={sheet === "scale"}
+        onClose={closeSheet}
         mode="scale"
         onModeChange={() => {}}
         scalesOnly
         hideAllPosition
-        title={pairs ? tr("Paires de triades") : arp ? tr("Exercice et arpège") : tr("Exercice et gamme")}
-        hideList={arp || pairs}
-        top={pickerTop}
-        extra={pickerExtra}
+        hideLabels
+        title={tr("Gamme")}
         rootPc={rootPc}
         onRootChange={setRootPc}
         selectedId={scaleId}
         onSelect={setScaleId}
         nameOf={nameOf}
-        positions={horizontal || arp ? [] : boxes}
+        positions={[]}
         selectedPosition={pos}
         positionVariants={variants}
         onPositionChange={selectPosition}
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
       />
-
-      {isLandscape ? (
-        <ChipRow testID="fingering-landscape-row">
-          {pairs ? pairStyleChips : arp ? arpTypeChips : exerciseChips}
-          <Chip testID="fingering-score-toggle" label={settings.showScoreLandscape ? tr("Partition : oui") : tr("Partition : non")} selected={settings.showScoreLandscape} onPress={() => update({ showScoreLandscape: !settings.showScoreLandscape })} />
-          {!pairs ? (
-            <>
-              <View style={styles.divider} />
-              {modeChips}
-            </>
-          ) : null}
-          <View style={styles.divider} />
-          {twoStrings ? (
-            <Chip testID="arp-seventh-toggle" label={withSeventh ? tr("7e : oui") : tr("7e : non")} selected={withSeventh} onPress={() => setWithSeventh(!withSeventh)} />
-          ) : arp ? arpShapeChips : horizontal ? stringChips : boxes.map((_, i) => (
-            <Chip
-              key={i}
-              testID={`fingering-position-${i + 1}`}
-              label={`Pos. ${i + 1}`}
-              badge={`${(variants[i] ?? 0) + 1}/2`}
-              badgeTone={(variants[i] ?? 0) === 1 ? "accent" : "primary"}
-              selected={pos === i}
-              onPress={() => selectPosition(i)}
-            />
-          ))}
-        </ChipRow>
-      ) : null}
-
-      {/* Portrait: everything but the scale name sits at the bottom left — position / shape, then the note details. */}
-      {!isLandscape ? (
-        <View style={[styles.bottomInfo, { paddingBottom: bottomChrome + spacing.sm }]} testID="fingering-info">
-          <Text style={styles.bottomBadge} numberOfLines={1} testID="fingering-position-badge">{positionBadge}</Text>
-          {infoContent ? <View style={styles.bottomRow}>{infoContent}</View> : null}
-        </View>
-      ) : null}
+      <Sheet visible={sheet === "arpType"} onClose={closeSheet} title={tr("Type d’arpège")} testID="arp-type-sheet">
+        <ChipRow testID="arp-type-selector">{arpTypeChips}</ChipRow>
+      </Sheet>
+      <Sheet visible={sheet === "where"} onClose={closeSheet} title={twoStrings ? tr("7e") : arp ? tr("Schéma") : horizontal ? tr("Cordes") : tr("Position")} testID="where-sheet">
+        {whereSheet}
+      </Sheet>
+      <Sheet visible={sheet === "variant"} onClose={closeSheet} title={tr("Variante")} testID="variant-sheet">
+        <ChipRow testID="pair-style-selector">{pairStyleChips}</ChipRow>
+      </Sheet>
+      <Sheet visible={sheet === "display"} onClose={closeSheet} title={tr("Affichage")} testID="display-sheet">
+        {displaySheet}
+      </Sheet>
     </View>
   );
 }
@@ -686,6 +779,23 @@ const useStyles = makeStyles((c) => ({
   segText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   segTextActive: { color: c.onBrandPrimary, fontWeight: "700" },
   screen: { flex: 1, backgroundColor: c.surface },
+  headerLandscape: { gap: spacing.sm, paddingBottom: spacing.xs, minHeight: 48 },
+  headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  // Tempo + play grouped in one pill (landscape header).
+  // Landscape: metronome + play grouped in one rounded square, same look as the setting pills.
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 6, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
+  playRound: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  // Playback bar: loop, metronome, tempo, play — the same in portrait (bottom) and landscape (end of the pill row).
+  playbar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: spacing.sm, borderRadius: 28, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  playbarLandscape: { padding: 4, borderRadius: 26, width: 300, flexShrink: 0 },
+  barToggle: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.borderStrong, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  barToggleOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },
+  playBig: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  bottom: { marginTop: "auto", paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.sm },
+  landscapeRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: 2 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
   headerText: { flex: 1, flexShrink: 1, minWidth: 0 },
   // Phones in portrait: 4 round buttons of the same size, closer together, that never shrink or get pushed out.
@@ -726,7 +836,7 @@ const useStyles = makeStyles((c) => ({
   infoBottom: { marginTop: "auto", flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 36, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   bottomInfo: { marginTop: "auto", paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: 2, alignItems: "flex-start" },
   bottomBadge: { fontFamily: fonts.text, fontSize: 14, color: c.onSurfaceSecondary },
-  bottomRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 26, alignSelf: "stretch" },
+  bottomRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 26, paddingHorizontal: spacing.sm },
   infoNote: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   infoMeta: { flex: 1, fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
   bpmRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.sm },

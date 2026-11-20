@@ -1,10 +1,11 @@
 import React, { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { SkipForward, SpeakerHigh, X } from "phosphor-react-native";
+import { Crosshair, SkipForward, SpeakerHigh, X } from "phosphor-react-native";
 
 import { DEGREE_META, octaveOf, pcOf } from "@/src/music/theory";
 import { formatTime, type Question } from "@/src/ear/questions";
+import { MiniNeck } from "@/src/ear/MiniNeck";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
@@ -26,14 +27,19 @@ type Props = {
   onReplay: () => void;
   onSkip: () => void;
   onStop: () => void;
+  navInset?: number; // landscape: room for the tab-bar pill on the right of the top row
 };
 
-const DIAL = 250;
 
 export function ChallengeView(p: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const q = p.question;
+  const { height } = useWindowDimensions();
+  // Smaller dial on short screens so the revealed neck and the buttons still fit in portrait.
+  const DIAL = Math.round(Math.max(190, Math.min(250, height * 0.29)));
+  // “Manche” challenge, missed twice: show where the note was (stays until the player plays it).
+  const showNeck = p.feedback?.kind === "miss" && q.string !== undefined && q.fret !== undefined;
 
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -53,7 +59,7 @@ export function ChallengeView(p: Props) {
 
   return (
     <View style={styles.wrap} testID="challenge-view">
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, p.navInset ? { paddingRight: p.navInset } : null]}>
         <Text style={styles.section}>{p.sectionLabel}</Text>
         <Text style={styles.chrono} testID="challenge-chrono">{formatTime(p.elapsedMs)}</Text>
         <Pressable testID="challenge-stop-button" onPress={p.onStop} style={styles.stopBtn} hitSlop={6}>
@@ -79,9 +85,9 @@ export function ChallengeView(p: Props) {
         </Text>
       </View>
 
-      <View style={styles.dialWrap}>
-        <Animated.View style={[styles.ring, { borderColor: accent }, ringStyle]} />
-        <View style={[styles.dial, { borderColor: accent }]} testID="challenge-target">
+      <View style={[styles.dialWrap, { height: DIAL + 24 }]}>
+        <Animated.View style={[styles.ring, { width: DIAL, height: DIAL, borderRadius: DIAL / 2, borderColor: accent }, ringStyle]} />
+        <View style={[styles.dial, { width: DIAL, height: DIAL, borderRadius: DIAL / 2, borderColor: accent }]} testID="challenge-target">
           <Text style={styles.prompt} numberOfLines={1}>{q.prompt}</Text>
           <Text
             style={[styles.big, q.big.length > 7 && styles.bigLong, p.feedback?.kind === "correct" && { color: degreeColor }]}
@@ -103,17 +109,36 @@ export function ChallengeView(p: Props) {
         </View>
       </View>
 
-      <View style={styles.meter} testID="cents-meter">
-        <View style={styles.meterTrack} />
-        <View style={styles.meterCenter} />
-        <View style={[styles.needle, { left: `${50 + cents}%`, backgroundColor: p.detected ? (inTune ? colors.success : colors.warning) : colors.muted }]} />
-      </View>
+      {q.focus && !showNeck ? (
+        <View style={styles.focusRow}>
+          <View style={[styles.focusTag, q.focus.weak && styles.focusTagWeak]} testID="weak-tag">
+            {q.focus.weak ? <Crosshair size={14} color={colors.brandPrimary} weight="bold" /> : null}
+            <Text style={[styles.focusText, q.focus.weak && styles.focusTextWeak]} numberOfLines={1}>
+              {q.focus.weak ? `${tr("Point faible")} · ${q.focus.text}` : q.focus.text}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
-      <View style={[styles.feedback, p.feedback && { borderColor: accent }]} testID="quiz-feedback">
-        <Text style={[styles.feedbackText, { color: p.feedback ? accent : colors.muted }]} numberOfLines={2}>
-          {p.feedback?.text ?? tr("Joue la note sur ta guitare")}
-        </Text>
-      </View>
+      {showNeck ? (
+        <MiniNeck string={q.string!} fret={q.fret!} label={p.nameOf(pcOf(q.targetMidi))} />
+      ) : (
+        <View style={styles.meter} testID="cents-meter">
+          <View style={styles.meterTrack} />
+          <View style={styles.meterCenter} />
+          <View style={[styles.needle, { left: `${50 + cents}%`, backgroundColor: p.detected ? (inTune ? colors.success : colors.warning) : colors.muted }]} />
+        </View>
+      )}
+
+      {p.feedback ? (
+        <View style={[styles.feedback, { borderColor: accent }]} testID="quiz-feedback">
+          <Text style={[styles.feedbackText, { color: accent }]} numberOfLines={2}>
+            {p.feedback.text}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.spacer} />
 
       <View style={styles.actions}>
         <Pressable testID="replay-button" onPress={p.onReplay} style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}>
@@ -140,12 +165,9 @@ const useStyles = makeStyles((c) => ({
   dot: { flex: 1, height: 8, borderRadius: 4, backgroundColor: c.surfaceTertiary },
   dotCurrent: { backgroundColor: c.brandPrimary },
   progressText: { fontFamily: fonts.display, fontSize: 14, color: c.onSurface, minWidth: 44, textAlign: "right" },
-  dialWrap: { height: DIAL + 24, alignItems: "center", justifyContent: "center", marginTop: spacing.sm },
-  ring: { position: "absolute", width: DIAL, height: DIAL, borderRadius: DIAL / 2, borderWidth: 3 },
+  dialWrap: { alignItems: "center", justifyContent: "center", marginTop: spacing.sm },
+  ring: { position: "absolute", borderWidth: 3 },
   dial: {
-    width: DIAL,
-    height: DIAL,
-    borderRadius: DIAL / 2,
     borderWidth: 6,
     alignItems: "center",
     justifyContent: "center",
@@ -160,6 +182,11 @@ const useStyles = makeStyles((c) => ({
   badgeText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700" },
   sub: { fontFamily: fonts.display, fontSize: 15, color: c.brandPrimary, textAlign: "center" },
   detected: { fontFamily: fonts.text, fontSize: 12, color: c.muted, marginTop: 4 },
+  focusRow: { alignItems: "center", marginBottom: spacing.xs },
+  focusTag: { flexDirection: "row", alignItems: "center", gap: 6, height: 30, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary, maxWidth: "100%" },
+  focusTagWeak: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
+  focusText: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, flexShrink: 1 },
+  focusTextWeak: { color: c.onSurface, fontWeight: "600" },
   meter: { height: 24, marginHorizontal: spacing.xl },
   meterTrack: { position: "absolute", top: 10, left: 0, right: 0, height: 4, borderRadius: 2, backgroundColor: c.surfaceTertiary },
   meterCenter: { position: "absolute", top: 4, left: "50%", width: 2, marginLeft: -1, height: 16, backgroundColor: c.onSurfaceTertiary },
@@ -175,7 +202,8 @@ const useStyles = makeStyles((c) => ({
     backgroundColor: c.surfaceSecondary,
   },
   feedbackText: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", textAlign: "center" },
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  spacer: { flex: 1, minHeight: spacing.sm },
+  actions: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   actionBtn: {
     flex: 1,
     height: 48,
