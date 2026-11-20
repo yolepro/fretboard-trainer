@@ -5,7 +5,7 @@ import type { Section } from "@/src/ear/questions";
 /** One answered question. `key` groups the same target across sessions (a fret, a note, a degree, an interval). */
 export type Attempt = {
   t: number; // when (ms since epoch)
-  s: Section;
+  s: Section | string; // ear sections, or a challenge (“find-degree”, “find-scale”)
   key: string;
   midi?: number; // note targets: the name is computed at display time (notation setting)
   label?: string; // other targets (degree / interval name)
@@ -18,7 +18,7 @@ export type Attempt = {
 };
 
 /** One finished challenge (for the progress curve). */
-export type SessionRec = { t: number; s: Section; count: number; score: number; ms: number };
+export type SessionRec = { t: number; s: Section | string; count: number; score: number; ms: number };
 
 export const ATTEMPTS_KEY = "fretstudio_ear_attempts";
 export const SESSIONS_KEY = "fretstudio_ear_sessions";

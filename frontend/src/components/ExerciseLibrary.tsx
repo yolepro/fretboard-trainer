@@ -17,14 +17,15 @@ export type ExercisePreset = {
   family: Family;
   name: string;
   meta: string;
-  subject: "scale" | "arp" | "pairs";
+  subject: "scale" | "arp" | "pairs" | "challenge";
+  challenge?: "degree" | "scale";
   exerciseId?: ExerciseId;
   horizontal: boolean;
   arpKind?: "shapes" | "twoStrings";
 };
 
-type Family = "Gammes" | "Arpèges" | "Triades";
-const FAMILIES: Family[] = ["Gammes", "Arpèges", "Triades"];
+type Family = "Gammes" | "Arpèges" | "Triades" | "Challenges";
+const FAMILIES: Family[] = ["Gammes", "Arpèges", "Triades", "Challenges"];
 
 /** The exercise library: one card per exercise, grouped by family. */
 export const PRESETS: ExercisePreset[] = [
@@ -39,6 +40,8 @@ export const PRESETS: ExercisePreset[] = [
   { id: "arp-h", family: "Arpèges", name: "Enchaînement de schémas", meta: "D’un schéma au voisin, vers la caisse ou le sillet", subject: "arp", horizontal: true, arpKind: "shapes" },
   { id: "arp-2", family: "Arpèges", name: "Triades sur 2 cordes", meta: "Mi-La, Ré-Sol, Si-Mi · avec ou sans la 7e", subject: "arp", horizontal: true, arpKind: "twoStrings" },
   { id: "pairs", family: "Triades", name: "Paires de triades", meta: "IV et V de la tonalité · Up, Down, Alterné", subject: "pairs", horizontal: false },
+  { id: "find-degree", family: "Challenges", name: "Trouve le degré", meta: "Toutes les 3ces, 5tes… d’une position · chrono", subject: "challenge", challenge: "degree", horizontal: false },
+  { id: "find-scale", family: "Challenges", name: "Trouve la gamme", meta: "Toutes les notes d’une position, libre ou dans l’ordre", subject: "challenge", challenge: "scale", horizontal: false },
 ];
 
 type Props = { currentId: string | null; onPick: (p: ExercisePreset) => void };
