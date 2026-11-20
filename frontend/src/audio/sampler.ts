@@ -258,8 +258,8 @@ const FEEDBACK = {
   error: require("../../assets/sounds/error.wav"),
 };
 // The “wrong” sound is kept quieter so a mistake never feels harsh.
-const FEEDBACK_GAIN = { success: 0.9, error: 0.6 };
-export const FEEDBACK_MS = { success: 1100, error: 600 };
+const FEEDBACK_GAIN = { success: 0.55, error: 0.6 };
+export const FEEDBACK_MS = { success: 800, error: 600 };
 const feedbackPlayers: Partial<Record<keyof typeof FEEDBACK, AudioPlayer>> = {};
 
 function feedbackPlayer(kind: keyof typeof FEEDBACK) {
