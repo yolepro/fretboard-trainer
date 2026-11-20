@@ -1,0 +1,60 @@
+# Publie la version web de FretStudio sur GitHub Pages : https://yolepro.github.io/fretboard-trainer/
+# (Settings › Pages › Source : GitHub Actions). Se relance à chaque push sur la branche ci-dessous.
+name: Déployer le web sur GitHub Pages
+
+on:
+  push:
+    branches: [refonte-ecran-exercice]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installer les dépendances
+        run: corepack enable && yarn install
+      # Pages sert le site dans /fretboard-trainer/ : on l'indique à Expo seulement ici,
+      # pour ne rien changer au lancement en local ni à l'appli iPhone.
+      - name: Sous-dossier du site
+        run: |
+          node -e '
+            const fs = require("fs");
+            const cfg = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            cfg.expo.experiments = { ...(cfg.expo.experiments || {}), baseUrl: "/fretboard-trainer" };
+            fs.writeFileSync("app.json", JSON.stringify(cfg, null, 2));
+          '
+      - name: Construire la version web
+        run: yarn expo export --platform web
+      # 404.html = index.html : recharger une page de l'appli fonctionne ;
+      # .nojekyll : GitHub ne doit pas ignorer le dossier _expo.
+      - name: Préparer pour Pages
+        run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
