@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { ArrowClockwise, Faders, Trophy } from "phosphor-react-native";
+import { ArrowClockwise, ChartBar, Faders, Trophy } from "phosphor-react-native";
 
 import { formatTime, type Best } from "@/src/ear/questions";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
@@ -15,9 +15,10 @@ type Props = {
   isRecord: boolean;
   onReplay: () => void;
   onSetup: () => void;
+  onResults: () => void;
 };
 
-export function ResultView({ sectionLabel, score, count, timeMs, best, isRecord, onReplay, onSetup }: Props) {
+export function ResultView({ sectionLabel, score, count, timeMs, best, isRecord, onReplay, onSetup, onResults }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   return (
@@ -55,6 +56,10 @@ export function ResultView({ sectionLabel, score, count, timeMs, best, isRecord,
       <Pressable testID="result-setup-button" onPress={onSetup} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
         <Faders size={20} color={colors.onSurface} />
         <Text style={styles.secondaryText}>{tr("Changer les réglages")}</Text>
+      </Pressable>
+      <Pressable testID="result-results-button" onPress={onResults} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
+        <ChartBar size={20} color={colors.onSurface} />
+        <Text style={styles.secondaryText}>{tr("Voir mes résultats")}</Text>
       </Pressable>
     </View>
   );

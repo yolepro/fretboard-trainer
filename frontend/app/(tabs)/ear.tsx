@@ -471,7 +471,14 @@ export default function EarScreen() {
                 best={best}
                 isRecord={isRecord}
                 onReplay={start}
-                onSetup={() => setPhase("setup")}
+                onSetup={() => {
+                  setTab("play");
+                  setPhase("setup");
+                }}
+                onResults={() => {
+                  setTab("results");
+                  setPhase("setup");
+                }}
               />
             </View>
           ) : (

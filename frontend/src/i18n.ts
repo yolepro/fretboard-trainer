@@ -315,6 +315,7 @@ const EN: Record<string, string> = {
   "sur la corde {s} ({l})": "on string {s} ({l})",
   "C’est ça !": "That’s it!",
   "Résultats": "Results",
+  "Voir mes résultats": "See my results",
   "{n} jours": "{n} days",
   "aujourd’hui": "today",
   "hier": "yesterday",
