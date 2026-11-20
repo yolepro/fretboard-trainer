@@ -37,7 +37,7 @@ export function ChallengeView(p: Props) {
   const { height } = useWindowDimensions();
   // Smaller dial on short screens so the revealed neck and the buttons still fit in portrait.
   const DIAL = Math.round(Math.max(190, Math.min(250, height * 0.29)));
-  // “Manche” challenge, missed twice: show where the note was (the screen moves on after 3 s).
+  // “Manche” challenge, missed twice: show where the note was (stays until the player plays it).
   const showNeck = p.feedback?.kind === "miss" && q.string !== undefined && q.fret !== undefined;
 
   const pulse = useSharedValue(0);

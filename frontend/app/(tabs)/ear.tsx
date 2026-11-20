@@ -60,6 +60,9 @@ export default function EarScreen() {
   const qRef = useRef<Question | null>(null);
   const answeredRef = useRef(false);
   const attemptsRef = useRef(0);
+  // Missed twice: the answer is shown and the player must play it to move on; the chrono is paused meanwhile.
+  const correctingRef = useRef(false);
+  const pausedAtRef = useRef<number | null>(null);
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -172,6 +175,7 @@ export default function EarScreen() {
     qRef.current = q;
     answeredRef.current = false;
     attemptsRef.current = 0;
+    correctingRef.current = false;
     stable.current = { midi: -1, count: 0 };
     setQuestion(q);
     setFeedback(null);
@@ -217,6 +221,25 @@ export default function EarScreen() {
     later(advance, 550);
   };
 
+  const pauseChrono = () => {
+    if (pausedAtRef.current === null) pausedAtRef.current = Date.now();
+  };
+  const resumeChrono = () => {
+    if (pausedAtRef.current === null) return;
+    startRef.current += Date.now() - pausedAtRef.current;
+    pausedAtRef.current = null;
+  };
+
+  // The shown answer has been played: on to the next note (the question stays counted as missed).
+  const onCorrected = () => {
+    correctingRef.current = false;
+    answeredRef.current = true;
+    resumeChrono();
+    setFeedback({ kind: "correct", text: tr("C’est ça !") });
+    feedbackSound("success");
+    later(advance, 550);
+  };
+
   const onWrong = (midi: number) => {
     const q = qRef.current;
     if (!q) return;
@@ -226,14 +249,16 @@ export default function EarScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     feedbackSound("error");
     if (attemptsRef.current >= 2) {
-      answeredRef.current = true;
+      correctingRef.current = true;
+      pauseChrono();
+      stable.current = { midi: -1, count: 0 };
       record(false);
       setRevealed(true);
       const pos = q.string !== undefined && q.fret !== undefined ? { string: q.string, fret: q.fret } : lowestPosition(q.targetMidi, q.pitchClassOnly);
       const answer = `${name(pcOf(q.targetMidi))}${q.pitchClassOnly ? "" : octaveOf(q.targetMidi)}`;
-      setFeedback({ kind: "miss", text: tr("Raté — c’était {answer}", { answer }) + (pos ? ` · ${positionText(pos)}` : "") });
-      // “Manche”: the small neck under the note stays 3 s before the next question.
-      later(advance, q.string !== undefined ? 3000 : 1800);
+      // “Manche”: the small neck under the note already shows where it is.
+      const where = pos && q.string === undefined ? ` · ${positionText(pos)}` : "";
+      setFeedback({ kind: "miss", text: `${tr("Raté — c’était {answer}", { answer })}${where} · ${tr("joue-la pour continuer")}` });
       return;
     }
     let text = tr("Tu joues {note} — encore 1 chance", { note: played });
@@ -258,6 +283,10 @@ export default function EarScreen() {
     if (stable.current.midi === midi) stable.current.count += 1;
     else stable.current = { midi, count: 1 };
     const match = q.pitchClassOnly ? pcOf(midi) === pcOf(q.targetMidi) : midi === q.targetMidi;
+    if (correctingRef.current) {
+      if (match && stable.current.count === 3) onCorrected();
+      return;
+    }
     if (match && stable.current.count === 3) onCorrect();
     else if (!match && stable.current.count === 6) onWrong(midi);
   };
@@ -290,7 +319,9 @@ export default function EarScreen() {
 
   useEffect(() => {
     if (phase !== "running") return;
-    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 100);
+    const id = setInterval(() => {
+      if (pausedAtRef.current === null) setElapsed(Date.now() - startRef.current);
+    }, 100);
     return () => clearInterval(id);
   }, [phase]);
 
@@ -322,6 +353,7 @@ export default function EarScreen() {
     setIsRecord(false);
     setElapsed(0);
     startRef.current = Date.now();
+    pausedAtRef.current = null;
     phaseRef.current = "running";
     setPhase("running");
     setListening(true);
@@ -329,6 +361,14 @@ export default function EarScreen() {
   };
 
   const skip = () => {
+    if (correctingRef.current) {
+      // Already counted as missed: just move on.
+      correctingRef.current = false;
+      answeredRef.current = true;
+      resumeChrono();
+      advance();
+      return;
+    }
     if (answeredRef.current) return;
     answeredRef.current = true;
     record(false);

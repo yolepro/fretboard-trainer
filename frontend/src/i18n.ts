@@ -306,6 +306,8 @@ const EN: Record<string, string> = {
   "au-dessus de {note} (tonique)": "above {note} (root)",
   "Bravo !": "Well done!",
   "Raté — c’était {answer}": "Missed — it was {answer}",
+  "joue-la pour continuer": "play it to continue",
+  "C’est ça !": "That’s it!",
   "Tu joues {note} — encore 1 chance": "You played {note} — 1 more try",
   "Bonne note, mauvaise octave — vise {n} octave plus haut (encore 1 chance)": "Right note, wrong octave — aim {n} octave higher (1 more try)",
   "Bonne note, mauvaise octave — vise {n} octaves plus haut (encore 1 chance)": "Right note, wrong octave — aim {n} octaves higher (1 more try)",
