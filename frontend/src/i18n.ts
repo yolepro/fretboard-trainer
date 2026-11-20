@@ -316,7 +316,6 @@ const EN: Record<string, string> = {
   "Joue la note…": "Play the note…",
   "Micro en pause": "Microphone paused",
   "Tu joues {note}": "You are playing {note}",
-  "Joue la note sur ta guitare": "Play the note on your guitar",
   Passer: "Skip",
   "{section} · terminé": "{section} · finished",
   "Nouveau record !": "New record!",

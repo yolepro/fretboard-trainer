@@ -207,7 +207,8 @@ export default function EarScreen() {
       const pos = q.string !== undefined && q.fret !== undefined ? { string: q.string, fret: q.fret } : lowestPosition(q.targetMidi, q.pitchClassOnly);
       const answer = `${name(pcOf(q.targetMidi))}${q.pitchClassOnly ? "" : octaveOf(q.targetMidi)}`;
       setFeedback({ kind: "miss", text: tr("Raté — c’était {answer}", { answer }) + (pos ? ` · ${positionText(pos)}` : "") });
-      later(advance, 1800);
+      // “Manche”: the small neck under the note stays 3 s before the next question.
+      later(advance, q.string !== undefined ? 3000 : 1800);
       return;
     }
     let text = tr("Tu joues {note} — encore 1 chance", { note: played });
