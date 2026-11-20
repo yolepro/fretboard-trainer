@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.36.1 (refonte) — Oreille : bonne note à la mauvaise hauteur → « trop grave / trop aiguë, joue-la plus aiguë / grave (sur la corde …) », sans numéro d’octave
 // 1.36.0 (refonte) — Oreille : après 2 ratés, la réponse reste affichée jusqu’à ce que la bonne note soit jouée (chrono en pause pendant ce temps ; « Passer » reste possible)
 // 1.35.2 (refonte) — Oreille : son de réussite plus doux (deux notes rondes montantes, moins fort)
 // 1.35.1 (refonte) — Oreille : son cristal quand la note est juste, son grave et doux quand elle est fausse (micro en pause pendant le son)
@@ -93,4 +94,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.36.0 · refonte";
+export const APP_VERSION = "1.36.1 · refonte";

@@ -23,7 +23,7 @@ import {
   type Section,
 } from "@/src/ear/questions";
 import type { PitchFrame } from "@/src/music/yin";
-import { freqToMidiFloat, octaveOf, pcOf } from "@/src/music/theory";
+import { STRING_LABELS, freqToMidiFloat, octaveOf, pcOf } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
@@ -240,6 +240,21 @@ export default function EarScreen() {
     later(advance, 550);
   };
 
+  // Right note name at the wrong height: said in plain words (too low / too high), no octave numbers.
+  const octaveHint = (q: Question, midi: number) => {
+    if (q.pitchClassOnly || pcOf(midi) !== pcOf(q.targetMidi) || midi === q.targetMidi) return null;
+    const higher = q.targetMidi > midi;
+    const far = Math.abs(q.targetMidi - midi) > 12;
+    const base = higher
+      ? far
+        ? tr("Bonne note, mais beaucoup trop grave — joue-la bien plus aiguë")
+        : tr("Bonne note, mais trop grave — joue-la plus aiguë")
+      : far
+        ? tr("Bonne note, mais beaucoup trop aiguë — joue-la bien plus grave")
+        : tr("Bonne note, mais trop aiguë — joue-la plus grave");
+    return q.string !== undefined ? `${base}, ${tr("sur la corde {s} ({l})", { s: q.string + 1, l: STRING_LABELS[q.string] })}` : base;
+  };
+
   const onWrong = (midi: number) => {
     const q = qRef.current;
     if (!q) return;
@@ -261,12 +276,8 @@ export default function EarScreen() {
       setFeedback({ kind: "miss", text: `${tr("Raté — c’était {answer}", { answer })}${where} · ${tr("joue-la pour continuer")}` });
       return;
     }
-    let text = tr("Tu joues {note} — encore 1 chance", { note: played });
-    if (!q.pitchClassOnly && pcOf(midi) === pcOf(q.targetMidi)) {
-      const diff = octaveOf(q.targetMidi) - octaveOf(midi);
-      text = tr(`Bonne note, mauvaise octave — vise {n} octave${Math.abs(diff) > 1 ? "s" : ""} plus ${diff > 0 ? "haut" : "bas"} (encore 1 chance)`, { n: Math.abs(diff) });
-    }
-    setFeedback({ kind: "wrong", text });
+    const hint = octaveHint(q, midi);
+    setFeedback({ kind: "wrong", text: hint ? `${hint} · ${tr("encore 1 chance")}` : tr("Tu joues {note} — encore 1 chance", { note: played }) });
   };
 
   const onFrame = (f: PitchFrame) => {
@@ -285,6 +296,10 @@ export default function EarScreen() {
     const match = q.pitchClassOnly ? pcOf(midi) === pcOf(q.targetMidi) : midi === q.targetMidi;
     if (correctingRef.current) {
       if (match && stable.current.count === 3) onCorrected();
+      else if (!match && stable.current.count === 6) {
+        const hint = octaveHint(q, midi);
+        if (hint) setFeedback({ kind: "miss", text: hint });
+      }
       return;
     }
     if (match && stable.current.count === 3) onCorrect();
