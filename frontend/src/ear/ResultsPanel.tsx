@@ -17,6 +17,7 @@ type Props = {
   nameOf: (pc: number) => string;
   bottomPad: number;
   onTrainWeak: () => void;
+  onTrainZone: (keys: string[]) => void;
 };
 
 type View_ = "home" | "map" | "tops";
@@ -50,7 +51,7 @@ function rateBucket(rate: number) {
   return rate <= RATE_STEPS[0] ? 0 : rate < RATE_STEPS[1] ? 1 : rate < RATE_STEPS[2] ? 2 : 3;
 }
 
-export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWeak }: Props) {
+export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWeak, onTrainZone }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const [view, setView] = useState<View_>("home");
@@ -137,6 +138,18 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
     const cell = (s: number, f: number) => stats.get(`b${s}-${f}`);
     const selStat = sel ? stats.get(sel) : undefined;
     const [ss, sf] = (sel ?? "").slice(1).split("-").map(Number);
+    // “Travailler cette zone”: the touched fret ± 2, on its string and the neighbouring ones.
+    const zf0 = Math.max(0, sf - 2);
+    const zf1 = Math.min(12, sf + 2);
+    const zs0 = Math.max(0, ss - 1);
+    const zs1 = Math.min(5, ss + 1);
+    const inZone = (s: number, f: number) => !sel || (s >= zs0 && s <= zs1 && f >= zf0 && f <= zf1);
+    const zoneKeys = () => {
+      const keys: string[] = [];
+      for (let s = zs0; s <= zs1; s++) for (let f = zf0; f <= zf1; f++) keys.push(`b${s}-${f}`);
+      return keys;
+    };
+    const zoneStrings = Array.from({ length: zs1 - zs0 + 1 }, (_, i) => STRING_LABELS[zs1 - i]).join(", ");
     return (
       <View style={styles.flex}>
         {subHeader(tr("Carte du manche"))}
@@ -159,6 +172,8 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
                         styles.cell,
                         f === 0 && styles.cellOpen,
                         b >= 0 ? { backgroundColor: HEAT[b] } : st ? styles.cellFew : null,
+                        sel && inZone(s, f) && styles.cellZone,
+                        !inZone(s, f) && styles.cellOut,
                         sel === id && styles.cellSel,
                       ]}
                     >
@@ -211,6 +226,13 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
               ) : selStat.tries < MIN_TRIES ? (
                 <Text style={styles.muted}>{tr("Pas encore assez d’essais pour la classer (3 minimum).")}</Text>
               ) : null}
+              <Pressable testID="results-train-zone" onPress={() => onTrainZone(zoneKeys())} style={({ pressed }) => [styles.trainBtn, pressed && styles.pressed]}>
+                <Crosshair size={18} color={colors.brandPrimary} weight="bold" />
+                <Text style={styles.trainText}>{tr("Travailler cette zone")}</Text>
+              </Pressable>
+              <Text style={styles.muted}>
+                {tr("Cases {a} à {b}, cordes {s} · le challenge pioche dans le cadre orange, les cases les plus faibles plus souvent.", { a: zf0, b: zf1, s: zoneStrings })}
+              </Text>
             </View>
           ) : null}
           <Text style={styles.foot}>{tr("Touche une case pour voir son détail. Gris : jamais demandée. Une case n’est coloriée qu’après 3 essais.")}</Text>
@@ -432,6 +454,8 @@ const useStyles = makeStyles((c) => ({
   cell: { flex: 1, minWidth: 0, height: 30, borderRadius: 6, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "transparent" },
   cellOpen: { marginRight: 3 },
   cellFew: { backgroundColor: "transparent", borderWidth: 1, borderStyle: "dashed", borderColor: c.borderStrong },
+  cellZone: { borderColor: c.brandPrimary },
+  cellOut: { opacity: 0.35 },
   cellSel: { borderWidth: 2, borderStyle: "solid", borderColor: c.onSurface },
   cellText: { fontFamily: fonts.display, fontSize: 9, fontWeight: "700" },
   fretNum: { flex: 1, minWidth: 0, textAlign: "center", fontFamily: fonts.display, fontSize: 10, color: c.onSurfaceTertiary },

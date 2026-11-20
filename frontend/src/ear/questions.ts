@@ -54,6 +54,8 @@ export type Question = {
   fret?: number;
   /** What the results dashboard groups by (see stats.ts). */
   stat: { key: string; midi?: number; label?: string; sub?: string };
+  /** Weak-points mode: why this target was picked (tag under the note). */
+  focus?: { weak: boolean; text: string };
 };
 
 export const STRING_NAMES = ["Mi aigu", "Si", "Sol", "Ré", "La", "Mi grave"];

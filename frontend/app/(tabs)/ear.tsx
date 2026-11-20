@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -12,7 +12,9 @@ import { ResultView } from "@/src/ear/ResultView";
 import { SetupPanel } from "@/src/ear/SetupPanel";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
 import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
-import { pickWeakKey, weaknessScores } from "@/src/ear/weakness";
+import { pickWeakKey, sessionProgress, weaknessScores } from "@/src/ear/weakness";
+import { reasonText } from "@/src/ear/labels";
+import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import {
   DEFAULT_OPTIONS,
   SECTIONS,
@@ -41,6 +43,9 @@ type Timer = ReturnType<typeof setTimeout>;
 
 export default function EarScreen() {
   const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+  // Landscape: the tab bar is a pill in the top-right corner; keep the header controls beside it.
+  const navInset = winW > winH && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const styles = useStyles();
   const { settings, nameOf } = useSettings();
@@ -70,6 +75,11 @@ export default function EarScreen() {
   const qStartRef = useRef(0);
   // Weak-points mode: this section's answers, kept up to date during the challenge.
   const historyRef = useRef<Attempt[]>([]);
+  const beforeRef = useRef<Attempt[]>([]); // answers before this challenge (for “Tes progrès”)
+  const sessionRef = useRef<Attempt[]>([]); // answers of this challenge
+  // “Travailler cette zone”: the stat keys of the chosen frets (Manche), else null.
+  const zoneRef = useRef<string[] | null>(null);
+  const [progress, setProgress] = useState<ReturnType<typeof sessionProgress> | null>(null);
   const [tab, setTab] = useState<"play" | "results">("play");
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
@@ -178,13 +188,18 @@ export default function EarScreen() {
     } else playFeedback(kind, vol);
   };
 
+  const targetKeys = () => (zoneRef.current && sectionRef.current === "board" ? zoneRef.current : candidateKeys(sectionRef.current, optsRef.current));
+
   const newQuestion = () => {
     let forced: string | undefined;
+    let focus: Question["focus"];
     if (optsRef.current.weak) {
-      const scores = weaknessScores(candidateKeys(sectionRef.current, optsRef.current), historyRef.current);
-      forced = pickWeakKey(scores, qRef.current?.stat.key)?.key;
+      const scores = weaknessScores(targetKeys(), historyRef.current);
+      const picked = pickWeakKey(scores, qRef.current?.stat.key);
+      forced = picked?.key;
+      if (picked) focus = { weak: picked.weak, text: picked.weak ? reasonText(picked.reason) : tr("Révision · tu la connais bien") };
     }
-    const q = makeQuestion(sectionRef.current, optsRef.current, nameRef.current, forced);
+    const q = { ...makeQuestion(sectionRef.current, optsRef.current, nameRef.current, forced), focus };
     qRef.current = q;
     answeredRef.current = false;
     attemptsRef.current = 0;
@@ -208,6 +223,7 @@ export default function EarScreen() {
     const better = score > 0 && (!prev || score > prev.score || (score === prev.score && t < prev.timeMs));
     setIsRecord(better);
     saveSession({ t: Date.now(), s: sectionRef.current, count: optsRef.current.count, score, ms: t });
+    setProgress(optsRef.current.weak ? sessionProgress(targetKeys(), beforeRef.current, sessionRef.current) : null);
     if (better) {
       const next = { score, timeMs: t, at: Date.now() };
       setBest(next);
@@ -241,6 +257,7 @@ export default function EarScreen() {
       ...(skipped ? { skipped } : {}),
     };
     historyRef.current.push(a);
+    sessionRef.current.push(a);
     saveAttempt(a);
   };
 
@@ -351,6 +368,7 @@ export default function EarScreen() {
     setSuspended(false);
     setDetected(null);
     setPhase("setup");
+    zoneRef.current = null;
     stopAll();
   }, []);
 
@@ -396,6 +414,8 @@ export default function EarScreen() {
   const start = async () => {
     if (!(await ensureMic())) return;
     historyRef.current = optsRef.current.weak ? (await loadHistory()).attempts.filter((a) => a.s === sectionRef.current) : [];
+    beforeRef.current = [...historyRef.current];
+    sessionRef.current = [];
     preloadFeedback();
     setPerm("granted");
     clearTimers();
@@ -427,7 +447,9 @@ export default function EarScreen() {
     advance();
   };
 
-  const sectionLabel = tr(SECTIONS.find((s) => s.id === section)!.label);
+  const sectionLabel =
+    tr(SECTIONS.find((s) => s.id === section)!.label) +
+    (zoneRef.current && section === "board" ? ` · ${tr("Zone")}` : opts.weak ? ` · ${tr("Points faibles")}` : "");
   const micText = suspended
     ? tr("Écoute…")
     : status === "starting"
@@ -457,11 +479,12 @@ export default function EarScreen() {
             onReplay={() => playRef(question.playMidi)}
             onSkip={skip}
             onStop={stop}
+            navInset={navInset}
           />
         </View>
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
-          <Text style={styles.title}>{tr("Oreille")}</Text>
+          <Text style={[styles.title, { paddingRight: navInset + spacing.lg }]}>{tr("Oreille")}</Text>
           {phase !== "done" ? (
             <View style={styles.segment} testID="ear-tab">
               {(["play", "results"] as const).map((k) => (
@@ -477,8 +500,17 @@ export default function EarScreen() {
               onSection={setSection}
               nameOf={nameOf}
               bottomPad={bottomChrome + spacing.xl}
+              onTrainZone={(keys) => {
+                // “Travailler cette zone”: weak-points draw restricted to these frets.
+                zoneRef.current = keys;
+                optsRef.current = { ...optsRef.current, weak: true };
+                setOpts(optsRef.current);
+                setTab("play");
+                start();
+              }}
               onTrainWeak={() => {
                 // Straight into a weak-points challenge for this section, with the current settings.
+                zoneRef.current = null;
                 optsRef.current = { ...optsRef.current, weak: true };
                 setOpts(optsRef.current);
                 setTab("play");
@@ -495,11 +527,16 @@ export default function EarScreen() {
                 best={best}
                 isRecord={isRecord}
                 onReplay={start}
+                replayLabel={zoneRef.current ? tr("Rejouer cette zone") : opts.weak ? tr("Rejouer mes points faibles") : tr("Rejouer")}
+                progress={progress}
+                nameOf={nameOf}
                 onSetup={() => {
+                  zoneRef.current = null;
                   setTab("play");
                   setPhase("setup");
                 }}
                 onResults={() => {
+                  zoneRef.current = null;
                   setTab("results");
                   setPhase("setup");
                 }}
