@@ -33,6 +33,7 @@ export const LEVELS: Level[] = [
     keyChoice: false,
     categories: [
       { id: "tonics", name: "Toniques", meta: "Toutes les toniques d’une position, puis de la suivante", degrees: ["1"] },
+      { id: "pillars", name: "Les piliers", meta: "Tonique, tierce, quinte, mélangées", degrees: ["1", "3", "5"] },
       { id: "fifths", name: "Quintes", meta: "La tonique et sa quinte : le power chord", degrees: ["1", "5"] },
     ],
   },

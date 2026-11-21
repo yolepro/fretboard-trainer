@@ -88,7 +88,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : ROUND_CHOICES[kind];
   const levelRoundCount = level ? (levelRounds[roundsKey] ?? (neckCat ? neckRounds[0] : level.defaultRounds)) : 0;
   // What is actually played.
-  const play: ChallengeOptions = level && cat ? levelOptions(opts, level, cat, levelRoundCount) : opts;
+  // The answer mode (guitar / touch / both) is a global setting (Réglages › Entraînement).
+  const play: ChallengeOptions = { ...(level && cat ? levelOptions(opts, level, cat, levelRoundCount) : opts), input: settings.challengeInput };
   const variant = level && cat ? `${level.id}-${cat.id}` : "custom";
   const sprint = play.sprintSec > 0;
 
@@ -422,7 +423,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
 
   // ---------- Views ----------
 
-  const header = (title: string, onLeft: () => void, icon: "back" | "close") => (
+  const header = (title: string, onLeft: () => void, icon: "back" | "close", right?: React.ReactNode) => (
     <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingRight: navInset + spacing.lg }]}>
       <Pressable testID="challenge-back" onPress={onLeft} style={styles.roundBtn} accessibilityLabel={icon === "back" ? tr("Retour") : tr("Arrêter")}>
         {icon === "back" ? <CaretLeft size={18} color={colors.onSurface} weight="bold" /> : <X size={18} color={colors.onSurface} />}
@@ -435,6 +436,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           {sprint ? formatTime(Math.max(0, play.sprintSec * 1000 - elapsed)) : formatTime(elapsed)}
         </Text>
       ) : null}
+      {right}
     </View>
   );
 
@@ -586,22 +588,31 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setOpts({ ...opts, scales: has ? opts.scales.filter((x) => x !== id) : [...opts.scales, id] });
   };
   const levelSummary = level && cat ? summaryOf(play, nameOf) : [];
+  const micWarning = micDenied && play.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null;
+  const recordLine = best ? (
+    <Text style={styles.muted}>
+      {sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record ({n} manches) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
+    </Text>
+  ) : null;
+  const startButton = (label: string) => (
+    <Pressable testID="challenge-start" onPress={start} style={({ pressed }) => [styles.primary, styles.primaryTight, pressed && styles.pressed]}>
+      <Play size={22} color={colors.onBrandPrimary} weight="fill" />
+      <Text style={styles.primaryText} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
 
+  // Levels: every game keeps its description; the selected one opens with its settings, its rounds and the Start button.
   const levelSetup =
     level && cat ? (
-      <>
-        <Text style={styles.muted}>{tr(level.intro)}</Text>
-        <View style={styles.cats}>
-          {level.categories.map((c, i) => {
-            const on = c === cat;
-            const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
-            return (
-              <Pressable
-                key={c.id}
-                testID={`challenge-cat-${c.id}`}
-                onPress={() => setCatIdx({ ...catIdx, [level.id]: i })}
-                style={({ pressed }) => [styles.catCard, on && styles.catCardOn, pressed && styles.pressed]}
-              >
+      <View style={styles.cats}>
+        {level.categories.map((c, i) => {
+          const on = c === cat;
+          const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
+          return (
+            <View key={c.id} style={[styles.catCard, on && styles.catCardOn]}>
+              <Pressable testID={`challenge-cat-${c.id}`} onPress={() => setCatIdx({ ...catIdx, [level.id]: i })} style={({ pressed }) => [styles.catHead, pressed && styles.pressed]}>
                 <View style={styles.catBadges}>
                   {(c.degrees.length > 4 ? c.degrees.slice(0, 3) : c.degrees).map((n) => (
                     <DegreeBadge key={n} num={n} label={level.base.contextRandom ? n : prettyLabel(labelOfNum(ctx, n))} />
@@ -613,35 +624,40 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                   <Text style={styles.muted}>{tr(c.meta)}</Text>
                 </View>
               </Pressable>
-            );
-          })}
-        </View>
-        {level.keyChoice && !play.randomKey ? (
-          <View style={styles.keyRow}>
-            <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
-            <Text style={styles.muted}>{tr("Ta tonalité")}</Text>
-          </View>
-        ) : null}
-        <View style={styles.summary}>
-          {levelSummary.map((t) => (
-            <View key={t.text} style={[styles.summaryChip, t.random && styles.summaryChipRandom]}>
-              <Text style={[styles.summaryText, t.random && styles.summaryTextRandom]}>{t.text}</Text>
+              {on ? (
+                <View style={styles.catBody} testID="challenge-cat-open">
+                  <View style={styles.summary}>
+                    {levelSummary.map((t) => (
+                      <View key={t.text} style={[styles.summaryChip, t.random && styles.summaryChipRandom]}>
+                        <Text style={[styles.summaryText, t.random && styles.summaryTextRandom]}>{t.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {level.keyChoice && !play.randomKey ? (
+                    <View style={styles.keyRow}>
+                      <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
+                      <Text style={styles.muted}>{tr("Ta tonalité")}</Text>
+                    </View>
+                  ) : null}
+                  {sprint ? (
+                    <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de manches possible.", { s: play.sprintSec })}</Text>
+                  ) : (
+                    <View style={styles.roundsRow}>
+                      <Text style={styles.roundsLabel}>{tr("Manches")}</Text>
+                      {roundChoices.map((n) => (
+                        <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={levelRoundCount === n} onPress={() => setLevelRounds({ ...levelRounds, [roundsKey]: n })} />
+                      ))}
+                    </View>
+                  )}
+                  {recordLine}
+                  {micWarning}
+                  {startButton(tr("Démarrer · {name}", { name: tr(c.name) }))}
+                </View>
+              ) : null}
             </View>
-          ))}
-        </View>
-        {sprint ? (
-          <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de manches possible.", { s: play.sprintSec })}</Text>
-        ) : (
-          <>
-            <SectionLabel>{tr("Manches")}</SectionLabel>
-            <View style={styles.wrap}>
-              {roundChoices.map((n) => (
-                <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={levelRoundCount === n} onPress={() => setLevelRounds({ ...levelRounds, [roundsKey]: n })} />
-              ))}
-            </View>
-          </>
-        )}
-      </>
+          );
+        })}
+      </View>
     ) : null;
 
   const customSetup = (
@@ -722,14 +738,16 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   return (
     <View style={styles.screen} testID="find-challenge-setup">
       <StudioBackground />
-      {header(tr(TITLES[kind]), onBack, "back")}
-      <View style={styles.segment}>
-        {(["play", "results"] as const).map((k) => (
-          <Pressable key={k} testID={`challenge-tab-${k}`} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segBtnOn]}>
-            <Text style={[styles.segText, tab === k && styles.segTextOn]}>{k === "play" ? tr("Jouer") : tr("Résultats")}</Text>
+      {header(
+        tab === "results" ? tr("Mes résultats") : tr(TITLES[kind]),
+        tab === "results" ? () => setTab("play") : onBack,
+        "back",
+        tab === "play" ? (
+          <Pressable testID="challenge-tab-results" onPress={() => setTab("results")} style={styles.roundBtn} accessibilityLabel={tr("Mes résultats")}>
+            <ChartBar size={20} color={colors.onSurface} />
           </Pressable>
-        ))}
-      </View>
+        ) : null,
+      )}
       {tab === "results" ? (
         <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} variant={variant} lengths={sprint ? ["sprint"] : roundChoices} />
       ) : (
@@ -745,27 +763,21 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               ))}
             </View>
           ) : null}
-          {level ? levelSetup : customSetup}
-
-          <SectionLabel>{tr("Répondre")}</SectionLabel>
-          <View style={styles.wrap}>
-            <Chip testID="challenge-input-both" label={tr("Les deux")} selected={opts.input === "both"} onPress={() => setOpts({ ...opts, input: "both" })} />
-            <Chip testID="challenge-input-mic" label={tr("Guitare (micro)")} selected={opts.input === "mic"} onPress={() => setOpts({ ...opts, input: "mic" })} />
-            <Chip testID="challenge-input-touch" label={tr("Toucher l’écran")} selected={opts.input === "touch"} onPress={() => setOpts({ ...opts, input: "touch" })} />
-          </View>
-          {micDenied && play.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null}
-          {best ? (
-            <Text style={styles.muted}>
-              {sprint
-                ? tr("Record : {n} manches", { n: best.score ?? 0 })
-                : tr("Record ({n} manches) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
-            </Text>
-          ) : null}
-
-          <Pressable testID="challenge-start" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-            <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-            <Text style={styles.primaryText}>{tr("Démarrer le challenge")}</Text>
-          </Pressable>
+          {level ? (
+            levelSetup
+          ) : (
+            <>
+              {customSetup}
+              {recordLine}
+              {micWarning}
+              {startButton(tr("Démarrer le challenge"))}
+            </>
+          )}
+          <Text style={styles.inputNote}>
+            {tr("Réponse : {mode} · se change dans Réglages", {
+              mode: play.input === "both" ? tr("guitare + toucher") : play.input === "mic" ? tr("guitare (micro)") : tr("toucher l’écran"),
+            })}
+          </Text>
         </ScrollView>
       )}
     </View>
@@ -789,13 +801,19 @@ const useStyles = makeStyles((c) => ({
   levelText: { fontFamily: fonts.display, fontSize: 13, color: c.onSurfaceTertiary },
   levelTextOn: { color: c.onSurface, fontWeight: "700" },
   cats: { gap: spacing.sm, paddingVertical: spacing.sm },
-  catCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 64, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  catCard: { borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  catHead: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  catBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
+  roundsRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  roundsLabel: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, marginRight: 4 },
+  inputNote: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary, textAlign: "center", marginTop: spacing.md },
   catCardOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
   catBadges: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
   more: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
   catText: { flex: 1, minWidth: 0, gap: 2 },
   catName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
-  summary: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingVertical: spacing.sm },
+  summary: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  primaryTight: { marginTop: spacing.xs },
   summaryChip: { height: 28, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary, justifyContent: "center" },
   summaryChipRandom: { borderWidth: 1, borderColor: c.brandPrimary },
   summaryText: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceSecondary },

@@ -20,6 +20,8 @@ export type Settings = {
   soundOnTap: boolean;
   volume: number;
   a4: number;
+  /** Challenges (S’exercer): answer by playing (mic), by touching the neck, or both. */
+  challengeInput: "both" | "mic" | "touch";
   /** Number of frets of the neck (20–24). */
   fretCount: number;
   /** Set once the 1.20 defaults (score + tab shown in both orientations) were applied to saved settings. */
@@ -38,6 +40,7 @@ const DEFAULTS: Settings = {
   soundOnTap: true,
   volume: 0.8,
   a4: 440,
+  challengeInput: "both",
   fretCount: 22,
   scoreDefaultsV: 1,
 };

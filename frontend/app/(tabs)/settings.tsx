@@ -195,6 +195,13 @@ export default function SettingsScreen() {
             subtitle={tr("Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs")}
           />
           <View style={styles.sep} />
+          <Row testID="setting-challenge-input" icon={Target} title={tr("Challenges : répondre")} subtitle={tr("En jouant la note, en touchant le manche, ou les deux")} />
+          <View style={styles.inlineChips}>
+            <Chip testID="challenge-input-both" label={tr("Les deux")} selected={settings.challengeInput === "both"} onPress={() => update({ challengeInput: "both" })} />
+            <Chip testID="challenge-input-mic" label={tr("Guitare (micro)")} selected={settings.challengeInput === "mic"} onPress={() => update({ challengeInput: "mic" })} />
+            <Chip testID="challenge-input-touch" label={tr("Toucher l’écran")} selected={settings.challengeInput === "touch"} onPress={() => update({ challengeInput: "touch" })} />
+          </View>
+          <View style={styles.sep} />
           <Row
             testID="setting-a4"
             icon={Waveform}
