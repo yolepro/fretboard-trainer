@@ -642,7 +642,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
 
   // Levels: every game keeps its description; the selected one opens with its settings, its rounds and the Start button.
   const levelSetup =
-    level && cat ? (
+    level ? (
       <View style={styles.cats}>
         {level.categories.map((c, i) => {
           const on = c === cat;

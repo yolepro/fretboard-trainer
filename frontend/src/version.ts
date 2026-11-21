@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.44.2 — Challenges : la liste des jeux s’affiche aussi quand aucun jeu n’est ouvert
 // 1.44.1 — Challenges : jeux « tout le manche » démarrés une fois le téléphone tourné ; aucun jeu présélectionné (on peut refermer un jeu) ; dépliage animé du jeu choisi ; chrono visible en paysage (marge du menu + zone sûre)
 // 1.44.0 — Trouve le degré : le jeu sélectionné s’ouvre avec ses réglages, ses manches et le bouton Démarrer ; Résultats en icône dans l’en-tête ; « Répondre » déplacé dans Réglages › Entraînement ; « Les piliers » aussi en Débutant (1-3-5)
 // 1.43.2 — Trouve le degré : « Les piliers » passe en Intermédiaire (1-3-5-7, tonalité au hasard), placé avant « Les couleurs » ; « Les 7 degrés » après « Les couleurs »
@@ -108,4 +109,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.44.1";
+export const APP_VERSION = "1.44.2";
