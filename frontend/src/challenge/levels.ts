@@ -33,7 +33,6 @@ export const LEVELS: Level[] = [
     keyChoice: false,
     categories: [
       { id: "tonics", name: "Toniques", meta: "Toutes les toniques d’une position, puis de la suivante", degrees: ["1"] },
-      { id: "pillars", name: "Les piliers", meta: "Tonique, tierce, quinte, mélangées", degrees: ["1", "3", "5"] },
       { id: "fifths", name: "Quintes", meta: "La tonique et sa quinte : le power chord", degrees: ["1", "5"] },
     ],
   },
@@ -46,8 +45,15 @@ export const LEVELS: Level[] = [
     defaultRounds: 10,
     keyChoice: true,
     categories: [
-      { id: "all7", name: "Les 7 degrés", meta: "Un degré différent à chaque manche", degrees: ["2", "3", "4", "5", "6", "7"] },
+      {
+        id: "pillars",
+        name: "Les piliers",
+        meta: "Tonique, tierce, quinte, septième · tonalité au hasard",
+        degrees: ["1", "3", "5", "7"],
+        set: { randomKey: true },
+      },
       { id: "colors", name: "Les couleurs", meta: "Les degrés qui colorent : 2, 4, 6", degrees: ["2", "4", "6"] },
+      { id: "all7", name: "Les 7 degrés", meta: "Un degré différent à chaque manche", degrees: ["2", "3", "4", "5", "6", "7"] },
       { id: "arp7", name: "Arpège 7", meta: "Les notes de l’accord à 4 sons : 3, 5, 7", degrees: ["3", "5", "7"] },
       { id: "minor", name: "Le mineur", meta: "Les degrés qui changent en mineur : ♭3, ♭6, ♭7", degrees: ["3", "6", "7"], set: { scaleId: "minor" } },
       { id: "neck", name: "Tout le manche", meta: "Un degré sur les 5 positions d’un coup", degrees: ["1", "3", "5", "7"], set: { scope: "neck" } },

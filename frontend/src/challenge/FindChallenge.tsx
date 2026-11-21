@@ -616,7 +616,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             );
           })}
         </View>
-        {level.keyChoice ? (
+        {level.keyChoice && !play.randomKey ? (
           <View style={styles.keyRow}>
             <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
             <Text style={styles.muted}>{tr("Ta tonalité")}</Text>

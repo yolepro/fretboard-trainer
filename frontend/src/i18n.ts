@@ -350,7 +350,7 @@ const EN: Record<string, string> = {
   "Toniques": "Tonics",
   "Toutes les toniques d’une position, puis de la suivante": "Every tonic of a position, then the next one",
   "Les piliers": "The pillars",
-  "Tonique, tierce, quinte, mélangées": "Tonic, third, fifth, mixed",
+  "Tonique, tierce, quinte, septième · tonalité au hasard": "Tonic, third, fifth, seventh · random key",
   "Quintes": "Fifths",
   "La tonique et sa quinte : le power chord": "The tonic and its fifth: the power chord",
   "Les 7 degrés": "The 7 degrees",
