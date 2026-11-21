@@ -315,6 +315,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
       </ChipRow>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false}>
         {/* Same layout as S’exercer › Challenges: a plain explanation, then the games. */}
+        <Text style={styles.sectionTitle}>{tr("Accords")}</Text>
         <Text style={styles.lead}>{tr("Un accord est joué : reconnais son type parmi les choix. Une seule réponse par accord.")}</Text>
         <View style={styles.sets}>
           {SETS.map((s) => {
@@ -354,7 +355,9 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
 const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
-  lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18, paddingTop: spacing.xs },
+  // Same as the family titles of S’exercer (“CHALLENGES”).
+  sectionTitle: { fontFamily: fonts.text, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "600", color: c.onSurfaceTertiary, paddingTop: spacing.sm },
+  lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
   intro: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", gap: 4, marginTop: spacing.xs },
   introTitle: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   muted: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
