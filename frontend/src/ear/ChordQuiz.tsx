@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Play, SpeakerHigh, X } from "phosphor-react-native";
 
-import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback } from "@/src/audio/sampler";
+import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNotes } from "@/src/audio/sampler";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { ResultView } from "@/src/ear/ResultView";
 import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
@@ -130,12 +130,15 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
     clearTimers();
     const notes = qq.chord.iv.map((i) => qq.root + i);
     const vol = settings.volume * 0.85;
+    // Notes ring together (playNote alone is monophonic: each note would cut the previous one).
+    const seq: { midi: number; at: number }[] = [];
     let t = 0;
     if (how !== "block") {
-      notes.forEach((m, i) => later(() => playNote(m, vol), i * 260));
-      t = notes.length * 260 + 250;
+      notes.forEach((m, i) => seq.push({ midi: m, at: i * 300 }));
+      t = notes.length * 300 + 350;
     }
-    if (how !== "arp") notes.forEach((m, i) => later(() => playNote(m, vol), t + i * 25)); // a light strum
+    if (how !== "arp") notes.forEach((m, i) => seq.push({ midi: m, at: t + i * 30 })); // a light strum
+    playChordNotes(seq, vol);
   };
 
   const ask = (prev?: Q) => {
@@ -153,6 +156,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
 
   const start = () => {
     preloadFeedback();
+    preloadNotes(Array.from({ length: 24 }, (_, i) => 45 + i)); // every note a chord can use
     clearTimers();
     resultsRef.current = [];
     setResults([]);

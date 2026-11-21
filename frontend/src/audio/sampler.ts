@@ -156,6 +156,43 @@ export function playNote(midi: number, volume = 1, atMs?: number) {
   }
 }
 
+/**
+ * Plays several notes that ring TOGETHER (playNote is monophonic: each note stops the previous one).
+ * `times` = offsets in ms (arpeggio, strum). Web: scheduled on the Web Audio clock; native: one player per note.
+ */
+export function playChordNotes(notes: { midi: number; at: number }[], volume = 1) {
+  initAudio();
+  // The polyphonic notes must not be faded by the next monophonic playNote's “previous note”.
+  current = null;
+  const now = Date.now();
+  if (webAudioScheduling) {
+    const allReady = notes.every((n) => playWebBuffer(SAMPLES[resolve(n.midi).base], now + 30 + n.at, volume, resolve(n.midi).rate, false));
+    if (allReady) return;
+  }
+  notes.forEach((n) =>
+    setTimeout(() => {
+      const { base, rate } = resolve(n.midi);
+      const p = getPlayer(base);
+      clearRelease(base);
+      try {
+        p.volume = volume;
+        p.shouldCorrectPitch = false;
+        p.setPlaybackRate(rate);
+        if (fresh.has(base)) {
+          fresh.delete(base);
+          p.play();
+        } else {
+          Promise.resolve(p.seekTo(0))
+            .catch(() => {})
+            .then(() => p.play());
+        }
+      } catch {
+        // player not ready yet
+      }
+    }, n.at),
+  );
+}
+
 export function stopAll() {
   players.forEach((p) => {
     try {
