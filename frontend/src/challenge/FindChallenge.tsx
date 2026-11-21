@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
-import { ArrowClockwise, CaretLeft, ChartBar, Faders, Microphone, Play, Trophy, X } from "phosphor-react-native";
+import { ArrowClockwise, CaretLeft, ChartBar, DeviceMobile, Faders, Microphone, Play, Trophy, X } from "phosphor-react-native";
 
 import { ChallengeNeck } from "@/src/challenge/ChallengeNeck";
 import { ChallengeResults } from "@/src/challenge/ChallengeResults";
@@ -46,7 +46,7 @@ import { tr } from "@/src/i18n";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Props = { kind: ChallengeKind; onBack: () => void; preset?: "neck" };
-type Phase = "setup" | "running" | "done";
+type Phase = "setup" | "rotate" | "running" | "done"; // rotate: whole-neck game waiting for landscape
 
 const TITLES: Record<ChallengeKind, string> = { degree: "Trouve le degré", scale: "Trouve la gamme" };
 
@@ -57,6 +57,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const landscapeRef = useRef(landscape);
+  landscapeRef.current = landscape;
   const navInset = landscape && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
   const bottom = usesNativeTabs ? insets.bottom : 0;
   const { settings, nameOf } = useSettings();
@@ -66,7 +68,12 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const [opts, setOpts] = useState<ChallengeOptions>({ ...DEFAULT_CHALLENGE, rounds: kind === "degree" ? 10 : 1 });
   // Degree challenge: a ready-made level (and one of its categories), or “custom” = every setting by hand.
   const [mode, setMode] = useState<LevelId | "custom">(kind === "degree" ? (preset === "neck" ? "inter" : "beginner") : "custom");
-  const [catIdx, setCatIdx] = useState<Record<LevelId, number>>({ beginner: 0, inter: preset === "neck" ? LEVELS[1].categories.findIndex((c) => c.id === "neck") : 0, expert: 0 });
+  // No game selected when arriving on a level (except the library's “whole neck” shortcut); tapping it again closes it.
+  const [catIdx, setCatIdx] = useState<Record<LevelId, number | null>>({
+    beginner: null,
+    inter: preset === "neck" ? LEVELS[1].categories.findIndex((c) => c.id === "neck") : null,
+    expert: null,
+  });
   const [levelRounds, setLevelRounds] = useState<Record<string, number>>({});
   const [round, setRound] = useState<Round | null>(null);
   const [roundIdx, setRoundIdx] = useState(0);
@@ -82,7 +89,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const [micDenied, setMicDenied] = useState(false);
 
   const level = mode === "custom" ? null : LEVELS.find((l) => l.id === mode)!;
-  const cat = level ? level.categories[catIdx[level.id]] ?? level.categories[0] : null;
+  const sel = level ? catIdx[level.id] : null;
+  const cat = level && sel !== null ? level.categories[sel] ?? null : null;
   const neckCat = cat?.set?.scope === "neck";
   const roundsKey = level && cat ? `${level.id}-${neckCat ? "neck" : "pos"}` : "";
   const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : ROUND_CHOICES[kind];
@@ -132,6 +140,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   }, [bestKey, phase]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    if (phase === "rotate" && landscape) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, landscape]);
   useEffect(() => {
     if (phase !== "running") return;
     const id = setInterval(() => {
@@ -299,6 +311,12 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     later(go, 5000);
   };
 
+  // Whole-neck games are played in landscape: ask to turn the phone, start as soon as it is turned.
+  const requestStart = () => {
+    if (optsRef.current.scope === "neck" && !landscapeRef.current) setPhase("rotate");
+    else start();
+  };
+
   const stop = useCallback(() => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
@@ -424,7 +442,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   // ---------- Views ----------
 
   const header = (title: string, onLeft: () => void, icon: "back" | "close", right?: React.ReactNode) => (
-    <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingRight: navInset + spacing.lg }]}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + navInset + spacing.sm }]}>
       <Pressable testID="challenge-back" onPress={onLeft} style={styles.roundBtn} accessibilityLabel={icon === "back" ? tr("Retour") : tr("Arrêter")}>
         {icon === "back" ? <CaretLeft size={18} color={colors.onSurface} weight="bold" /> : <X size={18} color={colors.onSurface} />}
       </Pressable>
@@ -439,6 +457,25 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
       {right}
     </View>
   );
+
+  if (phase === "rotate") {
+    return (
+      <View style={styles.screen} testID="find-challenge-rotate">
+        <StudioBackground />
+        <View style={styles.rotateWrap}>
+          <View style={styles.rotateIcon}>
+            <DeviceMobile size={64} color={colors.brandPrimary} />
+            <ArrowClockwise size={28} color={colors.onSurface} weight="bold" style={styles.rotateArrow} />
+          </View>
+          <Text style={styles.rotateTitle}>{tr("Tourne ton téléphone")}</Text>
+          <Text style={styles.rotateText}>{tr("Ce jeu affiche tout le manche : il démarre dès que l’écran est à l’horizontale.")}</Text>
+          <Pressable testID="challenge-rotate-cancel" onPress={() => setPhase("setup")} style={({ pressed }) => [styles.secondary, styles.rotateCancel, pressed && styles.pressed]}>
+            <Text style={styles.secondaryText}>{tr("Annuler")}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (phase === "running" && round) {
     const pct = round.targets.length ? found.length / round.targets.length : 0;
@@ -551,7 +588,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           <Text style={styles.muted}>
             {best ? (sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record : {time}", { time: formatTime(best.timeMs) })) : ""}
           </Text>
-          <Pressable testID="challenge-replay" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+          <Pressable testID="challenge-replay" onPress={requestStart} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
             <ArrowClockwise size={20} color={colors.onBrandPrimary} weight="bold" />
             <Text style={styles.primaryText}>{tr("Rejouer")}</Text>
           </Pressable>
@@ -595,7 +632,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     </Text>
   ) : null;
   const startButton = (label: string) => (
-    <Pressable testID="challenge-start" onPress={start} style={({ pressed }) => [styles.primary, styles.primaryTight, pressed && styles.pressed]}>
+    <Pressable testID="challenge-start" onPress={requestStart} style={({ pressed }) => [styles.primary, styles.primaryTight, pressed && styles.pressed]}>
       <Play size={22} color={colors.onBrandPrimary} weight="fill" />
       <Text style={styles.primaryText} numberOfLines={1}>
         {label}
@@ -612,7 +649,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
           return (
             <View key={c.id} style={[styles.catCard, on && styles.catCardOn]}>
-              <Pressable testID={`challenge-cat-${c.id}`} onPress={() => setCatIdx({ ...catIdx, [level.id]: i })} style={({ pressed }) => [styles.catHead, pressed && styles.pressed]}>
+              <Pressable testID={`challenge-cat-${c.id}`} onPress={() => setCatIdx({ ...catIdx, [level.id]: on ? null : i })} style={({ pressed }) => [styles.catHead, pressed && styles.pressed]}>
                 <View style={styles.catBadges}>
                   {(c.degrees.length > 4 ? c.degrees.slice(0, 3) : c.degrees).map((n) => (
                     <DegreeBadge key={n} num={n} label={level.base.contextRandom ? n : prettyLabel(labelOfNum(ctx, n))} />
@@ -624,7 +661,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                   <Text style={styles.muted}>{tr(c.meta)}</Text>
                 </View>
               </Pressable>
-              {on ? (
+              <Unfold open={on}>
                 <View style={styles.catBody} testID="challenge-cat-open">
                   <View style={styles.summary}>
                     {levelSummary.map((t) => (
@@ -653,7 +690,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                   {micWarning}
                   {startButton(tr("Démarrer · {name}", { name: tr(c.name) }))}
                 </View>
-              ) : null}
+              </Unfold>
             </View>
           );
         })}
@@ -814,6 +851,12 @@ const useStyles = makeStyles((c) => ({
   catName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
   summary: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   primaryTight: { marginTop: spacing.xs },
+  rotateWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.xl, gap: spacing.md },
+  rotateTitle: { fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.onSurface, textAlign: "center" },
+  rotateText: { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceTertiary, textAlign: "center", lineHeight: 21 },
+  rotateIcon: { width: 96, height: 96, alignItems: "center", justifyContent: "center", transform: [{ rotate: "90deg" }] },
+  rotateArrow: { position: "absolute", right: 0, top: 4 },
+  rotateCancel: { alignSelf: "center", paddingHorizontal: spacing.xl },
   summaryChip: { height: 28, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary, justifyContent: "center" },
   summaryChipRandom: { borderWidth: 1, borderColor: c.brandPrimary },
   summaryText: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceSecondary },
@@ -885,3 +928,28 @@ const useBadgeStyles = makeStyles(() => ({
   badge: { minWidth: 26, height: 26, paddingHorizontal: 4, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   text: { fontFamily: fonts.display, fontSize: 11, fontWeight: "700" },
 }));
+
+/** Unfolds its content (height + fade) when `open` turns true, folds it back when false. */
+function Unfold({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const v = React.useRef(new Animated.Value(open ? 1 : 0)).current;
+  const [shown, setShown] = React.useState(open);
+  React.useEffect(() => {
+    if (open) setShown(true);
+    Animated.timing(v, { toValue: open ? 1 : 0, duration: open ? 260 : 180, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(({ finished }) => {
+      if (finished && !open) setShown(false);
+    });
+  }, [open, v]);
+  if (!shown) return null;
+  return (
+    <Animated.View
+      style={{
+        overflow: "hidden",
+        opacity: v,
+        maxHeight: v.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }),
+        transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
