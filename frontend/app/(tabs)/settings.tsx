@@ -224,6 +224,13 @@ export default function SettingsScreen() {
             <Chip testID="challenge-input-touch" label={tr("Toucher l’écran")} selected={settings.challengeInput === "touch"} onPress={() => update({ challengeInput: "touch" })} />
           </View>
           <View style={styles.sep} />
+          <Row testID="setting-chord-style" icon={MusicNotes} title={tr("Accords : façon de jouer")} subtitle={tr("Comment l’accord est joué dans Oreille › Accords")} />
+          <View style={styles.inlineChips}>
+            <Chip testID="chord-style-both" label={tr("Arpégé puis plaqué")} selected={settings.chordStyle === "both"} onPress={() => update({ chordStyle: "both" })} />
+            <Chip testID="chord-style-block" label={tr("Plaqué")} selected={settings.chordStyle === "block"} onPress={() => update({ chordStyle: "block" })} />
+            <Chip testID="chord-style-arp" label={tr("Arpégé")} selected={settings.chordStyle === "arp"} onPress={() => update({ chordStyle: "arp" })} />
+          </View>
+          <View style={styles.sep} />
           <Row
             testID="setting-reset-best"
             icon={Trash}

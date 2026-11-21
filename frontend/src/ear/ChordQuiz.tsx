@@ -7,6 +7,7 @@ import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNote
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { ResultView } from "@/src/ear/ResultView";
+import { Unfold } from "@/src/components/Unfold";
 import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
 import { useSettings } from "@/src/settings";
@@ -56,8 +57,8 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
-  const [setId, setSetId] = useState("majmin");
-  const [style, setStyle] = useState<PlayStyle>("both");
+  const [setId, setSetId] = useState<string | null>(null); // no game selected on arrival; tap again to close
+  const style: PlayStyle = settings.chordStyle; // Réglages › Entraînement
   const [count, setCount] = useState(10);
   const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
   const [q, setQ] = useState<Q | null>(null);
@@ -68,7 +69,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
   const [best, setBest] = useState<Best | null>(null);
   const [isRecord, setIsRecord] = useState(false);
 
-  const set = SETS.find((s) => s.id === setId)!;
+  const set = SETS.find((s) => s.id === setId) ?? SETS[0];
   const choices = CHORD_TYPES.filter((c) => set.chords.includes(c.id));
   const startRef = useRef(0);
   const pausedAt = useRef<number | null>(null);
@@ -320,33 +321,35 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
 
         <SectionLabel>{tr("Accords à reconnaître")}</SectionLabel>
         <View style={styles.sets}>
-          {SETS.map((s) => (
-            <Pressable key={s.id} testID={`chord-set-${s.id}`} onPress={() => setSetId(s.id)} style={({ pressed }) => [styles.setCard, s.id === setId && styles.setCardOn, pressed && styles.pressed]}>
-              <Text style={styles.setName}>{tr(s.name)}</Text>
-              <Text style={styles.muted}>{tr(s.meta)}</Text>
-            </Pressable>
-          ))}
+          {SETS.map((s) => {
+            const on = s.id === setId;
+            return (
+              <View key={s.id} style={[styles.setCard, on && styles.setCardOn]}>
+                <Pressable testID={`chord-set-${s.id}`} onPress={() => setSetId(on ? null : s.id)} style={({ pressed }) => [styles.setHead, pressed && styles.pressed]}>
+                  <Text style={styles.setName}>{tr(s.name)}</Text>
+                  <Text style={styles.muted}>{tr(s.meta)}</Text>
+                </Pressable>
+                <Unfold open={on}>
+                  <View style={styles.setBody}>
+                    <View style={styles.countRow}>
+                      <Text style={styles.muted}>{tr("Questions")}</Text>
+                      {COUNTS.map((n) => (
+                        <Chip key={n} testID={`chord-count-${n}`} label={String(n)} selected={count === n} onPress={() => setCount(n)} />
+                      ))}
+                    </View>
+                    {best ? <Text style={styles.muted}>{tr("Record : {score}/{n} en {time}", { score: best.score, n: count, time: formatTime(best.timeMs) })}</Text> : null}
+                    <Pressable testID="chord-start" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+                      <Play size={22} color={colors.onBrandPrimary} weight="fill" />
+                      <Text style={styles.primaryText} numberOfLines={1}>
+                        {tr("Démarrer · {name}", { name: tr(s.name) })}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Unfold>
+              </View>
+            );
+          })}
         </View>
-
-        <SectionLabel>{tr("Façon de jouer")}</SectionLabel>
-        <View style={styles.wrap}>
-          <Chip testID="chord-style-both" label={tr("Arpégé puis plaqué")} selected={style === "both"} onPress={() => setStyle("both")} />
-          <Chip testID="chord-style-block" label={tr("Plaqué")} selected={style === "block"} onPress={() => setStyle("block")} />
-          <Chip testID="chord-style-arp" label={tr("Arpégé")} selected={style === "arp"} onPress={() => setStyle("arp")} />
-        </View>
-
-        <SectionLabel>{tr("Nombre de questions")}</SectionLabel>
-        <View style={styles.wrap}>
-          {COUNTS.map((n) => (
-            <Chip key={n} testID={`chord-count-${n}`} label={String(n)} selected={count === n} onPress={() => setCount(n)} />
-          ))}
-        </View>
-
-        {best ? <Text style={styles.muted}>{tr("Record : {score}/{n} en {time}", { score: best.score, n: count, time: formatTime(best.timeMs) })}</Text> : null}
-        <Pressable testID="chord-start" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-          <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-          <Text style={styles.primaryText}>{tr("Démarrer")}</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -359,11 +362,14 @@ const useStyles = makeStyles((c) => ({
   introTitle: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   muted: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
   sets: { gap: spacing.sm },
-  setCard: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", gap: 2 },
+  setCard: { borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  setHead: { padding: spacing.md, gap: 2 },
+  setBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
+  countRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   setCardOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
   setName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingVertical: spacing.xs },
-  primary: { marginTop: spacing.md, height: 56, borderRadius: radius.pill, backgroundColor: c.brandPrimary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  primary: { marginTop: spacing.xs, height: 56, borderRadius: radius.pill, backgroundColor: c.brandPrimary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
   primarySmall: { flex: 1, height: 48, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   primaryText: { fontFamily: fonts.display, fontSize: 17, fontWeight: "700", color: c.onBrandPrimary },
   secondary: { flex: 1, height: 48, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },

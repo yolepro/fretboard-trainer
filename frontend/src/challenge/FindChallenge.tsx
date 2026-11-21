@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { AppState, Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { AppState, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
@@ -31,6 +31,7 @@ import {
 } from "@/src/challenge/rounds";
 import { LEVELS, levelOptions, neckRounds, type LevelId } from "@/src/challenge/levels";
 import { Chip, SectionLabel } from "@/src/components/Chip";
+import { Unfold } from "@/src/components/Unfold";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
@@ -997,27 +998,3 @@ const useBadgeStyles = makeStyles(() => ({
   text: { fontFamily: fonts.display, fontSize: 11, fontWeight: "700" },
 }));
 
-/** Unfolds its content (height + fade) when `open` turns true, folds it back when false. */
-function Unfold({ open, children }: { open: boolean; children: React.ReactNode }) {
-  const v = React.useRef(new Animated.Value(open ? 1 : 0)).current;
-  const [shown, setShown] = React.useState(open);
-  React.useEffect(() => {
-    if (open) setShown(true);
-    Animated.timing(v, { toValue: open ? 1 : 0, duration: open ? 260 : 180, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(({ finished }) => {
-      if (finished && !open) setShown(false);
-    });
-  }, [open, v]);
-  if (!shown) return null;
-  return (
-    <Animated.View
-      style={{
-        overflow: "hidden",
-        opacity: v,
-        maxHeight: v.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }),
-        transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-}

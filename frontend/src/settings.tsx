@@ -22,6 +22,8 @@ export type Settings = {
   a4: number;
   /** Challenges (S’exercer): answer by playing (mic), by touching the neck, or both. */
   challengeInput: "both" | "mic" | "touch";
+  /** Oreille › Accords: how the chord is played. */
+  chordStyle: "both" | "block" | "arp";
   /** Number of frets of the neck (20–24). */
   fretCount: number;
   /** Set once the 1.20 defaults (score + tab shown in both orientations) were applied to saved settings. */
@@ -41,6 +43,7 @@ const DEFAULTS: Settings = {
   volume: 0.8,
   a4: 440,
   challengeInput: "both",
+  chordStyle: "both",
   fretCount: 22,
   scoreDefaultsV: 1,
 };
