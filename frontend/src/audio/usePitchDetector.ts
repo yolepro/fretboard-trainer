@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { setAudioModeAsync, useAudioStream } from "expo-audio";
 
-import { detectPitch, type PitchFrame } from "@/src/music/yin";
+import { detectPitch, rmsOf, type PitchFrame } from "@/src/music/yin";
 import { restorePlaybackMode } from "@/src/audio/sampler";
 
 export type DetectorStatus = "idle" | "starting" | "listening" | "error";
 const WINDOW = 3072;
 const INTERVAL_MS = 70;
 
-export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => void) {
+export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame, level: number) => void) {
   const cbRef = useRef(onFrame);
   cbRef.current = onFrame;
   const win = useRef(new Float32Array(WINDOW));
@@ -32,7 +32,7 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => v
       const now = Date.now();
       if (now - last.current < INTERVAL_MS) return;
       last.current = now;
-      cbRef.current(detectPitch(w, b.sampleRate));
+      cbRef.current(detectPitch(w, b.sampleRate), rmsOf(w));
     },
   });
 

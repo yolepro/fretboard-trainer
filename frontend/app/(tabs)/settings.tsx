@@ -18,6 +18,7 @@ import {
   Waveform,
 } from "phosphor-react-native";
 
+import { MicTester } from "@/src/components/MicTester";
 import { Chip } from "@/src/components/Chip";
 import { FretboardStylePicker } from "@/src/components/FretboardStylePicker";
 import { playNote } from "@/src/audio/sampler";
@@ -194,6 +195,9 @@ export default function SettingsScreen() {
             title={tr("Octave exacte")}
             subtitle={tr("Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs")}
           />
+          <View style={styles.sep} />
+          <Row testID="setting-mic-test" icon={Waveform} title={tr("Test du micro")} subtitle={tr("Voir le signal et la note reconnue")} />
+          <MicTester />
           <View style={styles.sep} />
           <Row testID="setting-challenge-input" icon={Target} title={tr("Challenges : répondre")} subtitle={tr("En jouant la note, en touchant le manche, ou les deux")} />
           <View style={styles.inlineChips}>

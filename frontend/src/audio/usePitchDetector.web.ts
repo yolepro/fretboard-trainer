@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-import { detectPitch, type PitchFrame } from "@/src/music/yin";
+import { detectPitch, rmsOf, type PitchFrame } from "@/src/music/yin";
 
 export type DetectorStatus = "idle" | "starting" | "listening" | "error";
 
-export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => void) {
+export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame, level: number) => void) {
   const cbRef = useRef(onFrame);
   cbRef.current = onFrame;
   const [status, setStatus] = useState<DetectorStatus>("idle");
@@ -38,7 +38,7 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame) => v
         setStatus("listening");
         timer = setInterval(() => {
           analyser.getFloatTimeDomainData(buf);
-          cbRef.current(detectPitch(buf, sr));
+          cbRef.current(detectPitch(buf, sr), rmsOf(buf));
         }, 70);
       } catch (e: any) {
         if (stopped) return;

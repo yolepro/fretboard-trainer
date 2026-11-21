@@ -1,12 +1,21 @@
 // YIN pitch detection (de Cheveigné & Kawahara), tuned for guitar range (70–1400 Hz).
 export type PitchFrame = { freq: number; clarity: number } | null;
 
+/** RMS level of a buffer (0..1): what the detector receives (shown by the mic test in Réglages). */
+export function rmsOf(buf: Float32Array) {
+  let s = 0;
+  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+  return Math.sqrt(s / buf.length);
+}
+/** Below this level the detector does not even try. */
+export const MIN_RMS = 0.005;
+
 export function detectPitch(buf: Float32Array, sampleRate: number, threshold = 0.12): PitchFrame {
   const n = buf.length;
   let rms = 0;
   for (let i = 0; i < n; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / n);
-  if (rms < 0.005) return null; // soft notes (classical guitar, high on the D/G strings) must still be heard
+  if (rms < MIN_RMS) return null; // soft notes (classical guitar, high on the D/G strings) must still be heard
 
   const tauMin = Math.floor(sampleRate / 1400);
   const tauMax = Math.min(Math.floor(sampleRate / 70), Math.floor(n / 2));
