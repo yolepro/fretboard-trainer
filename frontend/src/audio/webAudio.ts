@@ -77,7 +77,14 @@ const live = new Set<Voice>();
  * Starts a decoded sound at `atMs` (Date.now() time). `mono`: a new note fades the previous one out (80 ms), like
  * the native player. Returns false when the sound isn't decoded yet (the caller then falls back to the <audio> path).
  */
-export function playWebBuffer(mod: number, atMs: number, volume: number, rate = 1, mono = false): boolean {
+export function playWebBuffer(
+  mod: number,
+  atMs: number,
+  volume: number,
+  rate = 1,
+  mono = false,
+  group?: Set<{ src: AudioBufferSourceNode; gain: GainNode }>, // collects the voices (to stop just them later)
+): boolean {
   const c = webCtx();
   const buf = buffers.get(mod);
   if (!c || !buf) return false;
@@ -91,7 +98,11 @@ export function playWebBuffer(mod: number, atMs: number, volume: number, rate = 
   src.start(t);
   const voice = { src, gain };
   live.add(voice);
-  src.onended = () => live.delete(voice);
+  group?.add(voice);
+  src.onended = () => {
+    live.delete(voice);
+    group?.delete(voice);
+  };
   if (mono) {
     if (lastNote) {
       const { src: ps, gain: pg } = lastNote;
@@ -106,6 +117,24 @@ export function playWebBuffer(mod: number, atMs: number, volume: number, rate = 
     lastNote = voice;
   }
   return true;
+}
+
+/** Fades out and stops these voices only (e.g. a chord), leaving other sounds alone. */
+export function stopWebVoices(group: Set<{ src: AudioBufferSourceNode; gain: GainNode }>) {
+  const c = webCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  group.forEach(({ src, gain }) => {
+    try {
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0.0001, t + 0.12);
+      src.stop(t + 0.15);
+    } catch {
+      // already stopped
+    }
+  });
+  group.clear();
 }
 
 /** Stops every scheduled / ringing sound (Stop button, end of an exercise). */

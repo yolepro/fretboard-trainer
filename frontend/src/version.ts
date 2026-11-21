@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.47.4 — Oreille › Accords : l’accord précédent s’éteint (fondu) avant le suivant et après une bonne réponse ; arrêt aussi en quittant / Stop ; Safari iPhone : horloge audio réveillée au démarrage
 // 1.47.3 — Oreille › Accords : les notes de l’accord sonnent ensemble (lecture polyphonique ; avant, chaque note coupait la précédente), échantillons préchargés
 // 1.47.2 — Oreille › Accords : retour possible depuis les résultats (la section restait bloquée sur son bilan) ; titre du bilan = nom de la section, flèche de retour vers les jeux
 // 1.47.1 — Oreille : glissière Jouer / Résultats remplacée par une icône Résultats dans l’en-tête (comme S’exercer), masquée sur le bilan ; bilans : « Changer les réglages » devient « Retour aux jeux »
@@ -117,4 +118,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.47.3";
+export const APP_VERSION = "1.47.4";

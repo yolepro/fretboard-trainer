@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Play, SpeakerHigh, X } from "phosphor-react-native";
 
-import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNotes } from "@/src/audio/sampler";
+import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
+import { resumeWebAudio } from "@/src/audio/webAudio";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { ResultView } from "@/src/ear/ResultView";
 import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
@@ -110,6 +111,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
     React.useCallback(
       () => () => {
         clearTimers();
+        stopChordNotes();
         setPhase("setup");
       },
       [],
@@ -155,6 +157,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
   };
 
   const start = () => {
+    resumeWebAudio(); // Safari (iPhone): the audio clock only runs after a tap
     preloadFeedback();
     preloadNotes(Array.from({ length: 24 }, (_, i) => 45 + i)); // every note a chord can use
     clearTimers();
@@ -198,7 +201,10 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
     saveAttempt({ t: Date.now(), s: SECTION, key: `c${q.chord.id}`, label: q.chord.name, ms: Date.now() - askedAt.current, errors: ok ? 0 : 2 });
     clearTimers();
     playFeedback(ok ? "success" : "error", settings.volume);
-    if (ok) later(next, 900);
+    if (ok) {
+      later(stopChordNotes, 450); // let the chord fade before the next one
+      later(next, 900);
+    }
     else {
       // Wrong: the chrono stops, the right chord is played again (arpeggio then block) to hear the difference.
       pause();
@@ -220,6 +226,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
             testID="chord-stop"
             onPress={() => {
               clearTimers();
+              stopChordNotes();
               setPhase("setup");
             }}
             style={styles.roundBtn}

@@ -1,6 +1,6 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 
-import { loadWebBuffer, playWebBuffer, webAudioScheduling } from "@/src/audio/webAudio";
+import { loadWebBuffer, playWebBuffer, stopWebVoices, webAudioScheduling } from "@/src/audio/webAudio";
 
 // Acoustic guitar samples E2 (MIDI 40) → D5 (MIDI 74), bundled locally (works offline).
 const SAMPLES: Record<number, number> = {
@@ -160,18 +160,33 @@ export function playNote(midi: number, volume = 1, atMs?: number) {
  * Plays several notes that ring TOGETHER (playNote is monophonic: each note stops the previous one).
  * `times` = offsets in ms (arpeggio, strum). Web: scheduled on the Web Audio clock; native: one player per note.
  */
+const chordBases = new Set<number>();
+const chordVoices = new Set<{ src: AudioBufferSourceNode; gain: GainNode }>();
+let chordTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** Stops a chord that is still ringing (quick fade), and any of its notes not started yet. */
+export function stopChordNotes() {
+  chordTimers.forEach(clearTimeout);
+  chordTimers = [];
+  if (webAudioScheduling) stopWebVoices(chordVoices);
+  chordBases.forEach((b) => fadeOut(b));
+  chordBases.clear();
+}
+
 export function playChordNotes(notes: { midi: number; at: number }[], volume = 1) {
   initAudio();
+  stopChordNotes(); // the previous chord must not ring under this one
   // The polyphonic notes must not be faded by the next monophonic playNote's “previous note”.
   current = null;
   const now = Date.now();
   if (webAudioScheduling) {
-    const allReady = notes.every((n) => playWebBuffer(SAMPLES[resolve(n.midi).base], now + 30 + n.at, volume, resolve(n.midi).rate, false));
+    const allReady = notes.every((n) => playWebBuffer(SAMPLES[resolve(n.midi).base], now + 30 + n.at, volume, resolve(n.midi).rate, false, chordVoices));
     if (allReady) return;
   }
   notes.forEach((n) =>
-    setTimeout(() => {
+    chordTimers.push(setTimeout(() => {
       const { base, rate } = resolve(n.midi);
+      chordBases.add(base);
       const p = getPlayer(base);
       clearRelease(base);
       try {
@@ -189,7 +204,7 @@ export function playChordNotes(notes: { midi: number; at: number }[], volume = 1
       } catch {
         // player not ready yet
       }
-    }, n.at),
+    }, n.at)),
   );
 }
 
