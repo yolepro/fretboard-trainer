@@ -457,15 +457,7 @@ export function FindChallenge({ kind, onBack }: Props) {
                   <Chip key={l} testID={`challenge-degree-${l}`} label={l === "1" ? tr("Tonique (1)") : prettyLabel(l)} selected={opts.degrees.includes(l)} onPress={() => toggleDegree(l)} />
                 ))}
               </View>
-              <View style={styles.wrap}>
-                <Chip testID="challenge-degree-mix" label={tr("Un degré par manche, mélangés")} selected={opts.degreeMode === "mix"} onPress={() => setOpts({ ...opts, degreeMode: "mix" })} />
-                <Chip testID="challenge-degree-all" label={tr("Tous à la fois")} selected={opts.degreeMode === "all"} onPress={() => setOpts({ ...opts, degreeMode: "all" })} />
-              </View>
-              <Text style={styles.muted}>
-                {opts.degreeMode === "mix"
-                  ? tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")
-                  : tr("Chaque manche demande tous les degrés choisis en même temps.")}
-              </Text>
+              <Text style={styles.muted}>{tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")}</Text>
             </>
           ) : (
             <>

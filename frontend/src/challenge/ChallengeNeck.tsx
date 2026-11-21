@@ -82,12 +82,13 @@ const useStyles = makeStyles((c) => ({
   string: { position: "absolute", left: 20, right: 0, top: ROW / 2, backgroundColor: c.onSurfaceTertiary, opacity: 0.55 },
   cell: { flex: 1, height: ROW, alignItems: "center", justifyContent: "center" },
   fretted: { borderRightWidth: 2, borderRightColor: c.fretWire },
-  open: { flex: 0.6, borderRightWidth: 5, borderRightColor: c.nut },
+  // Open strings: a short column before the nut, off the wood, so it reads as “corde à vide”.
+  open: { flex: 0, width: 32, borderRightWidth: 6, borderRightColor: c.nut, backgroundColor: "rgba(0,0,0,0.35)" },
   dot: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   rootDot: { borderWidth: 2, borderColor: c.onSurface },
   wrongDot: { backgroundColor: "#B91C1C" },
   tonicDot: { borderWidth: 2, backgroundColor: "transparent" },
   dotText: { fontFamily: fonts.display, fontSize: 12, fontWeight: "700" },
   num: { flex: 1, textAlign: "center", fontFamily: fonts.display, fontSize: 11, color: c.onSurfaceTertiary },
-  openNum: { flex: 0.6 },
+  openNum: { flex: 0, width: 32 },
 }));

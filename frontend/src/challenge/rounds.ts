@@ -10,7 +10,7 @@ export type ChallengeOptions = {
   randomKey: boolean;
   scaleId: string; // degree kind: the key context (major / minor)
   degrees: string[]; // degree kind: the pool of interval labels, e.g. ["2", "3", "5", "7"]
-  degreeMode: "mix" | "all"; // mix: one degree per round, changing every round · all: every pooled degree at once
+  degreeMode: "mix"; // one degree per round, changing every round (asking them all at once = the scale challenge)
   scales: string[]; // scale kind: the pool; with several rounds the scale changes every round
   position: number; // 0..4, or -1 = random each round
   order: Order; // scale kind only
