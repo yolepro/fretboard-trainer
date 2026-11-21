@@ -15,6 +15,8 @@ type Props = {
   revealed?: Cell[]; // too many mistakes: the notes that were missing, shown before moving on
   onPress: (string: number, fret: number) => void;
   disabled?: boolean;
+  /** "zoom" (portrait): mini-map + the zone in large · "full" (landscape): the whole neck across the screen, zone lit. */
+  layout?: "zoom" | "full";
 };
 
 const INLAYS = [3, 5, 7, 9, 12, 15, 17, 19, 21];
@@ -28,22 +30,30 @@ const MINI_H = 46;
  * - below, the zone in large, with one greyed fret on each side for context, fret markers (3, 5, 7, 9, 12…).
  * Notes appear where they are found.
  */
-export function ChallengeNeck({ min, max, scope = "position", found, tonics, wrong, revealed = [], onPress, disabled }: Props) {
+export function ChallengeNeck({ min, max, scope = "position", found, tonics, wrong, revealed = [], onPress, disabled, layout = "zoom" }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const [w, setW] = useState(0);
 
   const neck = scope === "neck";
-  const g0 = neck ? min : Math.max(0, min - 1); // context frets (greyed, not playable)
-  const g1 = neck ? max : max + 1;
+  const full = layout === "full";
+  // Visible frets. Zoom: the zone ± 1 context fret (greyed, not playable). Full: the whole neck from the nut.
+  const g0 = full ? 0 : neck ? min : Math.max(0, min - 1);
+  const g1 = full ? Math.max(15, max + (neck ? 0 : 1)) : neck ? max : max + 1;
   const firstFretted = Math.max(1, g0);
   const cols = g1 - firstFretted + 1;
   const openW = g0 === 0 ? OPEN_W : 0;
-  const cw = w > 0 ? (w - LABEL_W - openW) / cols : 0;
-  const compact = cw < 34;
-  const ROW = compact ? 32 : 40;
-  const dot = compact ? 20 : 28;
-  const xOf = (f: number) => (f === 0 ? LABEL_W + openW / 2 : LABEL_W + openW + (f - firstFretted + 0.5) * cw);
+  const avail = w > 0 ? w - LABEL_W - openW : 0;
+  // Fret columns: equal widths (zoom), or real proportions (full: frets narrow towards the body).
+  const dd = (f: number) => 1 - Math.pow(2, -f / 12);
+  const leftOf = (f: number) =>
+    full ? LABEL_W + openW + (avail * (dd(f - 1) - dd(firstFretted - 1))) / (dd(g1) - dd(firstFretted - 1)) : LABEL_W + openW + (f - firstFretted) * (avail / cols);
+  const widthOf = (f: number) => (f === 0 ? openW : leftOf(f + 1) - leftOf(f));
+  const xOf = (f: number) => (f === 0 ? LABEL_W + openW / 2 : leftOf(f) + widthOf(f) / 2);
+  const zoneMinW = Math.min(...Array.from({ length: max - Math.max(1, min) + 1 }, (_, i) => widthOf(Math.max(1, min) + i)));
+  const compact = full || zoneMinW < 34;
+  const ROW = full ? 34 : compact ? 32 : 40;
+  const dot = Math.max(18, Math.min(compact ? 24 : 28, zoneMinW - 4));
   const inZone = (f: number) => f >= min && f <= max;
 
   const foundById = new Map(found.map((c) => [cellId(c), c]));
@@ -66,7 +76,7 @@ export function ChallengeNeck({ min, max, scope = "position", found, tonics, wro
     <View onLayout={(e) => setW(e.nativeEvent.layout.width)} testID="challenge-neck">
       {w > 0 ? (
         <>
-          {!neck ? (
+          {!neck && !full ? (
             <View style={styles.miniWrap}>
               <View style={[styles.mini, { height: MINI_H }]} accessibilityLabel={`Position : cases ${min} à ${max}`}>
                 {Array.from({ length: 6 }, (_, s) => (
@@ -102,7 +112,8 @@ export function ChallengeNeck({ min, max, scope = "position", found, tonics, wro
             {g0 === 0 ? <View style={[styles.nut, { left: LABEL_W + openW - 6, height: neckH }]} /> : null}
             {Array.from({ length: cols }, (_, i) => {
               const f = firstFretted + i;
-              const left = LABEL_W + openW + i * cw;
+              const left = leftOf(f);
+              const cw = widthOf(f);
               return (
                 <React.Fragment key={`f${f}`}>
                   <View style={[styles.fret, { left: left + cw - 1, height: neckH }]} />
@@ -112,11 +123,18 @@ export function ChallengeNeck({ min, max, scope = "position", found, tonics, wro
                       ))
                     : null}
                   {!inZone(f) ? <View style={[styles.ghost, { left, width: cw, height: neckH }]} /> : null}
-                  <Text style={[styles.num, { left: left + cw / 2 - 14, top: neckH + 4 }, INLAYS.includes(f) && styles.numMark, !inZone(f) && styles.numGhost]}>{f}</Text>
+                  {!full || INLAYS.includes(f) || f === min || f === max ? (
+                    <Text style={[styles.num, { left: left + cw / 2 - 14, top: neckH + 4 }, INLAYS.includes(f) && styles.numMark, !inZone(f) && styles.numGhost, full && inZone(f) && styles.numZone]}>{f}</Text>
+                  ) : null}
                 </React.Fragment>
               );
             })}
             {g0 === 0 ? <Text style={[styles.num, { left: LABEL_W + openW / 2 - 14, top: neckH + 4 }, !inZone(0) && styles.numGhost]}>0</Text> : null}
+            {g0 === 0 && !inZone(0) ? <View style={[styles.ghost, { left: LABEL_W, width: openW, height: neckH }]} /> : null}
+            {/* full layout: an orange frame around the zone */}
+            {full && !neck ? (
+              <View pointerEvents="none" style={[styles.zoneFrame, { left: (min === 0 ? LABEL_W : leftOf(min)) - 1, width: leftOf(max) + widthOf(max) - (min === 0 ? LABEL_W : leftOf(min)) + 2, height: neckH }]} />
+            ) : null}
 
             {/* playable cells + notes */}
             {STRING_LABELS.map((label, s) =>
@@ -136,7 +154,7 @@ export function ChallengeNeck({ min, max, scope = "position", found, tonics, wro
                 const hit = foundById.get(id) ?? missed;
                 const tonic = tonicById.get(id);
                 const meta = hit ? DEGREE_META[degreeKeyFromNum(hit.num)] : null;
-                const cellW = f === 0 ? openW : cw;
+                const cellW = widthOf(f);
                 return (
                   <Pressable
                     key={`c${s}-${f}`}
@@ -189,9 +207,11 @@ const useStyles = makeStyles((c) => ({
   fret: { position: "absolute", top: 0, width: 2, backgroundColor: c.fretWire },
   inlay: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: c.onSurface, opacity: 0.35 },
   ghost: { position: "absolute", top: 0, backgroundColor: "rgba(16,17,20,0.6)" },
+  zoneFrame: { position: "absolute", top: 0, borderWidth: 2, borderColor: c.brandPrimary, borderRadius: 6 },
   num: { position: "absolute", width: 28, textAlign: "center", fontFamily: fonts.display, fontSize: 11, color: c.onSurfaceTertiary },
   numMark: { fontSize: 13, fontWeight: "700", color: c.onSurface },
   numGhost: { opacity: 0.45 },
+  numZone: { color: c.brandPrimary, fontWeight: "700" },
   cell: { position: "absolute", alignItems: "center", justifyContent: "center" },
   dot: { alignItems: "center", justifyContent: "center" },
   rootDot: { borderWidth: 2, borderColor: c.onSurface },

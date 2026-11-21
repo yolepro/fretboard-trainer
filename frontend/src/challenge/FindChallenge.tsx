@@ -56,7 +56,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const navInset = width > height && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
+  const landscape = width > height;
+  const navInset = landscape && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
   const bottom = usesNativeTabs ? insets.bottom : 0;
   const { settings, nameOf } = useSettings();
 
@@ -453,7 +454,32 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
         {header(sprint ? tr("Manche {i}", { i: roundIdx + 1 }) : tr("Manche {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
-        <ScrollView contentContainerStyle={[styles.runContent, { paddingBottom: bottom + spacing.lg }]} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.runContent,
+            { paddingBottom: bottom + spacing.lg },
+            landscape && { paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + spacing.lg, gap: spacing.sm },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {landscape ? (
+            // Landscape: one compact line, so the neck can use the whole width.
+            <View style={styles.cardLine}>
+              <Text style={styles.bigLine}>{big}</Text>
+              <Text style={styles.sub} numberOfLines={1}>
+                {sub}
+              </Text>
+              <Text style={styles.scope} numberOfLines={1}>
+                {round.scope === "neck" ? tr("Tout le manche") : tr("Position {n}", { n: round.position + 1 })}
+              </Text>
+              <View style={[styles.track, styles.trackLine]}>
+                <View style={[styles.fill, { width: `${Math.round(pct * 100)}%` }]} />
+              </View>
+              <Text style={styles.count}>
+                {found.length}/{round.targets.length}
+              </Text>
+            </View>
+          ) : (
           <View style={styles.card}>
             <Text style={styles.muted}>{prompt}</Text>
             <View style={styles.targetRow}>
@@ -474,7 +500,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               </Text>
             </View>
           </View>
-          <ChallengeNeck min={round.min} max={round.max} scope={round.scope} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
+          )}
+          <ChallengeNeck
+            layout={landscape ? "full" : "zoom"} min={round.min} max={round.max} scope={round.scope} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
           {revealed.length ? (
             <Pressable testID="challenge-next" onPress={() => advanceRef.current()} style={({ pressed }) => [styles.nextBtn, pressed && styles.pressed]}>
               <Text style={styles.nextText}>{tr("J’ai retenu, manche suivante")}</Text>
@@ -750,6 +778,9 @@ const useStyles = makeStyles((c) => ({
   roundBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.onSurface },
   chronoLow: { color: "#F97316" },
+  cardLine: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  bigLine: { fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.onSurface },
+  trackLine: { minWidth: 60 },
   nextBtn: { height: 48, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
   nextText: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onBrandPrimary },
   levels: { flexDirection: "row", padding: 4, marginBottom: spacing.sm, borderRadius: radius.pill, backgroundColor: c.surfaceSecondary, borderWidth: 1, borderColor: c.border },
