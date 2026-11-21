@@ -11,6 +11,7 @@ import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
 import { SetupPanel } from "@/src/ear/SetupPanel";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
+import { ChordQuiz } from "@/src/ear/ChordQuiz";
 import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
 import { pickWeakKey, sessionProgress, weaknessScores } from "@/src/ear/weakness";
 import { reasonText } from "@/src/ear/labels";
@@ -81,6 +82,7 @@ export default function EarScreen() {
   const zoneRef = useRef<string[] | null>(null);
   const [progress, setProgress] = useState<ReturnType<typeof sessionProgress> | null>(null);
   const [tab, setTab] = useState<"play" | "results">("play");
+  const [chordRunning, setChordRunning] = useState(false); // Accords: its own quiz, full screen while running
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -484,8 +486,8 @@ export default function EarScreen() {
         </View>
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
-          <Text style={[styles.title, { paddingRight: navInset + spacing.lg }]}>{tr("Oreille")}</Text>
-          {phase !== "done" ? (
+          {!chordRunning ? <Text style={[styles.title, { paddingRight: navInset + spacing.lg }]}>{tr("Oreille")}</Text> : null}
+          {phase !== "done" && !chordRunning ? (
             <View style={styles.segment} testID="ear-tab">
               {(["play", "results"] as const).map((k) => (
                 <Pressable key={k} testID={`ear-tab-${k}`} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segBtnOn]}>
@@ -542,6 +544,16 @@ export default function EarScreen() {
                 }}
               />
             </View>
+          ) : section === "chords" ? (
+            <ChordQuiz
+              section={section}
+              onSection={setSection}
+              onRunning={setChordRunning}
+              onResults={() => setTab("results")}
+              bottomPad={bottomChrome + spacing.xl}
+              topPad={0}
+              navInset={navInset}
+            />
           ) : (
             <SetupPanel
               section={section}

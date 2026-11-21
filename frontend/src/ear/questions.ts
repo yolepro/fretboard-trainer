@@ -12,13 +12,14 @@ import {
 } from "@/src/music/theory";
 import { getLang, tr } from "@/src/i18n";
 
-export type Section = "board" | "listen" | "degree" | "interval";
+export type Section = "board" | "listen" | "degree" | "interval" | "chords";
 
 export const SECTIONS: { id: Section; label: string; desc: string }[] = [
   { id: "board", label: "Manche", desc: "Joue la note demandée sur la corde indiquée." },
   { id: "listen", label: "Écoute & rejoue", desc: "Écoute une note et rejoue-la à la bonne octave." },
   { id: "degree", label: "Degrés d’accord", desc: "Joue le degré demandé d’un accord (n’importe quelle octave)." },
   { id: "interval", label: "Intervalles", desc: "L’app joue la tonique : joue l’intervalle demandé au-dessus." },
+  { id: "chords", label: "Accords", desc: "Un accord est joué : reconnais son type (majeur, mineur…)." },
 ];
 
 export type Options = {

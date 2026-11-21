@@ -289,10 +289,12 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
               </View>
             ))
           )}
-          <Pressable testID="results-train-weak" onPress={onTrainWeak} style={({ pressed }) => [styles.trainBtn, pressed && styles.pressed]}>
-            <Crosshair size={18} color={colors.brandPrimary} weight="bold" />
-            <Text style={styles.trainText}>{tr("Travailler mes points faibles")}</Text>
-          </Pressable>
+          {section !== "chords" ? (
+            <Pressable testID="results-train-weak" onPress={onTrainWeak} style={({ pressed }) => [styles.trainBtn, pressed && styles.pressed]}>
+              <Crosshair size={18} color={colors.brandPrimary} weight="bold" />
+              <Text style={styles.trainText}>{tr("Travailler mes points faibles")}</Text>
+            </Pressable>
+          ) : null}
           <Text style={styles.foot}>{tr("Une note n’est classée qu’après 3 essais. Temps = médiane, sans les pauses du chrono. Une note passée compte comme ratée.")}</Text>
         </ScrollView>
       </View>
