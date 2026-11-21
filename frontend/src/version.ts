@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.47.2 — Oreille › Accords : retour possible depuis les résultats (la section restait bloquée sur son bilan) ; titre du bilan = nom de la section, flèche de retour vers les jeux
 // 1.47.1 — Oreille : glissière Jouer / Résultats remplacée par une icône Résultats dans l’en-tête (comme S’exercer), masquée sur le bilan ; bilans : « Changer les réglages » devient « Retour aux jeux »
 // 1.47.0 — Oreille : nouvelle section « Accords » (un accord est joué, choisir son type : majeur / mineur, 4 triades avec quintes diminuée et augmentée, accords 7, tout ; arpégé et/ou plaqué ; correction réécoutable)
 // 1.46.1 — Challenges : phrase « Réponse : … » retirée ; Réglages : test du micro et diapason déplacés dans Audio
@@ -115,4 +116,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.47.1";
+export const APP_VERSION = "1.47.2";

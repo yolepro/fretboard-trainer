@@ -42,6 +42,7 @@ type Props = {
   onSection: (s: Section) => void;
   onPhase: (phase: "setup" | "running" | "done") => void; // Oreille hides its header while a quiz runs
   onResults: () => void;
+  resetKey?: number; // changes when Oreille's back arrow asks to return to the games
   bottomPad: number;
   topPad: number;
   navInset: number;
@@ -50,7 +51,7 @@ type Props = {
 type Q = { chord: (typeof CHORD_TYPES)[number]; root: number };
 
 /** Oreille › Accords: a chord is played, the player says which kind it is. */
-export function ChordQuiz({ section, onSection, onPhase, onResults, bottomPad, topPad, navInset }: Props) {
+export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bottomPad, topPad, navInset }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
@@ -90,6 +91,12 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, bottomPad, t
     });
   }, [key, phase]);
   useEffect(() => onPhase(phase), [phase, onPhase]);
+  useEffect(() => {
+    if (resetKey) {
+      clearTimers();
+      setPhase("setup");
+    }
+  }, [resetKey]);
   useEffect(() => () => clearTimers(), []);
   useEffect(() => {
     if (phase !== "running") return;

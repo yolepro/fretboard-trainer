@@ -86,7 +86,9 @@ export default function EarScreen() {
   const [tab, setTab] = useState<"play" | "results">("play");
   const [chordPhase, setChordPhase] = useState<"setup" | "running" | "done">("setup"); // Accords runs its own quiz
   const chordRunning = section === "chords" && chordPhase === "running";
-  const showingDone = phase === "done" || (section === "chords" && chordPhase === "done");
+  // (Accords: only while its quiz is on screen, i.e. on the “play” tab.)
+  const showingDone = phase === "done" || (section === "chords" && tab === "play" && chordPhase === "done");
+  const [chordReset, setChordReset] = useState(0); // asks the Accords quiz to go back to its games
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -493,13 +495,24 @@ export default function EarScreen() {
           {/* Same pattern as S’exercer: results behind a chart icon, a back arrow to return to the games. */}
           {!chordRunning ? (
             <View style={[styles.headRow, { paddingRight: navInset + spacing.lg }]}>
-              {tab === "results" && !showingDone ? (
-                <Pressable testID="ear-results-back" onPress={() => setTab("play")} style={styles.iconBtn} accessibilityLabel={tr("Retour")}>
+              {(tab === "results" && !showingDone) || showingDone ? (
+                <Pressable
+                  testID="ear-results-back"
+                  onPress={() => {
+                    if (showingDone) {
+                      // Bilan → back to the games of this section.
+                      if (section === "chords") setChordReset((n) => n + 1);
+                      else setPhase("setup");
+                    } else setTab("play");
+                  }}
+                  style={styles.iconBtn}
+                  accessibilityLabel={tr("Retour aux jeux")}
+                >
                   <CaretLeft size={18} color={colors.onSurface} weight="bold" />
                 </Pressable>
               ) : null}
               <Text style={styles.title} numberOfLines={1}>
-                {tab === "results" && !showingDone ? tr("Mes résultats") : tr("Oreille")}
+                {showingDone ? tr(SECTIONS.find((s) => s.id === section)!.label) : tab === "results" ? tr("Mes résultats") : tr("Oreille")}
               </Text>
               {tab === "play" && !showingDone ? (
                 <Pressable testID="ear-tab-results" onPress={() => setTab("results")} style={styles.iconBtn} accessibilityLabel={tr("Mes résultats")}>
@@ -561,7 +574,11 @@ export default function EarScreen() {
               section={section}
               onSection={setSection}
               onPhase={setChordPhase}
-              onResults={() => setTab("results")}
+              onResults={() => {
+                setChordPhase("setup");
+                setTab("results");
+              }}
+              resetKey={chordReset}
               bottomPad={bottomChrome + spacing.xl}
               topPad={0}
               navInset={navInset}
