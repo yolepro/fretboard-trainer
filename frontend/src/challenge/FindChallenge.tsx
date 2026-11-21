@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { AppState, Animated, Easing, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
@@ -160,7 +161,34 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const finishRef = useRef<() => void>(() => {});
   const finishedRef = useRef(false);
   const useMic = play.input !== "touch" && !micDenied;
-  const listening = phase === "running" && useMic && !suspended;
+  // Leaving the screen (another tab, the app in the background) pauses the challenge: chrono stopped, mic off.
+  const [away, setAway] = useState(false);
+  const awayRef = useRef(false);
+  const revealPendingRef = useRef(false);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const goAway = () => {
+    if (phaseRef.current !== "running" || awayRef.current) return;
+    awayRef.current = true;
+    if (pausedAtRef.current === null) pausedAtRef.current = Date.now();
+    setAway(true);
+  };
+  const comeBack = () => {
+    awayRef.current = false;
+    setAway(false);
+    if (!revealPendingRef.current && pausedAtRef.current !== null) {
+      startRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+  };
+  useFocusEffect(useCallback(() => () => goAway(), []));
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (st) => {
+      if (st !== "active") goAway();
+    });
+    return () => sub.remove();
+  }, []);
+  const listening = phase === "running" && useMic && !suspended && !away;
 
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
   // Plays something while listening: the detector ignores it, and on native the mic pauses meanwhile.
@@ -258,6 +286,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     cycleStartRef.current = Math.floor(Math.random() * 5); // “positions 1 → 5” start anywhere, then go round
     pausedAtRef.current = null;
     setFailed(0);
+    awayRef.current = false;
+    revealPendingRef.current = false;
+    setAway(false);
     setErrors(0);
     setElapsed(0);
     startRef.current = Date.now();
@@ -298,6 +329,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     failedRef.current += 1;
     setFailed(failedRef.current);
     setRevealed(missing);
+    revealPendingRef.current = true;
     setWrong(null);
     setMessage({ text: tr("Trop d’erreurs : voici les notes à retenir"), bad: true });
     const idx = roundIdxRef.current;
@@ -305,13 +337,17 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     const go = () => {
       if (gone) return;
       gone = true;
+      revealPendingRef.current = false;
       resumeChrono();
+      if (awayRef.current) pauseChrono();
       if (optsRef.current.sprintSec === 0 && idx + 1 >= optsRef.current.rounds) finish();
       else if (optsRef.current.sprintSec === 0 || Date.now() - startRef.current < optsRef.current.sprintSec * 1000) startRound(idx + 1, r);
       else finish();
     };
     advanceRef.current = go;
-    later(go, 5000);
+    later(() => {
+      if (!awayRef.current) go(); // away: the answer waits for the player's return
+    }, 5000);
   };
 
   // Whole-neck games are played in landscape: ask to turn the phone, start as soon as it is turned.
@@ -508,6 +544,16 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
         {header(sprint ? tr("Manche {i}", { i: roundIdx + 1 }) : tr("Manche {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
+        {away ? (
+          <View style={styles.pauseOverlay} testID="challenge-paused">
+            <Text style={styles.rotateTitle}>{tr("Challenge en pause")}</Text>
+            <Text style={styles.rotateText}>{tr("Le chrono s’est arrêté quand tu as quitté l’écran.")}</Text>
+            <Pressable testID="challenge-resume" onPress={comeBack} style={({ pressed }) => [styles.primary, styles.resumeBtn, pressed && styles.pressed]}>
+              <Play size={22} color={colors.onBrandPrimary} weight="fill" />
+              <Text style={styles.primaryText}>{tr("Reprendre")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <ScrollView
           contentContainerStyle={[
             styles.runContent,
@@ -685,6 +731,17 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                       </View>
                     ))}
                   </View>
+                  {level.id === "inter" && play.randomKey ? (
+                    <View style={styles.roundsRow}>
+                      <Chip
+                        testID="challenge-natural-keys"
+                        label={tr("Toniques sans ♯ ni ♭")}
+                        selected={opts.naturalKeys}
+                        onPress={() => setOpts({ ...opts, naturalKeys: !opts.naturalKeys })}
+                      />
+                      <Text style={styles.muted}>{opts.naturalKeys ? "C D E F G A B" : tr("les 12 tonalités")}</Text>
+                    </View>
+                  ) : null}
                   {level.keyChoice && !play.randomKey ? (
                     <View style={styles.keyRow}>
                       <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
@@ -866,6 +923,8 @@ const useStyles = makeStyles((c) => ({
   catName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
   summary: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   primaryTight: { marginTop: spacing.xs },
+  pauseOverlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, zIndex: 10, backgroundColor: "rgba(16,17,20,0.92)", alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.md },
+  resumeBtn: { alignSelf: "center", paddingHorizontal: spacing.xl },
   rotateWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.xl, gap: spacing.md },
   rotateTitle: { fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.onSurface, textAlign: "center" },
   rotateText: { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceTertiary, textAlign: "center", lineHeight: 21 },

@@ -18,6 +18,7 @@ export type ChallengeOptions = {
   order: Order; // scale kind only
   rounds: number;
   sprintSec: number; // > 0: time trial, as many rounds as possible in this time
+  naturalKeys: boolean; // random keys only on natural notes (C D E F G A B, no ♯/♭ tonic)
   input: InputMode;
 };
 
@@ -34,6 +35,7 @@ export const DEFAULT_CHALLENGE: ChallengeOptions = {
   order: "free",
   rounds: 5,
   sprintSec: 0,
+  naturalKeys: false,
   input: "both",
 };
 
@@ -115,7 +117,11 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
   }
   const degrees = kind === "degree" ? [degree ?? pickOther(pool, prev?.degrees[0])!] : [];
   return {
-    rootPc: o.randomKey ? rnd(12, prev?.rootPc) : o.rootPc,
+    rootPc: o.randomKey
+      ? o.naturalKeys
+        ? NATURALS[rnd(NATURALS.length, prev ? NATURALS.indexOf(prev.rootPc) : undefined)]
+        : rnd(12, prev?.rootPc)
+      : o.rootPc,
     position: o.position === -2 ? (cycleStart + idx) % 5 : o.position < 0 ? rnd(5, prev?.position) : o.position,
     scaleId,
     degrees,
@@ -124,6 +130,8 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
 
 /** Mistakes allowed in a round before the answer is shown and the game moves on. */
 export const mistakesAllowed = (scope: "position" | "neck") => (scope === "neck" ? 5 : 3);
+
+const NATURALS = [0, 2, 4, 5, 7, 9, 11];
 
 export const ROUND_CHOICES: Record<ChallengeKind, number[]> = { degree: [5, 10, 20], scale: [1, 3, 5] };
 

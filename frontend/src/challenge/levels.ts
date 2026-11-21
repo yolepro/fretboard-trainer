@@ -27,10 +27,10 @@ export const LEVELS: Level[] = [
     id: "beginner",
     name: "Débutant",
     intro: "Une tonalité simple, les positions l’une après l’autre, les notes qui structurent tout. La tonique reste affichée.",
-    base: { rootPc: 0, randomKey: false, scaleId: "major", contextRandom: false, position: -2, scope: "position", hideTonic: false, sprintSec: 0 },
+    base: { randomKey: false, scaleId: "major", contextRandom: false, position: -2, scope: "position", hideTonic: false, sprintSec: 0 },
     rounds: [3, 5, 10],
     defaultRounds: 5,
-    keyChoice: false,
+    keyChoice: true, // C by default, any key on the rosace
     categories: [
       { id: "tonics", name: "Toniques", meta: "Toutes les toniques d’une position, puis de la suivante", degrees: ["1"] },
       { id: "pillars", name: "Les piliers", meta: "Tonique, tierce, quinte, mélangées", degrees: ["1", "3", "5"] },
