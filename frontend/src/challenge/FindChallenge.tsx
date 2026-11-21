@@ -148,7 +148,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const listening = phase === "running" && useMic && !suspended;
 
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
-  const sound = (k: "success" | "error") => {
+  const sound = (k: "success" | "error" | "found") => {
     const vol = settingsRef.current.volume;
     ignoreUntil.current = Date.now() + FEEDBACK_MS[k] + 300;
     if (useMic && Platform.OS !== "web") {
@@ -326,7 +326,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setWrong(null);
     setMessage(null);
     const r = roundRef.current!;
-    if (foundRef.current.length >= r.targets.length) {
+    const last = foundRef.current.length >= r.targets.length;
+    // A light tick for each note found (the round's last note gets the “success” sound instead).
+    if (!last || optsRef.current.sprintSec > 0) sound("found");
+    if (last) {
       busyRef.current = true;
       completedRef.current += 1;
       const sprinting = optsRef.current.sprintSec > 0;
@@ -471,7 +474,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               </Text>
             </View>
           </View>
-          <ChallengeNeck min={round.min} max={round.max} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
+          <ChallengeNeck min={round.min} max={round.max} scope={round.scope} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
           {revealed.length ? (
             <Pressable testID="challenge-next" onPress={() => advanceRef.current()} style={({ pressed }) => [styles.nextBtn, pressed && styles.pressed]}>
               <Text style={styles.nextText}>{tr("J’ai retenu, manche suivante")}</Text>
