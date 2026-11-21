@@ -5,7 +5,7 @@ import { Play, SpeakerHigh, X } from "phosphor-react-native";
 
 import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
 import { resumeWebAudio } from "@/src/audio/webAudio";
-import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
+import { Chip, ChipRow } from "@/src/components/Chip";
 import { ResultView } from "@/src/ear/ResultView";
 import { Unfold } from "@/src/components/Unfold";
 import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
@@ -314,12 +314,8 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
         ))}
       </ChipRow>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.intro}>
-          <Text style={styles.introTitle}>{tr("Accords")}</Text>
-          <Text style={styles.muted}>{tr("Un accord est joué : reconnais son type parmi les choix. Une seule réponse par accord.")}</Text>
-        </View>
-
-        <SectionLabel>{tr("Accords à reconnaître")}</SectionLabel>
+        {/* Same layout as S’exercer › Challenges: a plain explanation, then the games. */}
+        <Text style={styles.lead}>{tr("Un accord est joué : reconnais son type parmi les choix. Une seule réponse par accord.")}</Text>
         <View style={styles.sets}>
           {SETS.map((s) => {
             const on = s.id === setId;
@@ -358,10 +354,11 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
 const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18, paddingTop: spacing.xs },
   intro: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", gap: 4, marginTop: spacing.xs },
   introTitle: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: c.onSurface },
   muted: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
-  sets: { gap: spacing.sm },
+  sets: { gap: spacing.sm, paddingVertical: spacing.sm },
   setCard: { borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   setHead: { padding: spacing.md, gap: 2 },
   setBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
