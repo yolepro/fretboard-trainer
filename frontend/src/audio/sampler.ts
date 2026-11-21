@@ -257,10 +257,11 @@ const FEEDBACK = {
   success: require("../../assets/sounds/success.wav"),
   error: require("../../assets/sounds/error.wav"),
   found: require("../../assets/sounds/found.wav"), // challenges: one note found (lighter than “success”)
+  tick: require("../../assets/sounds/tick.wav"), // challenges: note found on the guitar (very short, the guitar still rings)
 };
 // The “wrong” sound is kept quieter so a mistake never feels harsh.
-const FEEDBACK_GAIN = { success: 0.55, error: 0.6, found: 0.45 };
-export const FEEDBACK_MS = { success: 800, error: 600, found: 160 };
+const FEEDBACK_GAIN = { success: 0.55, error: 0.6, found: 0.45, tick: 0.4 };
+export const FEEDBACK_MS = { success: 800, error: 600, found: 160, tick: 70 };
 const feedbackPlayers: Partial<Record<keyof typeof FEEDBACK, AudioPlayer>> = {};
 
 function feedbackPlayer(kind: keyof typeof FEEDBACK) {
@@ -278,11 +279,13 @@ export function preloadFeedback() {
     loadWebBuffer(FEEDBACK.success);
     loadWebBuffer(FEEDBACK.error);
     loadWebBuffer(FEEDBACK.found);
+    loadWebBuffer(FEEDBACK.tick);
   }
   try {
     feedbackPlayer("success");
     feedbackPlayer("error");
     feedbackPlayer("found");
+    feedbackPlayer("tick");
   } catch {
     // ignore
   }

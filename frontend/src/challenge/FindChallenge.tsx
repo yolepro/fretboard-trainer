@@ -33,7 +33,7 @@ import { Chip, SectionLabel } from "@/src/components/Chip";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { FEEDBACK_MS, playFeedback, preloadFeedback, restorePlaybackMode } from "@/src/audio/sampler";
+import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMode } from "@/src/audio/sampler";
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { formatTime } from "@/src/ear/questions";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
@@ -110,7 +110,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const [failed, setFailed] = useState(0);
   const failedRef = useRef(0);
   const roundErrorsRef = useRef(0);
-  const bagRef = useRef<string[]>([]); // degrees still to draw (each one before any repeats)
+  const bagRef = useRef<string[]>([]);
+  const cycleStartRef = useRef(0); // degrees still to draw (each one before any repeats)
   const pausedAtRef = useRef<number | null>(null); // chrono paused while the answer is shown
   const advanceRef = useRef<() => void>(() => {});
   const roundRef = useRef<Round | null>(null);
@@ -121,7 +122,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const startRef = useRef(0);
   const roundIdxRef = useRef(0);
   const busyRef = useRef(false); // between rounds
-  const stable = useRef({ midi: -1, count: 0 });
+  const stable = useRef({ midi: -1, count: 0, clear: 0 });
   const ignoreUntil = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
@@ -162,9 +163,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const listening = phase === "running" && useMic && !suspended;
 
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
-  const sound = (k: "success" | "error" | "found") => {
-    const vol = settingsRef.current.volume;
-    ignoreUntil.current = Date.now() + FEEDBACK_MS[k] + 300;
+  // Plays something while listening: the detector ignores it, and on native the mic pauses meanwhile.
+  const withMicPause = (play: () => void, ms: number) => {
+    ignoreUntil.current = Date.now() + ms + 300;
     if (useMic && Platform.OS !== "web") {
       setSuspended(true);
       later(async () => {
@@ -173,14 +174,15 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         } catch {
           // playback may still work
         }
-        playFeedback(k, vol);
+        play();
       }, 120);
-      later(() => setSuspended(false), FEEDBACK_MS[k] + 250);
-    } else playFeedback(k, vol);
+      later(() => setSuspended(false), ms + 250);
+    } else play();
   };
+  const sound = (k: "success" | "error" | "found" | "tick") => withMicPause(() => playFeedback(k, settingsRef.current.volume), FEEDBACK_MS[k]);
 
   const startRound = (idx: number, prev?: RoundSetting) => {
-    const r = buildRound(kind, optsRef.current, nextSetting(kind, optsRef.current, idx, prev, bagRef.current));
+    const r = buildRound(kind, optsRef.current, nextSetting(kind, optsRef.current, idx, prev, bagRef.current, cycleStartRef.current));
     roundErrorsRef.current = 0;
     setRevealed([]);
     roundRef.current = r;
@@ -189,7 +191,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     lastCellRef.current = null;
     sinceFindErrors.current = 0;
     lastFindAt.current = Date.now();
-    stable.current = { midi: -1, count: 0 };
+    stable.current = { midi: -1, count: 0, clear: 0 };
     busyRef.current = false;
     setRound(r);
     setRoundIdx(idx);
@@ -253,6 +255,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     finishedRef.current = false;
     failedRef.current = 0;
     bagRef.current = [];
+    cycleStartRef.current = Math.floor(Math.random() * 5); // “positions 1 → 5” start anywhere, then go round
     pausedAtRef.current = null;
     setFailed(0);
     setErrors(0);
@@ -325,7 +328,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setPhase("setup");
   }, []);
 
-  const onFound = (c: Cell) => {
+  const onFound = (c: Cell, fromTouch: boolean) => {
     const now = Date.now();
     saveAttempt({
       t: now,
@@ -348,7 +351,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     const r = roundRef.current!;
     const last = foundRef.current.length >= r.targets.length;
     // A light tick for each note found (the round's last note gets the “success” sound instead).
-    if (!last || optsRef.current.sprintSec > 0) sound("found");
+    // Touched: hear the note itself. Played on the guitar: a very short tick (the guitar is still ringing).
+    if (fromTouch) withMicPause(() => playNote(c.midi, settingsRef.current.volume), 700);
+    else if (!last || optsRef.current.sprintSec > 0) sound("tick");
     if (last) {
       busyRef.current = true;
       completedRef.current += 1;
@@ -410,7 +415,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
       onMistake(id, tr("Dans l’ordre : du grave vers l’aigu"), fromTouch);
       return;
     }
-    onFound(hit);
+    onFound(hit, fromTouch);
   };
 
   const onTouch = (string: number, fret: number) => {
@@ -422,20 +427,30 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     tryCells(cell ? [cell] : [], id, true);
   };
 
+  // Mic. A right note is accepted quickly and with a looser clarity (some notes of a classical guitar, high on the
+  // D or G string, are soft and short); a mistake needs a clear, longer note so noise is never counted.
   const onFrame = (f: PitchFrame) => {
-    if (!f || f.clarity < 0.85 || Date.now() < ignoreUntil.current) {
-      stable.current = { midi: -1, count: 0 };
+    if (!f || f.clarity < 0.7 || Date.now() < ignoreUntil.current) {
+      stable.current = { midi: -1, count: 0, clear: 0 };
       return;
     }
-    const midi = Math.round(freqToMidiFloat(f.freq, settingsRef.current.a4));
-    if (stable.current.midi === midi) stable.current.count += 1;
-    else stable.current = { midi, count: 1 };
     const r = roundRef.current;
     if (!r) return;
+    let midi = Math.round(freqToMidiFloat(f.freq, settingsRef.current.a4));
+    // Octave slip of the detector (very common on guitar): if nothing of the zone sits at this pitch but a target
+    // sits one octave away, take that target.
+    const zoneHas = (m: number) => r.targets.some((c) => c.midi === m) || r.tonics.some((c) => c.midi === m);
+    if (!zoneHas(midi)) {
+      const near = [midi - 12, midi + 12].find((m) => r.targets.some((c) => c.midi === m));
+      if (near !== undefined) midi = near;
+    }
+    if (stable.current.midi === midi) stable.current.count += 1;
+    else stable.current = { midi, count: 1, clear: 0 };
+    if (f.clarity >= 0.85) stable.current.clear += 1;
     const cands = r.targets.filter((c) => c.midi === midi);
     if (!cands.length && r.tonics.some((c) => c.midi === midi)) return; // playing the shown tonic to find one's bearings is fine
-    if (cands.length && stable.current.count === 3) tryCells(cands, null, false);
-    else if (!cands.length && stable.current.count === 6) onMistake(null, notHere(), false);
+    if (cands.length && stable.current.count === 2) tryCells(cands, null, false);
+    else if (!cands.length && stable.current.clear === 6) onMistake(null, notHere(), false);
   };
   usePitchDetector(listening, onFrame);
 

@@ -89,7 +89,7 @@ export function buildRound(kind: ChallengeKind, o: ChallengeOptions, s: RoundSet
  * Next round. Random key / position / context change every round; degree challenges ask one degree per round,
  * scale challenges pick a scale from the pool — never the same twice in a row.
  */
-export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: number, prev?: RoundSetting, bag?: string[]): RoundSetting {
+export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: number, prev?: RoundSetting, bag?: string[], cycleStart = 0): RoundSetting {
   const rnd = (n: number, avoid?: number) => {
     let x = Math.floor(Math.random() * n);
     if (n > 1 && avoid !== undefined && avoid >= 0 && x === avoid) x = (x + 1 + Math.floor(Math.random() * (n - 1))) % n;
@@ -103,7 +103,11 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
   let degree: string | undefined;
   if (kind === "degree" && bag) {
     if (!bag.length) {
-      const fresh = [...pool].sort(() => Math.random() - 0.5);
+      const fresh = [...pool];
+      for (let i = fresh.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
+      }
       if (fresh.length > 1 && fresh[0] === prev?.degrees[0]) fresh.push(fresh.shift()!);
       bag.push(...fresh);
     }
@@ -112,7 +116,7 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
   const degrees = kind === "degree" ? [degree ?? pickOther(pool, prev?.degrees[0])!] : [];
   return {
     rootPc: o.randomKey ? rnd(12, prev?.rootPc) : o.rootPc,
-    position: o.position === -2 ? idx % 5 : o.position < 0 ? rnd(5, prev?.position) : o.position,
+    position: o.position === -2 ? (cycleStart + idx) % 5 : o.position < 0 ? rnd(5, prev?.position) : o.position,
     scaleId,
     degrees,
   };

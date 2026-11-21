@@ -6,7 +6,7 @@ export function detectPitch(buf: Float32Array, sampleRate: number, threshold = 0
   let rms = 0;
   for (let i = 0; i < n; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / n);
-  if (rms < 0.008) return null;
+  if (rms < 0.005) return null; // soft notes (classical guitar, high on the D/G strings) must still be heard
 
   const tauMin = Math.floor(sampleRate / 1400);
   const tauMax = Math.min(Math.floor(sampleRate / 70), Math.floor(n / 2));
