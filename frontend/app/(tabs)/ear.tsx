@@ -35,7 +35,8 @@ import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
-import { fonts, makeStyles, radius, spacing } from "@/src/theme";
+import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { CaretLeft, ChartBar } from "phosphor-react-native";
 import { tr } from "@/src/i18n";
 
 type Phase = "setup" | "running" | "done";
@@ -49,6 +50,7 @@ export default function EarScreen() {
   const navInset = winW > winH && !usesNativeTabs ? LANDSCAPE_NAV_W : 0;
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const styles = useStyles();
+  const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
 
   const [section, setSection] = useState<Section>("board");
@@ -82,7 +84,9 @@ export default function EarScreen() {
   const zoneRef = useRef<string[] | null>(null);
   const [progress, setProgress] = useState<ReturnType<typeof sessionProgress> | null>(null);
   const [tab, setTab] = useState<"play" | "results">("play");
-  const [chordRunning, setChordRunning] = useState(false); // Accords: its own quiz, full screen while running
+  const [chordPhase, setChordPhase] = useState<"setup" | "running" | "done">("setup"); // Accords runs its own quiz
+  const chordRunning = section === "chords" && chordPhase === "running";
+  const showingDone = phase === "done" || (section === "chords" && chordPhase === "done");
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -486,14 +490,22 @@ export default function EarScreen() {
         </View>
       ) : (
         <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
-          {!chordRunning ? <Text style={[styles.title, { paddingRight: navInset + spacing.lg }]}>{tr("Oreille")}</Text> : null}
-          {phase !== "done" && !chordRunning ? (
-            <View style={styles.segment} testID="ear-tab">
-              {(["play", "results"] as const).map((k) => (
-                <Pressable key={k} testID={`ear-tab-${k}`} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segBtnOn]}>
-                  <Text style={[styles.segText, tab === k && styles.segTextOn]}>{k === "play" ? tr("Jouer") : tr("Résultats")}</Text>
+          {/* Same pattern as S’exercer: results behind a chart icon, a back arrow to return to the games. */}
+          {!chordRunning ? (
+            <View style={[styles.headRow, { paddingRight: navInset + spacing.lg }]}>
+              {tab === "results" && !showingDone ? (
+                <Pressable testID="ear-results-back" onPress={() => setTab("play")} style={styles.iconBtn} accessibilityLabel={tr("Retour")}>
+                  <CaretLeft size={18} color={colors.onSurface} weight="bold" />
                 </Pressable>
-              ))}
+              ) : null}
+              <Text style={styles.title} numberOfLines={1}>
+                {tab === "results" && !showingDone ? tr("Mes résultats") : tr("Oreille")}
+              </Text>
+              {tab === "play" && !showingDone ? (
+                <Pressable testID="ear-tab-results" onPress={() => setTab("results")} style={styles.iconBtn} accessibilityLabel={tr("Mes résultats")}>
+                  <ChartBar size={20} color={colors.onSurface} />
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
           {phase !== "done" && tab === "results" ? (
@@ -548,7 +560,7 @@ export default function EarScreen() {
             <ChordQuiz
               section={section}
               onSection={setSection}
-              onRunning={setChordRunning}
+              onPhase={setChordPhase}
               onResults={() => setTab("results")}
               bottomPad={bottomChrome + spacing.xl}
               topPad={0}
@@ -576,7 +588,9 @@ export default function EarScreen() {
 const useStyles = makeStyles((c) => ({
   screen: { flex: 1, backgroundColor: c.surface },
   flex: { flex: 1 },
-  title: { fontFamily: fonts.display, fontSize: 28, fontWeight: "700", color: c.onSurface, paddingHorizontal: spacing.lg, paddingBottom: spacing.xs },
+  headRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingLeft: spacing.lg, paddingBottom: spacing.xs, minHeight: 48 },
+  title: { flex: 1, fontFamily: fonts.display, fontSize: 28, fontWeight: "700", color: c.onSurface },
+  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginBottom: spacing.xs, padding: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   segBtn: { flex: 1, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   segBtnOn: { backgroundColor: c.brandPrimary },

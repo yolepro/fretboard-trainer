@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { ArrowClockwise, ChartBar, Faders, Trophy } from "phosphor-react-native";
+import { ArrowClockwise, CaretLeft, ChartBar, Trophy } from "phosphor-react-native";
 
 import { formatTime, type Best } from "@/src/ear/questions";
 import { secs, targetName } from "@/src/ear/labels";
@@ -121,8 +121,8 @@ export function ResultView({ sectionLabel, score, count, timeMs, best, isRecord,
         <Text style={styles.primaryText}>{replayLabel}</Text>
       </Pressable>
       <Pressable testID="result-setup-button" onPress={onSetup} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-        <Faders size={20} color={colors.onSurface} />
-        <Text style={styles.secondaryText}>{tr("Changer les réglages")}</Text>
+        <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+        <Text style={styles.secondaryText}>{tr("Retour aux jeux")}</Text>
       </Pressable>
       <Pressable testID="result-results-button" onPress={onResults} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
         <ChartBar size={20} color={colors.onSurface} />

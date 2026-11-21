@@ -4,7 +4,7 @@ import { AppState, Animated, Easing, Platform, Pressable, ScrollView, Text, View
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
-import { ArrowClockwise, CaretLeft, ChartBar, DeviceMobile, Faders, Microphone, Play, Trophy, X } from "phosphor-react-native";
+import { ArrowClockwise, CaretLeft, ChartBar, DeviceMobile, Microphone, Play, Trophy, X } from "phosphor-react-native";
 
 import { ChallengeNeck } from "@/src/challenge/ChallengeNeck";
 import { ChallengeResults } from "@/src/challenge/ChallengeResults";
@@ -654,8 +654,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             <Text style={styles.primaryText}>{tr("Rejouer")}</Text>
           </Pressable>
           <Pressable testID="challenge-setup" onPress={() => setPhase("setup")} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-            <Faders size={20} color={colors.onSurface} />
-            <Text style={styles.secondaryText}>{tr("Changer les réglages")}</Text>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+            <Text style={styles.secondaryText}>{tr("Retour aux jeux")}</Text>
           </Pressable>
           <Pressable
             testID="challenge-results"

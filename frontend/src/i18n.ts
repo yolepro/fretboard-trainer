@@ -315,6 +315,7 @@ const EN: Record<string, string> = {
   "sur la corde {s} ({l})": "on string {s} ({l})",
   "C’est ça !": "That’s it!",
   "Résultats": "Results",
+  "Retour aux jeux": "Back to the games",
   "Accords": "Chords",
   "Un accord est joué : reconnais son type (majeur, mineur…).": "A chord is played: recognise its type (major, minor…).",
   "Majeur": "Major",

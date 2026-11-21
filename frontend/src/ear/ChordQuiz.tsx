@@ -40,7 +40,7 @@ const SECTION: Section = "chords";
 type Props = {
   section: Section;
   onSection: (s: Section) => void;
-  onRunning: (running: boolean) => void; // hides Oreille's header while a quiz runs
+  onPhase: (phase: "setup" | "running" | "done") => void; // Oreille hides its header while a quiz runs
   onResults: () => void;
   bottomPad: number;
   topPad: number;
@@ -50,7 +50,7 @@ type Props = {
 type Q = { chord: (typeof CHORD_TYPES)[number]; root: number };
 
 /** Oreille › Accords: a chord is played, the player says which kind it is. */
-export function ChordQuiz({ section, onSection, onRunning, onResults, bottomPad, topPad, navInset }: Props) {
+export function ChordQuiz({ section, onSection, onPhase, onResults, bottomPad, topPad, navInset }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
@@ -89,7 +89,7 @@ export function ChordQuiz({ section, onSection, onRunning, onResults, bottomPad,
       }
     });
   }, [key, phase]);
-  useEffect(() => onRunning(phase === "running"), [phase, onRunning]);
+  useEffect(() => onPhase(phase), [phase, onPhase]);
   useEffect(() => () => clearTimers(), []);
   useEffect(() => {
     if (phase !== "running") return;
