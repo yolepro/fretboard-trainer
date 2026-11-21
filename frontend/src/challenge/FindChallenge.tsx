@@ -16,6 +16,7 @@ import {
   cellId,
   challengeBestKey,
   challengeSection,
+  labelOfNum,
   nextSetting,
   prettyLabel,
   scaleOf,
@@ -26,6 +27,7 @@ import {
   type Round,
   type RoundSetting,
 } from "@/src/challenge/rounds";
+import { LEVELS, levelOptions, neckRounds, type LevelId } from "@/src/challenge/levels";
 import { Chip, SectionLabel } from "@/src/components/Chip";
 import { KeyButton } from "@/src/components/KeyWheel";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
@@ -35,20 +37,20 @@ import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { formatTime } from "@/src/ear/questions";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
 import type { PitchFrame } from "@/src/music/yin";
-import { freqToMidiFloat } from "@/src/music/theory";
+import { DEGREE_META, degreeKeyFromNum, freqToMidiFloat } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
-type Props = { kind: ChallengeKind; onBack: () => void };
+type Props = { kind: ChallengeKind; onBack: () => void; preset?: "neck" };
 type Phase = "setup" | "running" | "done";
 
 const TITLES: Record<ChallengeKind, string> = { degree: "Trouve le degré", scale: "Trouve la gamme" };
 
 /** “Trouve le degré” / “Trouve la gamme”: fill a position by playing (mic) or touching the notes. */
-export function FindChallenge({ kind, onBack }: Props) {
+export function FindChallenge({ kind, onBack, preset }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -60,6 +62,10 @@ export function FindChallenge({ kind, onBack }: Props) {
   const [tab, setTab] = useState<"play" | "results">("play");
   const [phase, setPhase] = useState<Phase>("setup");
   const [opts, setOpts] = useState<ChallengeOptions>({ ...DEFAULT_CHALLENGE, rounds: kind === "degree" ? 10 : 1 });
+  // Degree challenge: a ready-made level (and one of its categories), or “custom” = every setting by hand.
+  const [mode, setMode] = useState<LevelId | "custom">(kind === "degree" ? (preset === "neck" ? "inter" : "beginner") : "custom");
+  const [catIdx, setCatIdx] = useState<Record<LevelId, number>>({ beginner: 0, inter: preset === "neck" ? LEVELS[1].categories.findIndex((c) => c.id === "neck") : 0, expert: 0 });
+  const [levelRounds, setLevelRounds] = useState<Record<string, number>>({});
   const [round, setRound] = useState<Round | null>(null);
   const [roundIdx, setRoundIdx] = useState(0);
   const [found, setFound] = useState<Cell[]>([]);
@@ -73,8 +79,22 @@ export function FindChallenge({ kind, onBack }: Props) {
   const [suspended, setSuspended] = useState(false);
   const [micDenied, setMicDenied] = useState(false);
 
-  const optsRef = useRef(opts);
-  optsRef.current = opts;
+  const level = mode === "custom" ? null : LEVELS.find((l) => l.id === mode)!;
+  const cat = level ? level.categories[catIdx[level.id]] ?? level.categories[0] : null;
+  const neckCat = cat?.set?.scope === "neck";
+  const roundsKey = level && cat ? `${level.id}-${neckCat ? "neck" : "pos"}` : "";
+  const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : ROUND_CHOICES[kind];
+  const levelRoundCount = level ? (levelRounds[roundsKey] ?? (neckCat ? neckRounds[0] : level.defaultRounds)) : 0;
+  // What is actually played.
+  const play: ChallengeOptions = level && cat ? levelOptions(opts, level, cat, levelRoundCount) : opts;
+  const variant = level && cat ? `${level.id}-${cat.id}` : "custom";
+  const sprint = play.sprintSec > 0;
+
+  const optsRef = useRef(play);
+  optsRef.current = play;
+  const completedRef = useRef(0); // rounds completed (time trial score)
+  const lastCellRef = useRef<Cell | null>(null);
+  const [score, setScore] = useState(0);
   const roundRef = useRef<Round | null>(null);
   const foundRef = useRef<Cell[]>([]);
   const errorsRef = useRef(0);
@@ -90,7 +110,7 @@ export function FindChallenge({ kind, onBack }: Props) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
-  const bestKey = challengeBestKey(kind, opts.rounds);
+  const bestKey = challengeBestKey(kind, variant, sprint ? "sprint" : play.rounds);
   useEffect(() => {
     storage.getItem(bestKey, null).then((v) => {
       try {
@@ -104,11 +124,18 @@ export function FindChallenge({ kind, onBack }: Props) {
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     if (phase !== "running") return;
-    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 100);
+    const id = setInterval(() => {
+      const e = Date.now() - startRef.current;
+      setElapsed(e);
+      // Time trial: the clock decides the end.
+      if (optsRef.current.sprintSec > 0 && e >= optsRef.current.sprintSec * 1000 && !finishedRef.current) finishRef.current();
+    }, 100);
     return () => clearInterval(id);
   }, [phase]);
 
-  const useMic = opts.input !== "touch" && !micDenied;
+  const finishRef = useRef<() => void>(() => {});
+  const finishedRef = useRef(false);
+  const useMic = play.input !== "touch" && !micDenied;
   const listening = phase === "running" && useMic && !suspended;
 
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
@@ -130,10 +157,11 @@ export function FindChallenge({ kind, onBack }: Props) {
   };
 
   const startRound = (idx: number, prev?: RoundSetting) => {
-    const r = buildRound(kind, nextSetting(kind, optsRef.current, prev));
+    const r = buildRound(kind, optsRef.current, nextSetting(kind, optsRef.current, idx, prev));
     roundRef.current = r;
     roundIdxRef.current = idx;
     foundRef.current = [];
+    lastCellRef.current = null;
     sinceFindErrors.current = 0;
     lastFindAt.current = Date.now();
     stable.current = { midi: -1, count: 0 };
@@ -146,21 +174,34 @@ export function FindChallenge({ kind, onBack }: Props) {
   };
 
   const finish = () => {
-    const ms = Date.now() - startRef.current;
-    const errs = errorsRef.current;
-    setFinalMs(ms);
-    setPhase("done");
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    busyRef.current = true;
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
     const o = optsRef.current;
-    saveSession({ t: Date.now(), s: challengeSection(kind), count: o.rounds, score: errs, ms });
+    const ms = o.sprintSec > 0 ? o.sprintSec * 1000 : Date.now() - startRef.current;
+    const errs = errorsRef.current;
+    const done = completedRef.current;
+    setFinalMs(ms);
+    setScore(done);
+    setSuspended(false);
+    setPhase("done");
+    saveSession({ t: Date.now(), s: challengeSection(kind), count: o.sprintSec > 0 ? done : o.rounds, score: errs, ms });
     const prev = best;
-    const better = !prev || ms < prev.timeMs;
+    // Time trial: more rounds is better (then fewer mistakes); otherwise the fastest time.
+    const better =
+      o.sprintSec > 0
+        ? done > 0 && (!prev || done > (prev.score ?? 0) || (done === (prev.score ?? 0) && errs < prev.errors))
+        : !prev || ms < prev.timeMs;
     setIsRecord(better);
     if (better) {
-      const next = { timeMs: ms, errors: errs, at: Date.now() };
+      const next = { timeMs: ms, errors: errs, at: Date.now(), score: done };
       setBest(next);
-      storage.setItem(challengeBestKey(kind, o.rounds), JSON.stringify(next));
+      storage.setItem(challengeBestKey(kind, variant, o.sprintSec > 0 ? "sprint" : o.rounds), JSON.stringify(next));
     }
   };
+  finishRef.current = finish;
 
   const ensureMic = async () => {
     if (optsRef.current.input === "touch" || Platform.OS === "web") return true;
@@ -182,6 +223,8 @@ export function FindChallenge({ kind, onBack }: Props) {
     timers.current.forEach(clearTimeout);
     timers.current = [];
     errorsRef.current = 0;
+    completedRef.current = 0;
+    finishedRef.current = false;
     setErrors(0);
     setElapsed(0);
     startRef.current = Date.now();
@@ -210,6 +253,7 @@ export function FindChallenge({ kind, onBack }: Props) {
       errors: Math.min(2, sinceFindErrors.current),
     });
     lastFindAt.current = now;
+    lastCellRef.current = c;
     sinceFindErrors.current = 0;
     foundRef.current = [...foundRef.current, c];
     setFound(foundRef.current);
@@ -218,14 +262,19 @@ export function FindChallenge({ kind, onBack }: Props) {
     const r = roundRef.current!;
     if (foundRef.current.length >= r.targets.length) {
       busyRef.current = true;
-      sound("success");
+      completedRef.current += 1;
+      const sprinting = optsRef.current.sprintSec > 0;
+      if (!sprinting) sound("success");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const idx = roundIdxRef.current;
       setMessage({ text: tr("Manche réussie !"), bad: false });
-      later(() => {
-        if (idx + 1 >= optsRef.current.rounds) finish();
-        else startRound(idx + 1, r);
-      }, 1100);
+      later(
+        () => {
+          if (!sprinting && idx + 1 >= optsRef.current.rounds) finish();
+          else if (!sprinting || Date.now() - startRef.current < optsRef.current.sprintSec * 1000) startRound(idx + 1, r);
+        },
+        sprinting ? 350 : 1100, // time trial: no time lost between rounds
+      );
     }
   };
 
@@ -254,7 +303,12 @@ export function FindChallenge({ kind, onBack }: Props) {
     if (busyRef.current || !roundRef.current) return;
     const left = remaining();
     const next = expected();
-    const hit = cands.find((c) => left.some((l) => cellId(l) === cellId(c)));
+    // Same pitch at several places (whole neck): the one nearest to the last note found.
+    const open = cands.filter((c) => left.some((l) => cellId(l) === cellId(c)));
+    const last = lastCellRef.current;
+    const hit = last
+      ? [...open].sort((a, b) => Math.abs(a.fret - last.fret) + Math.abs(a.string - last.string) - (Math.abs(b.fret - last.fret) + Math.abs(b.string - last.string)))[0]
+      : open[0];
     if (!hit) {
       if (cands.length && foundRef.current.some((f) => cands.some((c) => cellId(c) === cellId(f)))) return; // already found
       onMistake(id, notHere(), fromTouch);
@@ -268,7 +322,7 @@ export function FindChallenge({ kind, onBack }: Props) {
   };
 
   const onTouch = (string: number, fret: number) => {
-    if (phase !== "running" || opts.input === "mic") return;
+    if (phase !== "running" || play.input === "mic") return;
     const id = `${string}-${fret}`;
     const r = roundRef.current;
     if (!r) return;
@@ -303,7 +357,11 @@ export function FindChallenge({ kind, onBack }: Props) {
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
-      {phase === "running" ? <Text style={styles.chrono}>{formatTime(elapsed)}</Text> : null}
+      {phase === "running" ? (
+        <Text style={[styles.chrono, sprint && play.sprintSec * 1000 - elapsed < 10000 && styles.chronoLow]}>
+          {sprint ? formatTime(Math.max(0, play.sprintSec * 1000 - elapsed)) : formatTime(elapsed)}
+        </Text>
+      ) : null}
     </View>
   );
 
@@ -311,18 +369,18 @@ export function FindChallenge({ kind, onBack }: Props) {
     const pct = round.targets.length ? found.length / round.targets.length : 0;
     const keyName = nameOf(round.rootPc);
     const scaleName = tr(scaleOf(round.scaleId).name).toLowerCase();
-    const big = kind === "degree" ? round.degrees.map(prettyLabel).join(" · ") : `${keyName} ${scaleName}`;
+    const big = kind === "degree" ? round.degrees.map((n) => prettyLabel(labelOfNum(round.scaleId, n))).join(" · ") : `${keyName} ${scaleName}`;
     const prompt = kind === "degree" ? tr("Trouve toutes les notes de degré") : tr("Joue toutes les notes de");
     const sub =
       kind === "degree"
         ? tr("de {key} {scale}", { key: keyName, scale: scaleName })
-        : opts.order === "up"
+        : play.order === "up"
           ? tr("dans l’ordre, du grave vers l’aigu")
           : tr("dans n’importe quel ordre");
     return (
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
-        {header(tr("Manche {i}/{n}", { i: roundIdx + 1, n: opts.rounds }), stop, "close")}
+        {header(sprint ? tr("Manche {i}", { i: roundIdx + 1 }) : tr("Manche {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
         <ScrollView contentContainerStyle={[styles.runContent, { paddingBottom: bottom + spacing.lg }]} showsVerticalScrollIndicator={false}>
           <View style={styles.card}>
             <Text style={styles.muted}>{prompt}</Text>
@@ -330,7 +388,11 @@ export function FindChallenge({ kind, onBack }: Props) {
               <Text style={styles.big}>{big}</Text>
               <Text style={styles.sub}>{sub}</Text>
             </View>
-            <Text style={styles.scope}>{tr("Position {n} · cases {a}–{b}", { n: round.position + 1, a: round.min, b: round.max })}</Text>
+            <Text style={styles.scope}>
+              {round.scope === "neck"
+                ? tr("Tout le manche · cases {a}–{b}", { a: round.min, b: round.max })
+                : tr("Position {n} · cases {a}–{b}", { n: round.position + 1, a: round.min, b: round.max })}
+            </Text>
             <View style={styles.progressRow}>
               <View style={styles.track}>
                 <View style={[styles.fill, { width: `${Math.round(pct * 100)}%` }]} />
@@ -340,12 +402,12 @@ export function FindChallenge({ kind, onBack }: Props) {
               </Text>
             </View>
           </View>
-          <ChallengeNeck min={round.min} max={round.max} found={found} tonics={round.tonics} wrong={wrong} onPress={onTouch} disabled={opts.input === "mic"} />
+          <ChallengeNeck min={round.min} max={round.max} found={found} tonics={round.tonics} wrong={wrong} onPress={onTouch} disabled={play.input === "mic"} />
           <View style={[styles.message, message?.bad && styles.messageBad, message && !message.bad && styles.messageGood]} testID="challenge-message">
             {useMic && !message ? <Microphone size={16} color={colors.onSurfaceTertiary} /> : null}
             <Text style={[styles.messageText, message?.bad && styles.messageTextBad, message && !message.bad && styles.messageTextGood]} numberOfLines={2}>
               {message?.text ??
-                (opts.input === "touch" ? tr("Touche les cases du manche") : useMic && opts.input === "both" ? tr("Joue la note ou touche le manche") : tr("Joue la note…"))}
+                (play.input === "touch" ? tr("Touche les cases du manche") : useMic && play.input === "both" ? tr("Joue la note ou touche le manche") : tr("Joue la note…"))}
             </Text>
           </View>
           {round.tonics.length ? <Text style={styles.hint}>{tr("Cercles rouges : la tonique, pour te repérer.")}</Text> : null}
@@ -367,11 +429,14 @@ export function FindChallenge({ kind, onBack }: Props) {
               <Text style={styles.recordText}>{tr("Nouveau record !")}</Text>
             </View>
           ) : null}
-          <Text style={styles.doneTime}>{formatTime(finalMs)}</Text>
+          <Text style={styles.doneTime}>{sprint ? String(score) : formatTime(finalMs)}</Text>
           <Text style={styles.muted}>
-            {tr("{n} manches", { n: opts.rounds })} · {tr(errors === 1 ? "{n} erreur" : "{n} erreurs", { n: errors })}
+            {sprint ? tr("manches réussies en {s} s", { s: play.sprintSec }) : tr("{n} manches", { n: play.rounds })} ·{" "}
+            {tr(errors === 1 ? "{n} erreur" : "{n} erreurs", { n: errors })}
           </Text>
-          <Text style={styles.muted}>{best ? tr("Record : {time}", { time: formatTime(best.timeMs) }) : ""}</Text>
+          <Text style={styles.muted}>
+            {best ? (sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record : {time}", { time: formatTime(best.timeMs) })) : ""}
+          </Text>
           <Pressable testID="challenge-replay" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
             <ArrowClockwise size={20} color={colors.onBrandPrimary} weight="bold" />
             <Text style={styles.primaryText}>{tr("Rejouer")}</Text>
@@ -397,24 +462,150 @@ export function FindChallenge({ kind, onBack }: Props) {
   }
 
   // ---------- Setup ----------
-  const degreeLabels = scaleOf(opts.scaleId).intervals.map((i) => i.label);
-  const toggleDegree = (l: string) => {
-    const has = opts.degrees.includes(l);
+  const degreeNums = scaleOf(opts.scaleId).intervals.map((i) => String(i.num));
+  const toggleDegree = (n: string) => {
+    const has = opts.degrees.includes(n);
     if (has && opts.degrees.length === 1) return;
-    setOpts({ ...opts, degrees: has ? opts.degrees.filter((x) => x !== l) : [...opts.degrees, l] });
-  };
-  const pickScale = (id: string) => {
-    // Keep the asked degrees that exist in the new scale (3 ↔ b3 follow the change).
-    const labels = scaleOf(id).intervals.map((i) => i.label);
-    const nums = new Set(opts.degrees.map((l) => l.replace(/[^0-9]/g, "")));
-    const degrees = labels.filter((l) => nums.has(l.replace(/[^0-9]/g, "")));
-    setOpts({ ...opts, scaleId: id, degrees: degrees.length ? degrees : [labels[2]] });
+    setOpts({ ...opts, degrees: has ? opts.degrees.filter((x) => x !== n) : [...opts.degrees, n] });
   };
   const toggleScale = (id: string) => {
     const has = opts.scales.includes(id);
     if (has && opts.scales.length === 1) return;
     setOpts({ ...opts, scales: has ? opts.scales.filter((x) => x !== id) : [...opts.scales, id] });
   };
+  const levelSummary = level && cat ? summaryOf(play, nameOf) : [];
+
+  const levelSetup =
+    level && cat ? (
+      <>
+        <Text style={styles.muted}>{tr(level.intro)}</Text>
+        <View style={styles.cats}>
+          {level.categories.map((c, i) => {
+            const on = c === cat;
+            const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
+            return (
+              <Pressable
+                key={c.id}
+                testID={`challenge-cat-${c.id}`}
+                onPress={() => setCatIdx({ ...catIdx, [level.id]: i })}
+                style={({ pressed }) => [styles.catCard, on && styles.catCardOn, pressed && styles.pressed]}
+              >
+                <View style={styles.catBadges}>
+                  {(c.degrees.length > 4 ? c.degrees.slice(0, 3) : c.degrees).map((n) => (
+                    <DegreeBadge key={n} num={n} label={level.base.contextRandom ? n : prettyLabel(labelOfNum(ctx, n))} />
+                  ))}
+                  {c.degrees.length > 4 ? <Text style={styles.more}>…</Text> : null}
+                </View>
+                <View style={styles.catText}>
+                  <Text style={styles.catName}>{tr(c.name)}</Text>
+                  <Text style={styles.muted}>{tr(c.meta)}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+        {level.keyChoice ? (
+          <View style={styles.keyRow}>
+            <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
+            <Text style={styles.muted}>{tr("Ta tonalité")}</Text>
+          </View>
+        ) : null}
+        <View style={styles.summary}>
+          {levelSummary.map((t) => (
+            <View key={t.text} style={[styles.summaryChip, t.random && styles.summaryChipRandom]}>
+              <Text style={[styles.summaryText, t.random && styles.summaryTextRandom]}>{t.text}</Text>
+            </View>
+          ))}
+        </View>
+        {sprint ? (
+          <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de manches possible.", { s: play.sprintSec })}</Text>
+        ) : (
+          <>
+            <SectionLabel>{tr("Manches")}</SectionLabel>
+            <View style={styles.wrap}>
+              {roundChoices.map((n) => (
+                <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={levelRoundCount === n} onPress={() => setLevelRounds({ ...levelRounds, [roundsKey]: n })} />
+              ))}
+            </View>
+          </>
+        )}
+      </>
+    ) : null;
+
+  const customSetup = (
+    <>
+      <View style={styles.keyRow}>
+        {!opts.randomKey ? <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" /> : null}
+        <Chip testID="challenge-random-key" label={tr("Tonalité au hasard")} selected={opts.randomKey} onPress={() => setOpts({ ...opts, randomKey: !opts.randomKey })} />
+      </View>
+
+      <SectionLabel>{tr("Manches")}</SectionLabel>
+      <View style={styles.wrap}>
+        {ROUND_CHOICES[kind].map((n) => (
+          <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
+        ))}
+      </View>
+
+      {kind === "degree" ? (
+        <>
+          <SectionLabel>{tr("Tonalité")}</SectionLabel>
+          <View style={styles.wrap}>
+            {DEGREE_SCALES.map((id) => (
+              <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={!opts.contextRandom && opts.scaleId === id} onPress={() => setOpts({ ...opts, scaleId: id, contextRandom: false })} />
+            ))}
+            <Chip testID="challenge-scale-random" label={tr("Majeur / mineur au hasard")} selected={opts.contextRandom} onPress={() => setOpts({ ...opts, contextRandom: true })} />
+          </View>
+          <SectionLabel>{tr("Degrés")}</SectionLabel>
+          <View style={styles.wrap}>
+            {degreeNums.map((n) => (
+              <Chip
+                key={n}
+                testID={`challenge-degree-${n}`}
+                label={n === "1" ? tr("Tonique (1)") : opts.contextRandom ? n : prettyLabel(labelOfNum(opts.scaleId, n))}
+                selected={opts.degrees.includes(n)}
+                onPress={() => toggleDegree(n)}
+              />
+            ))}
+          </View>
+          <Text style={styles.muted}>{tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")}</Text>
+          <SectionLabel>{tr("Zone")}</SectionLabel>
+          <View style={styles.wrap}>
+            <Chip testID="challenge-scope-position" label={tr("Une position")} selected={opts.scope === "position"} onPress={() => setOpts({ ...opts, scope: "position" })} />
+            <Chip testID="challenge-scope-neck" label={tr("Tout le manche")} selected={opts.scope === "neck"} onPress={() => setOpts({ ...opts, scope: "neck" })} />
+            <Chip testID="challenge-hide-tonic" label={tr("Cacher la tonique")} selected={opts.hideTonic} onPress={() => setOpts({ ...opts, hideTonic: !opts.hideTonic })} />
+          </View>
+        </>
+      ) : (
+        <>
+          <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque manche)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
+          <View style={styles.wrap}>
+            {SCALE_CHOICES.map((id) => (
+              <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scales.includes(id)} onPress={() => toggleScale(id)} />
+            ))}
+          </View>
+          {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque manche.")}</Text> : null}
+          <SectionLabel>{tr("Ordre")}</SectionLabel>
+          <View style={styles.wrap}>
+            <Chip testID="challenge-order-free" label={tr("Libre")} selected={opts.order === "free"} onPress={() => setOpts({ ...opts, order: "free" })} />
+            <Chip testID="challenge-order-up" label={tr("Montant (grave → aigu)")} selected={opts.order === "up"} onPress={() => setOpts({ ...opts, order: "up" })} />
+          </View>
+        </>
+      )}
+
+      {kind === "scale" || opts.scope === "position" ? (
+        <>
+          <SectionLabel>{tr("Position")}</SectionLabel>
+          <View style={styles.wrap}>
+            {[0, 1, 2, 3, 4].map((p) => (
+              <Chip key={p} testID={`challenge-pos-${p}`} label={tr("Pos. {n}", { n: p + 1 })} selected={opts.position === p} onPress={() => setOpts({ ...opts, position: p })} />
+            ))}
+            <Chip testID="challenge-pos-cycle" label={tr("1 → 5")} selected={opts.position === -2} onPress={() => setOpts({ ...opts, position: -2 })} />
+            <Chip testID="challenge-pos-random" label={tr("Au hasard")} selected={opts.position === -1} onPress={() => setOpts({ ...opts, position: -1 })} />
+          </View>
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <View style={styles.screen} testID="find-challenge-setup">
@@ -428,61 +619,21 @@ export function FindChallenge({ kind, onBack }: Props) {
         ))}
       </View>
       {tab === "results" ? (
-        <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} />
+        <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} variant={variant} lengths={sprint ? ["sprint"] : roundChoices} />
       ) : (
         <ScrollView contentContainerStyle={[styles.setup, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
-          <View style={styles.keyRow}>
-            {!opts.randomKey ? <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" /> : null}
-            <Chip testID="challenge-random-key" label={tr("Tonalité au hasard")} selected={opts.randomKey} onPress={() => setOpts({ ...opts, randomKey: !opts.randomKey })} />
-          </View>
-
-          <SectionLabel>{tr("Manches")}</SectionLabel>
-          <View style={styles.wrap}>
-            {ROUND_CHOICES[kind].map((n) => (
-              <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
-            ))}
-          </View>
-
           {kind === "degree" ? (
-            <>
-              <SectionLabel>{tr("Tonalité")}</SectionLabel>
-              <View style={styles.wrap}>
-                {DEGREE_SCALES.map((id) => (
-                  <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scaleId === id} onPress={() => pickScale(id)} />
-                ))}
-              </View>
-              <SectionLabel>{tr("Degrés")}</SectionLabel>
-              <View style={styles.wrap}>
-                {degreeLabels.map((l) => (
-                  <Chip key={l} testID={`challenge-degree-${l}`} label={l === "1" ? tr("Tonique (1)") : prettyLabel(l)} selected={opts.degrees.includes(l)} onPress={() => toggleDegree(l)} />
-                ))}
-              </View>
-              <Text style={styles.muted}>{tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")}</Text>
-            </>
-          ) : (
-            <>
-              <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque manche)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
-              <View style={styles.wrap}>
-                {SCALE_CHOICES.map((id) => (
-                  <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scales.includes(id)} onPress={() => toggleScale(id)} />
-                ))}
-              </View>
-              {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque manche.")}</Text> : null}
-              <SectionLabel>{tr("Ordre")}</SectionLabel>
-              <View style={styles.wrap}>
-                <Chip testID="challenge-order-free" label={tr("Libre")} selected={opts.order === "free"} onPress={() => setOpts({ ...opts, order: "free" })} />
-                <Chip testID="challenge-order-up" label={tr("Montant (grave → aigu)")} selected={opts.order === "up"} onPress={() => setOpts({ ...opts, order: "up" })} />
-              </View>
-            </>
-          )}
-
-          <SectionLabel>{tr("Position")}</SectionLabel>
-          <View style={styles.wrap}>
-            {[0, 1, 2, 3, 4].map((p) => (
-              <Chip key={p} testID={`challenge-pos-${p}`} label={tr("Pos. {n}", { n: p + 1 })} selected={opts.position === p} onPress={() => setOpts({ ...opts, position: p })} />
-            ))}
-            <Chip testID="challenge-pos-random" label={tr("Au hasard")} selected={opts.position < 0} onPress={() => setOpts({ ...opts, position: -1 })} />
-          </View>
+            <View style={styles.levels}>
+              {(["beginner", "inter", "expert", "custom"] as const).map((m) => (
+                <Pressable key={m} testID={`challenge-level-${m}`} onPress={() => setMode(m)} style={[styles.levelBtn, mode === m && styles.levelBtnOn]}>
+                  <Text style={[styles.levelText, mode === m && styles.levelTextOn]} numberOfLines={1}>
+                    {m === "custom" ? tr("Perso") : tr(LEVELS.find((l) => l.id === m)!.name)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {level ? levelSetup : customSetup}
 
           <SectionLabel>{tr("Répondre")}</SectionLabel>
           <View style={styles.wrap}>
@@ -490,8 +641,14 @@ export function FindChallenge({ kind, onBack }: Props) {
             <Chip testID="challenge-input-mic" label={tr("Guitare (micro)")} selected={opts.input === "mic"} onPress={() => setOpts({ ...opts, input: "mic" })} />
             <Chip testID="challenge-input-touch" label={tr("Toucher l’écran")} selected={opts.input === "touch"} onPress={() => setOpts({ ...opts, input: "touch" })} />
           </View>
-          {micDenied && opts.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null}
-          {best ? <Text style={styles.muted}>{tr("Record ({n} manches) : {time}", { n: opts.rounds, time: formatTime(best.timeMs) })}</Text> : null}
+          {micDenied && play.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null}
+          {best ? (
+            <Text style={styles.muted}>
+              {sprint
+                ? tr("Record : {n} manches", { n: best.score ?? 0 })
+                : tr("Record ({n} manches) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
+            </Text>
+          ) : null}
 
           <Pressable testID="challenge-start" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
             <Play size={22} color={colors.onBrandPrimary} weight="fill" />
@@ -508,6 +665,24 @@ const useStyles = makeStyles((c) => ({
   header: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   roundBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.onSurface },
+  chronoLow: { color: "#F97316" },
+  levels: { flexDirection: "row", padding: 4, marginBottom: spacing.sm, borderRadius: radius.pill, backgroundColor: c.surfaceSecondary, borderWidth: 1, borderColor: c.border },
+  levelBtn: { flex: 1, height: 34, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  levelBtnOn: { backgroundColor: c.surfaceTertiary, borderWidth: 1, borderColor: c.brandPrimary },
+  levelText: { fontFamily: fonts.display, fontSize: 13, color: c.onSurfaceTertiary },
+  levelTextOn: { color: c.onSurface, fontWeight: "700" },
+  cats: { gap: spacing.sm, paddingVertical: spacing.sm },
+  catCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 64, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
+  catCardOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
+  catBadges: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
+  more: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },
+  catText: { flex: 1, minWidth: 0, gap: 2 },
+  catName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
+  summary: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingVertical: spacing.sm },
+  summaryChip: { height: 28, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary, justifyContent: "center" },
+  summaryChipRandom: { borderWidth: 1, borderColor: c.brandPrimary },
+  summaryText: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceSecondary },
+  summaryTextRandom: { color: c.brandPrimary },
   chrono: { fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.brandPrimary, fontVariant: ["tabular-nums"] },
   segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   segBtn: { flex: 1, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
@@ -545,4 +720,33 @@ const useStyles = makeStyles((c) => ({
   secondary: { alignSelf: "stretch", marginTop: spacing.sm, height: 48, borderRadius: radius.pill, backgroundColor: c.surfaceTertiary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
   secondaryText: { fontFamily: fonts.display, fontSize: 15, color: c.onSurface },
   pressed: { opacity: 0.85 },
+}));
+
+/** What a level sets, in plain words (shown under the categories). */
+function summaryOf(o: ChallengeOptions, nameOf: (pc: number) => string): { text: string; random?: boolean }[] {
+  const out: { text: string; random?: boolean }[] = [];
+  out.push(o.randomKey ? { text: tr("Tonalité : hasard"), random: true } : { text: tr("Tonalité {k}", { k: nameOf(o.rootPc) }) });
+  out.push(o.contextRandom ? { text: tr("Majeur / mineur : hasard"), random: true } : { text: tr(scaleOf(o.scaleId).name) });
+  if (o.scope === "neck") out.push({ text: tr("Tout le manche") });
+  else if (o.position === -1) out.push({ text: tr("Position : hasard"), random: true });
+  else if (o.position === -2) out.push({ text: tr("Positions 1 → 5") });
+  else out.push({ text: tr("Position {n}", { n: o.position + 1 }) });
+  out.push({ text: o.hideTonic ? tr("Tonique cachée") : tr("Tonique affichée") });
+  return out;
+}
+
+function DegreeBadge({ num, label }: { num: string; label: string }) {
+  const styles = useBadgeStyles();
+  const { colors } = useTheme();
+  const meta = DEGREE_META[degreeKeyFromNum(Number(num) || 1)];
+  return (
+    <View style={[styles.badge, { backgroundColor: colors[meta.color] }]}>
+      <Text style={[styles.text, { color: colors[meta.on] }]}>{label}</Text>
+    </View>
+  );
+}
+
+const useBadgeStyles = makeStyles(() => ({
+  badge: { minWidth: 26, height: 26, paddingHorizontal: 4, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  text: { fontFamily: fonts.display, fontSize: 11, fontWeight: "700" },
 }));

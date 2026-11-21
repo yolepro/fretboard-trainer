@@ -100,7 +100,7 @@ export default function FingeringScreen() {
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
   // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
   const [view, setView] = useState<"library" | "exercise" | "challenge">("library");
-  const [challenge, setChallenge] = useState<"degree" | "scale">("degree");
+  const [challenge, setChallenge] = useState<"degree" | "scale" | "neck">("degree");
   const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
@@ -631,7 +631,7 @@ export default function FingeringScreen() {
   );
 
   if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
-  if (view === "challenge") return <FindChallenge key={challenge} kind={challenge} onBack={backToLibrary} />;
+  if (view === "challenge") return <FindChallenge key={challenge} kind={challenge === "scale" ? "scale" : "degree"} preset={challenge === "neck" ? "neck" : undefined} onBack={backToLibrary} />;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">

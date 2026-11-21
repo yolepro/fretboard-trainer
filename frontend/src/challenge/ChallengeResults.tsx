@@ -11,7 +11,6 @@ import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
-const ROUNDS = [3, 5, 10];
 const PERIODS: Period[] = [30, 0, 7];
 const HEAT = ["#34D399", "#FBBF24", "#F97316", "#B91C1C"];
 const SPEED = [1800, 2600, 3300];
@@ -23,10 +22,16 @@ const median = (xs: number[]) => {
   return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
 };
 
-type Props = { kind: ChallengeKind; nameOf: (pc: number) => string; bottomPad: number };
+type Props = {
+  kind: ChallengeKind;
+  nameOf: (pc: number) => string;
+  bottomPad: number;
+  variant: string; // level + category (or “custom”): records are kept per variant
+  lengths: (number | "sprint")[];
+};
 
 /** Results of a challenge kind: records, time per degree, neck map. */
-export function ChallengeResults({ kind, nameOf, bottomPad }: Props) {
+export function ChallengeResults({ kind, nameOf, bottomPad, variant, lengths }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const [attempts, setAttempts] = useState<Attempt[] | null>(null);
@@ -37,8 +42,8 @@ export function ChallengeResults({ kind, nameOf, bottomPad }: Props) {
   useEffect(() => {
     loadHistory().then((h) => setAttempts(h.attempts.filter((a) => a.s === challengeSection(kind))));
     Promise.all(
-      ROUNDS.map((n) =>
-        storage.getItem(challengeBestKey(kind, n), null).then((v) => {
+      lengths.map((n) =>
+        storage.getItem(challengeBestKey(kind, variant, n), null).then((v) => {
           try {
             return typeof v === "string" ? (JSON.parse(v) as ChallengeBest) : null;
           } catch {
@@ -47,7 +52,8 @@ export function ChallengeResults({ kind, nameOf, bottomPad }: Props) {
         }),
       ),
     ).then(setBests);
-  }, [kind]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, variant, lengths.join(",")]);
 
   const from = since(period);
   const list = useMemo(() => (attempts ?? []).filter((a) => a.t >= from), [attempts, from]);
@@ -74,10 +80,12 @@ export function ChallengeResults({ kind, nameOf, bottomPad }: Props) {
         </Pressable>
       </View>
       <View style={styles.records}>
-        {ROUNDS.map((n, i) => (
-          <View key={n} style={styles.recordCard}>
-            <Text style={styles.muted}>{tr("{n} manches", { n })}</Text>
-            <Text style={styles.recordTime}>{bests[i] ? formatTime(bests[i]!.timeMs) : "—"}</Text>
+        {lengths.map((n, i) => (
+          <View key={String(n)} style={styles.recordCard}>
+            <Text style={styles.muted}>{n === "sprint" ? tr("Contre-la-montre") : tr("{n} manches", { n })}</Text>
+            <Text style={styles.recordTime}>
+              {bests[i] ? (n === "sprint" ? tr("{n} manches", { n: bests[i]!.score ?? 0 }) : formatTime(bests[i]!.timeMs)) : "—"}
+            </Text>
             <Text style={styles.small}>{bests[i] ? tr(bests[i]!.errors === 1 ? "{n} erreur" : "{n} erreurs", { n: bests[i]!.errors }) : tr("pas encore joué")}</Text>
           </View>
         ))}

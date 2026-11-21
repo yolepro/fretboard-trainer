@@ -21,6 +21,10 @@ export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disable
   const styles = useStyles();
   const { colors } = useTheme();
   const frets = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  // Whole neck: many frets → smaller notes so everything fits in portrait.
+  const compact = frets.length > 8;
+  const dotSize = compact ? { width: 20, height: 20, borderRadius: 10 } : null;
+  const textSize = compact ? { fontSize: 10 } : null;
   const foundById = new Map(found.map((c) => [cellId(c), c]));
   const tonicById = new Map(tonics.map((c) => [cellId(c), c]));
 
@@ -45,16 +49,16 @@ export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disable
                 accessibilityLabel={`${label} ${f}`}
               >
                 {hit && meta ? (
-                  <View style={[styles.dot, { backgroundColor: colors[meta.color] }, hit.label === "1" && styles.rootDot]}>
-                    <Text style={[styles.dotText, { color: colors[meta.on] }]}>{prettyLabel(hit.label)}</Text>
+                  <View style={[styles.dot, dotSize, { backgroundColor: colors[meta.color] }, hit.label === "1" && styles.rootDot]}>
+                    <Text style={[styles.dotText, textSize, { color: colors[meta.on] }]}>{prettyLabel(hit.label)}</Text>
                   </View>
                 ) : wrong === id ? (
-                  <View style={[styles.dot, styles.wrongDot]}>
-                    <Text style={[styles.dotText, { color: "#FFFFFF" }]}>✕</Text>
+                  <View style={[styles.dot, dotSize, styles.wrongDot]}>
+                    <Text style={[styles.dotText, textSize, { color: "#FFFFFF" }]}>✕</Text>
                   </View>
                 ) : tonic ? (
-                  <View style={[styles.dot, styles.tonicDot, { borderColor: colors.degreeRoot }]}>
-                    <Text style={[styles.dotText, { color: colors.degreeRoot }]}>1</Text>
+                  <View style={[styles.dot, dotSize, styles.tonicDot, { borderColor: colors.degreeRoot }]}>
+                    <Text style={[styles.dotText, textSize, { color: colors.degreeRoot }]}>1</Text>
                   </View>
                 ) : null}
               </Pressable>
