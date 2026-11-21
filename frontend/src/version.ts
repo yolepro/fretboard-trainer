@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.42.1 — Challenges : colonne des cordes à vide touchable sur le web (elle était de largeur nulle : manche bloquée) ; degrés tirés « en sac » (chacun sort avant qu’un autre revienne) ; après 3 erreurs (5 sur tout le manche) la réponse s’affiche, chrono en pause, puis manche suivante
 // 1.42.0 — « Trouve le degré » : niveaux Débutant / Intermédiaire / Expert avec catégories (manches réglables par niveau) + Perso ; tout le manche (5 positions, toniques affichées) ; contre-la-montre 60 s ; records par niveau/catégorie ; carte « Degré sur tout le manche » dans la bibliothèque
 // 1.41.1 — Challenges : « Trouve le degré » toujours un degré par manche (option « tous à la fois » retirée) ; manche : la case 0 (corde à vide) est une colonne courte avant le sillet
 // 1.41.0 — Challenges : « Trouve le degré » mélange les degrés (un degré différent à chaque manche, ou tous à la fois), 5/10/20 manches ; « Trouve la gamme » : 1 manche par défaut, et avec plusieurs manches une gamme différente à chaque manche
@@ -102,4 +103,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.42.0";
+export const APP_VERSION = "1.42.1";

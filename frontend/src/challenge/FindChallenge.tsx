@@ -17,6 +17,7 @@ import {
   challengeBestKey,
   challengeSection,
   labelOfNum,
+  mistakesAllowed,
   nextSetting,
   prettyLabel,
   scaleOf,
@@ -95,6 +96,13 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const completedRef = useRef(0); // rounds completed (time trial score)
   const lastCellRef = useRef<Cell | null>(null);
   const [score, setScore] = useState(0);
+  const [revealed, setRevealed] = useState<Cell[]>([]); // too many mistakes: the missing notes, shown before moving on
+  const [failed, setFailed] = useState(0);
+  const failedRef = useRef(0);
+  const roundErrorsRef = useRef(0);
+  const bagRef = useRef<string[]>([]); // degrees still to draw (each one before any repeats)
+  const pausedAtRef = useRef<number | null>(null); // chrono paused while the answer is shown
+  const advanceRef = useRef<() => void>(() => {});
   const roundRef = useRef<Round | null>(null);
   const foundRef = useRef<Cell[]>([]);
   const errorsRef = useRef(0);
@@ -125,6 +133,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   useEffect(() => {
     if (phase !== "running") return;
     const id = setInterval(() => {
+      if (pausedAtRef.current !== null) return;
       const e = Date.now() - startRef.current;
       setElapsed(e);
       // Time trial: the clock decides the end.
@@ -157,7 +166,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   };
 
   const startRound = (idx: number, prev?: RoundSetting) => {
-    const r = buildRound(kind, optsRef.current, nextSetting(kind, optsRef.current, idx, prev));
+    const r = buildRound(kind, optsRef.current, nextSetting(kind, optsRef.current, idx, prev, bagRef.current));
+    roundErrorsRef.current = 0;
+    setRevealed([]);
     roundRef.current = r;
     roundIdxRef.current = idx;
     foundRef.current = [];
@@ -180,6 +191,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     timers.current.forEach(clearTimeout);
     timers.current = [];
     const o = optsRef.current;
+    resumeChrono();
     const ms = o.sprintSec > 0 ? o.sprintSec * 1000 : Date.now() - startRef.current;
     const errs = errorsRef.current;
     const done = completedRef.current;
@@ -193,7 +205,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     const better =
       o.sprintSec > 0
         ? done > 0 && (!prev || done > (prev.score ?? 0) || (done === (prev.score ?? 0) && errs < prev.errors))
-        : !prev || ms < prev.timeMs;
+        : failedRef.current === 0 && (!prev || ms < prev.timeMs); // a record needs every round found
     setIsRecord(better);
     if (better) {
       const next = { timeMs: ms, errors: errs, at: Date.now(), score: done };
@@ -225,6 +237,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     errorsRef.current = 0;
     completedRef.current = 0;
     finishedRef.current = false;
+    failedRef.current = 0;
+    bagRef.current = [];
+    pausedAtRef.current = null;
+    setFailed(0);
     setErrors(0);
     setElapsed(0);
     startRef.current = Date.now();
@@ -232,9 +248,59 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     startRound(0);
   };
 
+  const pauseChrono = () => {
+    if (pausedAtRef.current === null) pausedAtRef.current = Date.now();
+  };
+  const resumeChrono = () => {
+    if (pausedAtRef.current === null) return;
+    startRef.current += Date.now() - pausedAtRef.current;
+    pausedAtRef.current = null;
+  };
+
+  // Too many mistakes: show the missing notes (chrono paused), then the next round.
+  const revealRound = () => {
+    const r = roundRef.current;
+    if (!r || busyRef.current) return;
+    busyRef.current = true;
+    pauseChrono();
+    const missing = remaining();
+    const now = Date.now();
+    missing.forEach((c) =>
+      saveAttempt({
+        t: now,
+        s: challengeSection(kind),
+        key: `b${c.string}-${c.fret}`,
+        label: c.label,
+        sub: r.scaleId,
+        string: c.string,
+        fret: c.fret,
+        ms: now - lastFindAt.current,
+        errors: 2,
+      }),
+    );
+    failedRef.current += 1;
+    setFailed(failedRef.current);
+    setRevealed(missing);
+    setWrong(null);
+    setMessage({ text: tr("Trop d’erreurs : voici les notes à retenir"), bad: true });
+    const idx = roundIdxRef.current;
+    let gone = false;
+    const go = () => {
+      if (gone) return;
+      gone = true;
+      resumeChrono();
+      if (optsRef.current.sprintSec === 0 && idx + 1 >= optsRef.current.rounds) finish();
+      else if (optsRef.current.sprintSec === 0 || Date.now() - startRef.current < optsRef.current.sprintSec * 1000) startRound(idx + 1, r);
+      else finish();
+    };
+    advanceRef.current = go;
+    later(go, 5000);
+  };
+
   const stop = useCallback(() => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
+    pausedAtRef.current = null;
     setSuspended(false);
     setPhase("setup");
   }, []);
@@ -281,12 +347,15 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const onMistake = (id: string | null, text: string, fromTouch: boolean) => {
     errorsRef.current += 1;
     sinceFindErrors.current += 1;
+    roundErrorsRef.current += 1;
     setErrors(errorsRef.current);
     setWrong(id);
     setMessage({ text, bad: true });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     if (fromTouch) sound("error");
     later(() => setWrong((w) => (w === id ? null : w)), 700);
+    const r = roundRef.current;
+    if (r && roundErrorsRef.current >= mistakesAllowed(r.scope)) later(revealRound, 700);
   };
 
   const remaining = () => {
@@ -402,7 +471,12 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               </Text>
             </View>
           </View>
-          <ChallengeNeck min={round.min} max={round.max} found={found} tonics={round.tonics} wrong={wrong} onPress={onTouch} disabled={play.input === "mic"} />
+          <ChallengeNeck min={round.min} max={round.max} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
+          {revealed.length ? (
+            <Pressable testID="challenge-next" onPress={() => advanceRef.current()} style={({ pressed }) => [styles.nextBtn, pressed && styles.pressed]}>
+              <Text style={styles.nextText}>{tr("J’ai retenu, manche suivante")}</Text>
+            </Pressable>
+          ) : null}
           <View style={[styles.message, message?.bad && styles.messageBad, message && !message.bad && styles.messageGood]} testID="challenge-message">
             {useMic && !message ? <Microphone size={16} color={colors.onSurfaceTertiary} /> : null}
             <Text style={[styles.messageText, message?.bad && styles.messageTextBad, message && !message.bad && styles.messageTextGood]} numberOfLines={2}>
@@ -410,7 +484,13 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                 (play.input === "touch" ? tr("Touche les cases du manche") : useMic && play.input === "both" ? tr("Joue la note ou touche le manche") : tr("Joue la note…"))}
             </Text>
           </View>
+          {revealed.length ? <Text style={styles.hint}>{tr("Cerclées d’orange : les notes qui manquaient. Le chrono est en pause.")}</Text> : null}
           {round.tonics.length ? <Text style={styles.hint}>{tr("Cercles rouges : la tonique, pour te repérer.")}</Text> : null}
+          {!revealed.length ? (
+            <Text style={styles.hint}>
+              {tr("Erreurs dans cette manche : {e}/{n}", { e: Math.min(roundErrorsRef.current, mistakesAllowed(round.scope)), n: mistakesAllowed(round.scope) })}
+            </Text>
+          ) : null}
           <Text style={styles.hint}>{tr("{n} erreur(s)", { n: errors })}</Text>
         </ScrollView>
       </View>
@@ -433,6 +513,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           <Text style={styles.muted}>
             {sprint ? tr("manches réussies en {s} s", { s: play.sprintSec }) : tr("{n} manches", { n: play.rounds })} ·{" "}
             {tr(errors === 1 ? "{n} erreur" : "{n} erreurs", { n: errors })}
+            {failed ? ` · ${tr(failed === 1 ? "{n} manche ratée" : "{n} manches ratées", { n: failed })}` : ""}
           </Text>
           <Text style={styles.muted}>
             {best ? (sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record : {time}", { time: formatTime(best.timeMs) })) : ""}
@@ -666,6 +747,8 @@ const useStyles = makeStyles((c) => ({
   roundBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.onSurface },
   chronoLow: { color: "#F97316" },
+  nextBtn: { height: 48, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  nextText: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.onBrandPrimary },
   levels: { flexDirection: "row", padding: 4, marginBottom: spacing.sm, borderRadius: radius.pill, backgroundColor: c.surfaceSecondary, borderWidth: 1, borderColor: c.border },
   levelBtn: { flex: 1, height: 34, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   levelBtnOn: { backgroundColor: c.surfaceTertiary, borderWidth: 1, borderColor: c.brandPrimary },

@@ -89,7 +89,7 @@ export function buildRound(kind: ChallengeKind, o: ChallengeOptions, s: RoundSet
  * Next round. Random key / position / context change every round; degree challenges ask one degree per round,
  * scale challenges pick a scale from the pool — never the same twice in a row.
  */
-export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: number, prev?: RoundSetting): RoundSetting {
+export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: number, prev?: RoundSetting, bag?: string[]): RoundSetting {
   const rnd = (n: number, avoid?: number) => {
     let x = Math.floor(Math.random() * n);
     if (n > 1 && avoid !== undefined && avoid >= 0 && x === avoid) x = (x + 1 + Math.floor(Math.random() * (n - 1))) % n;
@@ -99,7 +99,17 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
   const scaleId =
     kind === "scale" ? (pickOther(o.scales, prev?.scaleId) ?? "major") : o.contextRandom ? DEGREE_SCALES[rnd(2)] : o.scaleId;
   const pool = o.degrees.length ? o.degrees : ["3"];
-  const degrees = kind === "degree" ? [pickOther(pool, prev?.degrees[0])!] : [];
+  // A shuffled bag of the pool: every degree comes out once before any comes back (never twice in a row).
+  let degree: string | undefined;
+  if (kind === "degree" && bag) {
+    if (!bag.length) {
+      const fresh = [...pool].sort(() => Math.random() - 0.5);
+      if (fresh.length > 1 && fresh[0] === prev?.degrees[0]) fresh.push(fresh.shift()!);
+      bag.push(...fresh);
+    }
+    degree = bag.shift();
+  }
+  const degrees = kind === "degree" ? [degree ?? pickOther(pool, prev?.degrees[0])!] : [];
   return {
     rootPc: o.randomKey ? rnd(12, prev?.rootPc) : o.rootPc,
     position: o.position === -2 ? idx % 5 : o.position < 0 ? rnd(5, prev?.position) : o.position,
@@ -107,6 +117,9 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
     degrees,
   };
 }
+
+/** Mistakes allowed in a round before the answer is shown and the game moves on. */
+export const mistakesAllowed = (scope: "position" | "neck") => (scope === "neck" ? 5 : 3);
 
 export const ROUND_CHOICES: Record<ChallengeKind, number[]> = { degree: [5, 10, 20], scale: [1, 3, 5] };
 

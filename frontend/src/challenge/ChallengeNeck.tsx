@@ -11,13 +11,14 @@ type Props = {
   found: Cell[];
   tonics: Cell[]; // landmarks (not asked)
   wrong: string | null; // cell id flashing red
+  revealed?: Cell[]; // too many mistakes: the notes that were missing, shown before moving on
   next?: Cell | null; // order mode: nothing shown, kept for future hints
   onPress: (string: number, fret: number) => void;
   disabled?: boolean;
 };
 
 /** The challenge's neck: only the position's frets, empty at first; found notes appear with their degree. */
-export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disabled }: Props) {
+export function ChallengeNeck({ min, max, found, tonics, wrong, revealed = [], onPress, disabled }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const frets = Array.from({ length: max - min + 1 }, (_, i) => min + i);
@@ -27,6 +28,7 @@ export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disable
   const textSize = compact ? { fontSize: 10 } : null;
   const foundById = new Map(found.map((c) => [cellId(c), c]));
   const tonicById = new Map(tonics.map((c) => [cellId(c), c]));
+  const shownById = new Map(revealed.map((c) => [cellId(c), c]));
 
   return (
     <View style={styles.neck} testID="challenge-neck">
@@ -36,7 +38,8 @@ export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disable
           <View style={[styles.string, { height: 1 + s * 0.35 }]} />
           {frets.map((f) => {
             const id = `${s}-${f}`;
-            const hit = foundById.get(id);
+            const missed = shownById.get(id);
+            const hit = foundById.get(id) ?? missed;
             const tonic = tonicById.get(id);
             const meta = hit ? DEGREE_META[degreeKeyFromNum(hit.num)] : null;
             return (
@@ -49,7 +52,7 @@ export function ChallengeNeck({ min, max, found, tonics, wrong, onPress, disable
                 accessibilityLabel={`${label} ${f}`}
               >
                 {hit && meta ? (
-                  <View style={[styles.dot, dotSize, { backgroundColor: colors[meta.color] }, hit.label === "1" && styles.rootDot]}>
+                  <View style={[styles.dot, dotSize, { backgroundColor: colors[meta.color] }, hit.label === "1" && styles.rootDot, missed && styles.missedDot]}>
                     <Text style={[styles.dotText, textSize, { color: colors[meta.on] }]}>{prettyLabel(hit.label)}</Text>
                   </View>
                 ) : wrong === id ? (
@@ -87,12 +90,14 @@ const useStyles = makeStyles((c) => ({
   cell: { flex: 1, height: ROW, alignItems: "center", justifyContent: "center" },
   fretted: { borderRightWidth: 2, borderRightColor: c.fretWire },
   // Open strings: a short column before the nut, off the wood, so it reads as “corde à vide”.
-  open: { flex: 0, width: 32, borderRightWidth: 6, borderRightColor: c.nut, backgroundColor: "rgba(0,0,0,0.35)" },
+  // (flexGrow/flexBasis, not flex: 0 — on the web flex: 0 means a zero-width column.)
+  open: { flexGrow: 0, flexShrink: 0, flexBasis: 32, width: 32, borderRightWidth: 6, borderRightColor: c.nut, backgroundColor: "rgba(0,0,0,0.35)" },
+  missedDot: { borderWidth: 3, borderColor: "#F97316" },
   dot: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   rootDot: { borderWidth: 2, borderColor: c.onSurface },
   wrongDot: { backgroundColor: "#B91C1C" },
   tonicDot: { borderWidth: 2, backgroundColor: "transparent" },
   dotText: { fontFamily: fonts.display, fontSize: 12, fontWeight: "700" },
   num: { flex: 1, textAlign: "center", fontFamily: fonts.display, fontSize: 11, color: c.onSurfaceTertiary },
-  openNum: { flex: 0, width: 32 },
+  openNum: { flexGrow: 0, flexShrink: 0, flexBasis: 32, width: 32 },
 }));
