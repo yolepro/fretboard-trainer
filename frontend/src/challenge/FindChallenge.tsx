@@ -882,11 +882,6 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               {startButton(tr("Démarrer le challenge"))}
             </>
           )}
-          <Text style={styles.inputNote}>
-            {tr("Réponse : {mode} · se change dans Réglages", {
-              mode: play.input === "both" ? tr("guitare + toucher") : play.input === "mic" ? tr("guitare (micro)") : tr("toucher l’écran"),
-            })}
-          </Text>
         </ScrollView>
       )}
     </View>
@@ -915,7 +910,6 @@ const useStyles = makeStyles((c) => ({
   catBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
   roundsRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   roundsLabel: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, marginRight: 4 },
-  inputNote: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary, textAlign: "center", marginTop: spacing.md },
   catCardOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
   catBadges: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
   more: { fontFamily: fonts.display, fontSize: 14, color: c.onSurfaceTertiary },

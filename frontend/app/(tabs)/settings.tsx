@@ -133,6 +133,27 @@ export default function SettingsScreen() {
               </Pressable>
             }
           />
+          <View style={styles.sep} />
+          <Row testID="setting-mic-test" icon={Waveform} title={tr("Test du micro")} subtitle={tr("Voir le signal et la note reconnue")} />
+          <MicTester />
+          <View style={styles.sep} />
+          <Row
+            testID="setting-a4"
+            icon={Waveform}
+            title={tr("Diapason (La 4)")}
+            subtitle={tr("Calibration de la détection")}
+            right={
+              <View style={styles.stepper}>
+                <Pressable testID="a4-decrease" onPress={() => update({ a4: Math.max(430, settings.a4 - 1) })} style={styles.stepBtn}>
+                  <Minus size={16} color={colors.onSurface} />
+                </Pressable>
+                <Text style={styles.stepValue} testID="a4-value">{settings.a4} Hz</Text>
+                <Pressable testID="a4-increase" onPress={() => update({ a4: Math.min(450, settings.a4 + 1) })} style={styles.stepBtn}>
+                  <Plus size={16} color={colors.onSurface} />
+                </Pressable>
+              </View>
+            }
+          />
         </Group>
 
         <Group title={tr("Notation")}>
@@ -196,33 +217,12 @@ export default function SettingsScreen() {
             subtitle={tr("Les modes Note et Écoute exigent la bonne octave ; aide affichée après 2 erreurs")}
           />
           <View style={styles.sep} />
-          <Row testID="setting-mic-test" icon={Waveform} title={tr("Test du micro")} subtitle={tr("Voir le signal et la note reconnue")} />
-          <MicTester />
-          <View style={styles.sep} />
           <Row testID="setting-challenge-input" icon={Target} title={tr("Challenges : répondre")} subtitle={tr("En jouant la note, en touchant le manche, ou les deux")} />
           <View style={styles.inlineChips}>
             <Chip testID="challenge-input-both" label={tr("Les deux")} selected={settings.challengeInput === "both"} onPress={() => update({ challengeInput: "both" })} />
             <Chip testID="challenge-input-mic" label={tr("Guitare (micro)")} selected={settings.challengeInput === "mic"} onPress={() => update({ challengeInput: "mic" })} />
             <Chip testID="challenge-input-touch" label={tr("Toucher l’écran")} selected={settings.challengeInput === "touch"} onPress={() => update({ challengeInput: "touch" })} />
           </View>
-          <View style={styles.sep} />
-          <Row
-            testID="setting-a4"
-            icon={Waveform}
-            title={tr("Diapason (La 4)")}
-            subtitle={tr("Calibration de la détection")}
-            right={
-              <View style={styles.stepper}>
-                <Pressable testID="a4-decrease" onPress={() => update({ a4: Math.max(430, settings.a4 - 1) })} style={styles.stepBtn}>
-                  <Minus size={16} color={colors.onSurface} />
-                </Pressable>
-                <Text style={styles.stepValue} testID="a4-value">{settings.a4} Hz</Text>
-                <Pressable testID="a4-increase" onPress={() => update({ a4: Math.min(450, settings.a4 + 1) })} style={styles.stepBtn}>
-                  <Plus size={16} color={colors.onSurface} />
-                </Pressable>
-              </View>
-            }
-          />
           <View style={styles.sep} />
           <Row
             testID="setting-reset-best"
