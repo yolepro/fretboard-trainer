@@ -6,6 +6,7 @@ import { challengeBestKey, challengeSection, prettyLabel, type ChallengeBest, ty
 import { formatTime } from "@/src/ear/questions";
 import { secs } from "@/src/ear/labels";
 import { MIN_TRIES, loadHistory, since, targetStats, type Attempt, type Period } from "@/src/ear/stats";
+import { useResultsVersion } from "@/src/results";
 import { DEGREE_META, STRING_LABELS, TUNING, degreeKeyFromNum, pcOf } from "@/src/music/theory";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
@@ -39,6 +40,7 @@ export function ChallengeResults({ kind, nameOf, bottomPad, variant, lengths }: 
   const [period, setPeriod] = useState<Period>(30);
   const [mode, setMode] = useState<"speed" | "acc">("speed");
 
+  const resultsV = useResultsVersion(); // results erased in Réglages: reload
   useEffect(() => {
     loadHistory().then((h) => setAttempts(h.attempts.filter((a) => a.s === challengeSection(kind))));
     Promise.all(
@@ -53,7 +55,7 @@ export function ChallengeResults({ kind, nameOf, bottomPad, variant, lengths }: 
       ),
     ).then(setBests);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, variant, lengths.join(",")]);
+  }, [kind, variant, lengths.join(","), resultsV]);
 
   const from = since(period);
   const list = useMemo(() => (attempts ?? []).filter((a) => a.t >= from), [attempts, from]);

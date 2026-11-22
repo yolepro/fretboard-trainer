@@ -10,6 +10,7 @@ import { ResultView } from "@/src/ear/ResultView";
 import { Unfold } from "@/src/components/Unfold";
 import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
+import { useResultsVersion } from "@/src/results";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
@@ -84,6 +85,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
     timers.current = [];
   };
   const key = `${bestKey(SECTION, count)}_${setId}`; // records per chord set
+  const resultsV = useResultsVersion(); // results erased in Réglages: reload the record
 
   useEffect(() => {
     storage.getItem(key, null).then((v) => {
@@ -93,7 +95,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
         setBest(null);
       }
     });
-  }, [key, phase]);
+  }, [key, phase, resultsV]);
   useEffect(() => onPhase(phase), [phase, onPhase]);
   useEffect(() => {
     if (resetKey) {

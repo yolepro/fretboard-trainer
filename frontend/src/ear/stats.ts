@@ -56,6 +56,18 @@ export async function loadHistory() {
   return { attempts, sessions };
 }
 
+/** Keeps only the attempts and games whose section passes `keep` (erasing one family of results). */
+export async function rewriteHistory(keep: (section: string) => boolean) {
+  chain = chain.then(async () => {
+    const [attempts, sessions] = await Promise.all([readList<Attempt>(ATTEMPTS_KEY), readList<SessionRec>(SESSIONS_KEY)]);
+    await Promise.all([
+      storage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts.filter((a) => keep(String(a.s))))),
+      storage.setItem(SESSIONS_KEY, JSON.stringify(sessions.filter((x) => keep(String(x.s))))),
+    ]);
+  });
+  await chain;
+}
+
 export async function clearHistory() {
   await chain;
   await Promise.all([storage.removeItem(ATTEMPTS_KEY), storage.removeItem(SESSIONS_KEY)]);

@@ -39,6 +39,7 @@ import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMo
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { formatTime } from "@/src/ear/questions";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
+import { useResultsVersion } from "@/src/results";
 import type { PitchFrame } from "@/src/music/yin";
 import { DEGREE_META, degreeKeyFromNum, freqToMidiFloat } from "@/src/music/theory";
 import { usesNativeTabs } from "@/src/navigation";
@@ -132,6 +133,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   settingsRef.current = settings;
 
   const bestKey = challengeBestKey(kind, variant, sprint ? "sprint" : play.rounds);
+  const resultsV = useResultsVersion(); // results erased in Réglages: reload the record
   useEffect(() => {
     storage.getItem(bestKey, null).then((v) => {
       try {
@@ -140,7 +142,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         setBest(null);
       }
     });
-  }, [bestKey, phase]);
+  }, [bestKey, phase, resultsV]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {

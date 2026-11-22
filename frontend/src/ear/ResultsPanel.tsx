@@ -5,6 +5,7 @@ import { CaretLeft, CaretRight, Crosshair } from "phosphor-react-native";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { SETS as CHORD_SETS } from "@/src/ear/ChordQuiz";
+import { useResultsVersion } from "@/src/results";
 import { SECTIONS, bestKey, formatTime, intervalName, positionText, type Best, type Section } from "@/src/ear/questions";
 import { MIN_TRIES, loadHistory, since, targetStats, tops, type Attempt, type Period, type SessionRec, type TargetStat } from "@/src/ear/stats";
 import { STRING_LABELS, TUNING, octaveOf, pcOf } from "@/src/music/theory";
@@ -64,9 +65,10 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
   const [chordBests, setChordBests] = useState<Record<string, Best | null>>({});
   const [sel, setSel] = useState<string | null>(null);
 
+  const resultsV = useResultsVersion(); // results erased in Réglages: reload
   useEffect(() => {
     loadHistory().then(setHistory);
-  }, []);
+  }, [resultsV]);
   useEffect(() => {
     Promise.all(
       COUNTS.map((n) =>
@@ -93,7 +95,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
     }
     setSel(null);
     if (section !== "board" && view === "map") setView("home");
-  }, [section, view]);
+  }, [section, view, resultsV]);
 
   const from = since(period);
   const attempts = useMemo(() => (history?.attempts ?? []).filter((a) => a.s === section && a.t >= from), [history, section, from]);

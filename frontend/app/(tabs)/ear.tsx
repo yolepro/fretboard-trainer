@@ -13,6 +13,7 @@ import { SetupPanel } from "@/src/ear/SetupPanel";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
 import { ChordQuiz } from "@/src/ear/ChordQuiz";
 import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
+import { useResultsVersion } from "@/src/results";
 import { pickWeakKey, sessionProgress, weaknessScores } from "@/src/ear/weakness";
 import { reasonText } from "@/src/ear/labels";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
@@ -127,6 +128,7 @@ export default function EarScreen() {
   const bestRef = useRef<Best | null>(null);
   bestRef.current = best;
 
+  const resultsV = useResultsVersion(); // results erased in Réglages: reload the record
   const loadBest = useCallback(() => {
     const key = bestKey(section, opts.count);
     storage.getItem(key, null).then((v) => {
@@ -137,7 +139,7 @@ export default function EarScreen() {
         setBest(null);
       }
     });
-  }, [section, opts.count]);
+  }, [section, opts.count, resultsV]);
 
   useEffect(() => {
     loadBest();

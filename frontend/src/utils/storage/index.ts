@@ -66,6 +66,16 @@ export class Storage extends StorageBase {
     }
   }
 
+  /** Keys starting with one of these prefixes. */
+  async keysByPrefix(prefixes: string[]): Promise<string[]> {
+    try {
+      return (await AsyncStorage.getAllKeys()).filter((k) => prefixes.some((p) => k.startsWith(p)));
+    } catch (e) {
+      this.warn("keysByPrefix", prefixes.join(","), e);
+      return [];
+    }
+  }
+
   /** Removes every key starting with one of these prefixes (e.g. all the records). */
   async removeByPrefix(prefixes: string[]): Promise<boolean> {
     try {

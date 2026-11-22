@@ -2,7 +2,11 @@ import React from "react";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { Pressable, ScrollView, Switch, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import {
+  CaretRight,
+  ChartBar,
+  Check,
   Eye,
   Hash,
   Lock,
@@ -25,12 +29,13 @@ import { playNote } from "@/src/audio/sampler";
 import { usesNativeTabs } from "@/src/navigation";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
-import { clearHistory } from "@/src/ear/stats";
-import { storage } from "@/src/utils/storage";
-import { confirmAction } from "@/src/utils/confirm";
+import { FAMILIES, clearResults, resultsSummary, type Family, type FamilySummary } from "@/src/results";
+import { Sheet } from "@/src/components/Sheet";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
+
+const FAMILY_NAMES: Record<Family, string> = { ear: "Oreille", challenges: "Challenges", chords: "Accords" };
 
 type IconType = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
 
@@ -80,7 +85,46 @@ export default function SettingsScreen() {
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, update } = useSettings();
-  const [resetDone, setResetDone] = React.useState(false);
+  // Mes résultats: what is recorded per family, and a sheet to erase the chosen families.
+  const [summary, setSummary] = React.useState<Record<Family, FamilySummary> | null>(null);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const [picked, setPicked] = React.useState<Family[]>(FAMILIES);
+  const [doneText, setDoneText] = React.useState("");
+  const refreshSummary = React.useCallback(() => {
+    resultsSummary().then(setSummary);
+  }, []);
+  // Tabs stay mounted: refresh what is recorded each time Réglages is shown.
+  useFocusEffect(refreshSummary);
+  const familyText = (x: FamilySummary) =>
+    [x.records ? tr(x.records > 1 ? "{n} records" : "{n} record", { n: x.records }) : "", x.games ? tr(x.games > 1 ? "{n} parties" : "{n} partie", { n: x.games }) : ""]
+      .filter(Boolean)
+      .join(" · ");
+  const recorded = FAMILIES.filter((f) => summary && (summary[f].records > 0 || summary[f].games > 0));
+  const summaryText = !summary
+    ? " "
+    : recorded.length
+      ? recorded.map((f) => `${tr(FAMILY_NAMES[f])} : ${familyText(summary[f])}`).join("\n")
+      : tr("Rien pour l’instant : joue une partie pour voir tes records ici.");
+  const chosen = picked.filter((f) => recorded.includes(f));
+  const names = (fs: Family[]) => fs.map((f) => tr(FAMILY_NAMES[f])).join(", ");
+  const eraseLabel = !chosen.length
+    ? tr("Coche au moins une famille")
+    : chosen.length === recorded.length
+      ? tr("Tout effacer")
+      : tr("Effacer : {list}", { list: names(chosen) });
+  const openReset = () => {
+    setPicked(FAMILIES);
+    setDoneText("");
+    refreshSummary();
+    setResetOpen(true);
+  };
+  const erase = async () => {
+    const list = chosen;
+    await clearResults(list);
+    setResetOpen(false);
+    setDoneText(tr("Effacé : {list}", { list: names(list) }));
+    refreshSummary();
+  };
 
   const sw = (value: boolean, onChange: (v: boolean) => void, testID: string) => (
     <Switch
@@ -231,37 +275,64 @@ export default function SettingsScreen() {
             <Chip testID="chord-style-block" label={tr("Plaqué")} selected={settings.chordStyle === "block"} onPress={() => update({ chordStyle: "block" })} />
             <Chip testID="chord-style-arp" label={tr("Arpégé")} selected={settings.chordStyle === "arp"} onPress={() => update({ chordStyle: "arp" })} />
           </View>
+        </Group>
+
+        <Group title={tr("Mes résultats")}>
+          <Row testID="setting-results-summary" icon={ChartBar} title={tr("Ce qui est enregistré")} subtitle={summaryText} />
           <View style={styles.sep} />
-          <Row
-            testID="setting-reset-best"
-            icon={Trash}
-            title={tr("Réinitialiser les résultats")}
-            subtitle={resetDone ? tr("Résultats effacés") : tr("Records et historique : Oreille, Challenges, Accords")}
-            right={
-              <Pressable
-                testID="reset-best-button"
-                onPress={() =>
-                  confirmAction(
-                    tr("Effacer tous tes résultats ?"),
-                    tr("Records, parties et points faibles d’Oreille, des Challenges et d’Accords. Tes réglages ne changent pas. C’est définitif."),
-                    tr("Effacer"),
-                    async () => {
-                      // Every record (Oreille, Accords: fretstudio_best_*; Challenges: fretstudio_chbest_*) + the history.
-                      await Promise.all([storage.removeByPrefix(["fretstudio_best_", "fretstudio_chbest_"]), clearHistory()]);
-                      setResetDone(true);
-                    },
-                  )
-                }
-                style={({ pressed }) => [styles.smallBtn, styles.dangerBtn, pressed && styles.pressed]}
-              >
-                <Text style={[styles.smallBtnText, styles.dangerText]}>{tr("Effacer")}</Text>
-              </Pressable>
-            }
-          />
+          <Pressable testID="reset-open" onPress={openReset} style={({ pressed }) => [styles.row, pressed && styles.pressed]} accessibilityRole="button">
+            <View style={styles.iconBox}>
+              <Trash size={20} color={colors.error} weight="duotone" />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, styles.dangerText]}>{tr("Effacer mes résultats…")}</Text>
+              {doneText ? <Text style={[styles.rowSub, { color: colors.success }]}>{doneText}</Text> : null}
+            </View>
+            <CaretRight size={18} color={colors.onSurfaceTertiary} weight="bold" />
+          </Pressable>
         </Group>
 
         <Text style={styles.footer} testID="settings-version">FretStudio · v{APP_VERSION} · {tr("Détection 100 % locale")}</Text>
       </ScrollView>
+
+      <Sheet visible={resetOpen} onClose={() => setResetOpen(false)} title={tr("Effacer mes résultats")} testID="reset-sheet">
+        <View style={styles.sheetBody}>
+          <Text style={styles.rowSub}>{tr("Coche ce que tu veux remettre à zéro : records, parties jouées et points faibles. Tes réglages ne changent pas.")}</Text>
+          {FAMILIES.map((f) => {
+            const sum = summary?.[f];
+            const empty = !sum || (sum.records === 0 && sum.games === 0);
+            const on = picked.includes(f) && !empty;
+            return (
+              <Pressable
+                key={f}
+                testID={`reset-family-${f}`}
+                disabled={empty}
+                onPress={() => setPicked((p) => (p.includes(f) ? p.filter((x) => x !== f) : [...p, f]))}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on, disabled: empty }}
+                style={({ pressed }) => [styles.familyRow, on && styles.familyRowOn, empty && styles.dim, pressed && styles.pressed]}
+              >
+                <View style={[styles.checkBox, on && styles.checkBoxOn]}>{on ? <Check size={14} color={colors.onSurface} weight="bold" /> : null}</View>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{tr(FAMILY_NAMES[f])}</Text>
+                  <Text style={styles.rowSub}>{empty ? tr("Rien d’enregistré") : familyText(sum!)}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            testID="reset-confirm"
+            disabled={!chosen.length}
+            onPress={erase}
+            style={({ pressed }) => [styles.eraseBtn, !chosen.length && styles.eraseBtnOff, pressed && styles.pressed]}
+          >
+            <Text style={[styles.eraseText, !chosen.length && styles.eraseTextOff]}>{eraseLabel}</Text>
+          </Pressable>
+          <Pressable testID="reset-cancel" onPress={() => setResetOpen(false)} style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}>
+            <Text style={styles.cancelText}>{tr("Annuler")}</Text>
+          </Pressable>
+        </View>
+      </Sheet>
     </View>
   );
 }
@@ -291,6 +362,18 @@ const useStyles = makeStyles((c) => ({
   smallBtnText: { fontFamily: fonts.display, fontSize: 13, fontWeight: "700", color: c.onBrandPrimary },
   dangerBtn: { backgroundColor: c.surfaceTertiary, borderWidth: 1, borderColor: c.error },
   dangerText: { color: c.error },
+  sheetBody: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  familyRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 56, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
+  familyRowOn: { borderColor: c.error },
+  checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: c.onSurfaceTertiary, alignItems: "center", justifyContent: "center" },
+  checkBoxOn: { backgroundColor: c.error, borderColor: c.error },
+  dim: { opacity: 0.45 },
+  eraseBtn: { height: 52, marginTop: spacing.sm, borderRadius: radius.pill, backgroundColor: c.error, alignItems: "center", justifyContent: "center" },
+  eraseBtnOff: { backgroundColor: c.surfaceTertiary },
+  eraseText: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
+  eraseTextOff: { color: c.onSurfaceTertiary },
+  cancelBtn: { height: 44, alignItems: "center", justifyContent: "center" },
+  cancelText: { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceSecondary },
   pressed: { opacity: 0.8 },
   stepper: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   stepBtn: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
