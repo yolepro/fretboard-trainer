@@ -55,7 +55,6 @@ export const LEVELS: Level[] = [
       },
       { id: "colors", name: "Les couleurs", meta: "Les degrés qui colorent : 2, 4, 6", degrees: ["2", "4", "6"] },
       { id: "all7", name: "Les 7 degrés", meta: "Un degré différent à chaque tour", degrees: ["2", "3", "4", "5", "6", "7"] },
-      { id: "arp7", name: "Arpège 7", meta: "Les notes de l’accord à 4 sons : 3, 5, 7", degrees: ["3", "5", "7"] },
       { id: "minor", name: "Le mineur", meta: "Les degrés qui changent en mineur : ♭3, ♭6, ♭7", degrees: ["3", "6", "7"], set: { scaleId: "minor" } },
       { id: "neck", name: "Tout le manche", meta: "Un degré sur les 5 positions d’un coup", degrees: ["1", "3", "5", "7"], set: { scope: "neck" } },
     ],
