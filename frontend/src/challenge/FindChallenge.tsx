@@ -30,9 +30,8 @@ import {
   type RoundSetting,
 } from "@/src/challenge/rounds";
 import { LEVELS, levelOptions, neckRounds, type LevelId } from "@/src/challenge/levels";
-import { Chip, SectionLabel } from "@/src/components/Chip";
-import { Unfold } from "@/src/components/Unfold";
-import { KeyButton } from "@/src/components/KeyWheel";
+import { CUSTOM_GAMES, type ChallengeSetting, type CustomGame } from "@/src/challenge/games";
+import { GameCard, OptionSheet, type OptionSheetDef, type Pill } from "@/src/components/GameCard";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMode } from "@/src/audio/sampler";
@@ -90,18 +89,30 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const [isRecord, setIsRecord] = useState(false);
   const [suspended, setSuspended] = useState(false);
   const [micDenied, setMicDenied] = useState(false);
+  const [sheet, setSheet] = useState<{ target: string; id: ChallengeSetting | "natural" } | null>(null);
 
   const level = mode === "custom" ? null : LEVELS.find((l) => l.id === mode)!;
   const sel = level ? catIdx[level.id] : null;
   const cat = level && sel !== null ? level.categories[sel] ?? null : null;
   const neckCat = cat?.set?.scope === "neck";
   const roundsKey = level && cat ? `${level.id}-${neckCat ? "neck" : "pos"}` : "";
-  const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : ROUND_CHOICES[kind];
+  // Games with the player's own settings (src/challenge/games.ts): Trouve la gamme, Perso.
+  const customGames = CUSTOM_GAMES[kind];
+  const [customId, setCustomId] = useState<string | null>(null);
+  const [customOpts, setCustomOpts] = useState<Record<string, ChallengeOptions>>({});
+  const customOf = (g: CustomGame): ChallengeOptions => customOpts[g.id] ?? { ...DEFAULT_CHALLENGE, rounds: g.defaultRounds, ...g.preset };
+  const setCustom = (g: CustomGame, o: ChallengeOptions) => setCustomOpts((m) => ({ ...m, [g.id]: o }));
+  // A single game is always open; with several, none until one is chosen.
+  const customGame = level ? null : customGames.length === 1 ? customGames[0] : (customGames.find((g) => g.id === customId) ?? null);
+  const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : (customGame?.rounds ?? ROUND_CHOICES[kind]);
   const levelRoundCount = level ? (levelRounds[roundsKey] ?? (neckCat ? neckRounds[0] : level.defaultRounds)) : 0;
   // What is actually played.
   // The answer mode (guitar / touch / both) is a global setting (Réglages › Entraînement).
-  const play: ChallengeOptions = { ...(level && cat ? levelOptions(opts, level, cat, levelRoundCount) : opts), input: settings.challengeInput };
-  const variant = level && cat ? `${level.id}-${cat.id}` : "custom";
+  const play: ChallengeOptions = {
+    ...(level && cat ? levelOptions(opts, level, cat, levelRoundCount) : customGame ? customOf(customGame) : opts),
+    input: settings.challengeInput,
+  };
+  const variant = level && cat ? `${level.id}-${cat.id}` : (customGame?.id ?? "custom");
   const sprint = play.sprintSec > 0;
 
   const optsRef = useRef(play);
@@ -678,174 +689,246 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   }
 
   // ---------- Setup ----------
-  const degreeNums = scaleOf(opts.scaleId).intervals.map((i) => String(i.num));
-  const toggleDegree = (n: string) => {
-    const has = opts.degrees.includes(n);
-    if (has && opts.degrees.length === 1) return;
-    setOpts({ ...opts, degrees: has ? opts.degrees.filter((x) => x !== n) : [...opts.degrees, n] });
-  };
-  const toggleScale = (id: string) => {
-    const has = opts.scales.includes(id);
-    if (has && opts.scales.length === 1) return;
-    setOpts({ ...opts, scales: has ? opts.scales.filter((x) => x !== id) : [...opts.scales, id] });
-  };
-  const levelSummary = level && cat ? summaryOf(play, nameOf) : [];
   const micWarning = micDenied && play.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null;
-  const recordLine = best ? (
-    <Text style={styles.muted}>
-      {sprint ? tr("Record : {n} tours", { n: best.score ?? 0 }) : tr("Record ({n} tours) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
-    </Text>
-  ) : null;
-  const startButton = (label: string) => (
-    <Pressable testID="challenge-start" onPress={requestStart} style={({ pressed }) => [styles.primary, styles.primaryTight, pressed && styles.pressed]}>
-      <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-      <Text style={styles.primaryText} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
+  const recordText = best
+    ? sprint
+      ? tr("Record : {n} tours", { n: best.score ?? 0 })
+      : tr("Record ({n} tours) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })
+    : null;
+
+  // One setting = one sheet. `target`: the level games (key only) or a custom game.
+  const sheetDef = (): OptionSheetDef | null => {
+    if (!sheet) return null;
+    const g = sheet.target === "level" ? null : customGames.find((x) => x.id === sheet.target) ?? null;
+    const o = g ? customOf(g) : opts;
+    const set = (patch: Partial<ChallengeOptions>) => (g ? setCustom(g, { ...o, ...patch }) : setOpts({ ...opts, ...patch }));
+    const keys = Array.from({ length: 12 }, (_, pc) => ({ id: `pc-${pc}`, label: nameOf(pc), selected: !o.randomKey && o.rootPc === pc }));
+    switch (sheet.id) {
+      case "key":
+        return {
+          title: tr("Tonalité"),
+          hint: g ? tr("Une tonalité fixe, ou une nouvelle à chaque tour.") : undefined,
+          options: g
+            ? [
+                ...keys,
+                { id: "random", label: tr("Au hasard"), selected: o.randomKey && !o.naturalKeys },
+                { id: "random-nat", label: tr("Au hasard, sans ♯ ni ♭"), selected: o.randomKey && o.naturalKeys },
+              ]
+            : keys,
+          onPick: (id) =>
+            id === "random"
+              ? set({ randomKey: true, naturalKeys: false })
+              : id === "random-nat"
+                ? set({ randomKey: true, naturalKeys: true })
+                : set({ randomKey: false, rootPc: Number(id.slice(3)) }),
+        };
+      case "natural":
+        return {
+          title: tr("Tonalité au hasard"),
+          options: [
+            { id: "all", label: tr("Les 12 tonalités"), selected: !o.naturalKeys },
+            { id: "nat", label: tr("Sans ♯ ni ♭ (C D E F G A B)"), selected: o.naturalKeys },
+          ],
+          onPick: (id) => set({ naturalKeys: id === "nat" }),
+        };
+      case "context":
+        return {
+          title: tr("Tonalité majeure ou mineure"),
+          options: [
+            ...DEGREE_SCALES.map((id) => ({ id, label: tr(scaleOf(id).name), selected: !o.contextRandom && o.scaleId === id })),
+            { id: "random", label: tr("Majeur / mineur au hasard"), selected: o.contextRandom },
+          ],
+          onPick: (id) => set(id === "random" ? { contextRandom: true } : { scaleId: id, contextRandom: false }),
+        };
+      case "degrees":
+        return {
+          title: tr("Degrés"),
+          hint: tr("Chaque tour demande un autre degré, tiré parmi ceux choisis."),
+          multi: true,
+          options: scaleOf(o.scaleId).intervals.map((iv) => {
+            const n = String(iv.num);
+            return { id: n, label: n === "1" ? tr("Tonique (1)") : o.contextRandom ? n : prettyLabel(labelOfNum(o.scaleId, n)), selected: o.degrees.includes(n) };
+          }),
+          onPick: (n) => {
+            const has = o.degrees.includes(n);
+            if (has && o.degrees.length === 1) return;
+            set({ degrees: has ? o.degrees.filter((x) => x !== n) : [...o.degrees, n] });
+          },
+        };
+      case "scope":
+        return {
+          title: tr("Zone"),
+          options: [
+            { id: "position", label: tr("Une position"), selected: o.scope === "position" },
+            { id: "neck", label: tr("Tout le manche"), selected: o.scope === "neck" },
+          ],
+          onPick: (id) => set({ scope: id as ChallengeOptions["scope"] }),
+        };
+      case "position":
+        return {
+          title: tr("Position"),
+          options: [
+            ...[0, 1, 2, 3, 4].map((p) => ({ id: String(p), label: tr("Pos. {n}", { n: p + 1 }), selected: o.position === p })),
+            { id: "-2", label: tr("1 → 5"), selected: o.position === -2 },
+            { id: "-1", label: tr("Au hasard"), selected: o.position === -1 },
+          ],
+          onPick: (id) => set({ position: Number(id) }),
+        };
+      case "hideTonic":
+        return {
+          title: tr("Tonique"),
+          hint: tr("Les toniques affichées servent de repère quand elles ne sont pas demandées."),
+          options: [
+            { id: "show", label: tr("Tonique affichée"), selected: !o.hideTonic },
+            { id: "hide", label: tr("Tonique cachée"), selected: o.hideTonic },
+          ],
+          onPick: (id) => set({ hideTonic: id === "hide" }),
+        };
+      case "scales":
+        return {
+          title: tr("Gammes"),
+          hint: o.rounds > 1 ? tr("Une gamme différente à chaque tour, tirée parmi celles choisies.") : tr("La gamme est tirée parmi celles choisies."),
+          multi: true,
+          options: SCALE_CHOICES.map((id) => ({ id, label: tr(scaleOf(id).name), selected: o.scales.includes(id) })),
+          onPick: (id) => {
+            const has = o.scales.includes(id);
+            if (has && o.scales.length === 1) return;
+            set({ scales: has ? o.scales.filter((x) => x !== id) : [...o.scales, id] });
+          },
+        };
+      case "order":
+        return {
+          title: tr("Ordre"),
+          options: [
+            { id: "free", label: tr("Libre"), selected: o.order === "free" },
+            { id: "up", label: tr("Montant (grave → aigu)"), selected: o.order === "up" },
+          ],
+          onPick: (id) => set({ order: id as ChallengeOptions["order"] }),
+        };
+    }
+  };
+
+  /** The pastille of a setting of a custom game. */
+  const customPill = (g: CustomGame, o: ChallengeOptions, id: ChallengeSetting): Pill | null => {
+    const open = () => setSheet({ target: g.id, id });
+    switch (id) {
+      case "key":
+        return { id, onPress: open, label: o.randomKey ? (o.naturalKeys ? tr("Tonalité : hasard, sans ♯ ni ♭") : tr("Tonalité : hasard")) : tr("Tonalité {k}", { k: nameOf(o.rootPc) }) };
+      case "context":
+        return { id, onPress: open, label: o.contextRandom ? tr("Majeur / mineur : hasard") : tr(scaleOf(o.scaleId).name) };
+      case "degrees":
+        return {
+          id,
+          onPress: open,
+          label: tr("Degrés {list}", { list: o.degrees.map((n) => (o.contextRandom ? n : prettyLabel(labelOfNum(o.scaleId, n)))).join(" · ") }),
+        };
+      case "scope":
+        return { id, onPress: open, label: o.scope === "neck" ? tr("Tout le manche") : tr("Une position") };
+      case "position":
+        if (kind === "degree" && o.scope === "neck") return null;
+        return {
+          id,
+          onPress: open,
+          label: o.position === -1 ? tr("Position : hasard") : o.position === -2 ? tr("Positions 1 → 5") : tr("Position {n}", { n: o.position + 1 }),
+        };
+      case "hideTonic":
+        return { id, onPress: open, label: o.hideTonic ? tr("Tonique cachée") : tr("Tonique affichée") };
+      case "scales":
+        return { id, onPress: open, label: o.scales.length === 1 ? tr(scaleOf(o.scales[0]).name) : tr("{n} gammes", { n: o.scales.length }) };
+      case "order":
+        return { id, onPress: open, label: o.order === "up" ? tr("Du grave à l’aigu") : tr("Ordre libre") };
+    }
+  };
 
   // Levels: every game keeps its description; the selected one opens with its settings, its rounds and the Start button.
-  const levelSetup =
-    level ? (
-      <View style={styles.cats}>
-        {level.categories.map((c, i) => {
-          const on = c === cat;
-          const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
-          return (
-            <View key={c.id} style={[styles.catCard, on && styles.catCardOn]}>
-              <Pressable testID={`challenge-cat-${c.id}`} onPress={() => setCatIdx({ ...catIdx, [level.id]: on ? null : i })} style={({ pressed }) => [styles.catHead, pressed && styles.pressed]}>
-                <View style={styles.catBadges}>
-                  {(c.degrees.length > 4 ? c.degrees.slice(0, 3) : c.degrees).map((n) => (
-                    <DegreeBadge key={n} num={n} label={level.base.contextRandom ? n : prettyLabel(labelOfNum(ctx, n))} />
-                  ))}
-                  {c.degrees.length > 4 ? <Text style={styles.more}>…</Text> : null}
-                </View>
-                <View style={styles.catText}>
-                  <Text style={styles.catName}>{tr(c.name)}</Text>
-                  <Text style={styles.muted}>{tr(c.meta)}</Text>
-                </View>
-              </Pressable>
-              <Unfold open={on}>
-                <View style={styles.catBody} testID="challenge-cat-open">
-                  <View style={styles.summary}>
-                    {levelSummary.map((t) => (
-                      <View key={t.text} style={[styles.summaryChip, t.random && styles.summaryChipRandom]}>
-                        <Text style={[styles.summaryText, t.random && styles.summaryTextRandom]}>{t.text}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  {level.id === "inter" && play.randomKey ? (
-                    <View style={styles.roundsRow}>
-                      <Chip
-                        testID="challenge-natural-keys"
-                        label={tr("Toniques sans ♯ ni ♭")}
-                        selected={opts.naturalKeys}
-                        onPress={() => setOpts({ ...opts, naturalKeys: !opts.naturalKeys })}
-                      />
-                      <Text style={styles.muted}>{opts.naturalKeys ? "C D E F G A B" : tr("les 12 tonalités")}</Text>
-                    </View>
-                  ) : null}
-                  {level.keyChoice && !play.randomKey ? (
-                    <View style={styles.keyRow}>
-                      <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" />
-                      <Text style={styles.muted}>{tr("Ta tonalité")}</Text>
-                    </View>
-                  ) : null}
-                  {sprint ? (
-                    <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de tours possible.", { s: play.sprintSec })}</Text>
-                  ) : (
-                    <View style={styles.roundsRow}>
-                      <Text style={styles.roundsLabel}>{tr("Tours")}</Text>
-                      {roundChoices.map((n) => (
-                        <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={levelRoundCount === n} onPress={() => setLevelRounds({ ...levelRounds, [roundsKey]: n })} />
-                      ))}
-                    </View>
-                  )}
-                  {recordLine}
-                  {micWarning}
-                  {startButton(tr("Démarrer · {name}", { name: tr(c.name) }))}
-                </View>
-              </Unfold>
-            </View>
-          );
-        })}
-      </View>
-    ) : null;
+  const levelSetup = level ? (
+    <View style={styles.cats}>
+      {level.categories.map((c, i) => {
+        const on = c === cat;
+        const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
+        // What the level sets; the key can be changed when the level lets the player choose it.
+        const pills: Pill[] = on
+          ? summaryOf(play, nameOf).map((t, k) => ({
+              id: `sum-${k}`,
+              label: t.text,
+              random: t.random,
+              onPress:
+                k !== 0
+                  ? undefined
+                  : level.keyChoice && !play.randomKey
+                    ? () => setSheet({ target: "level", id: "key" })
+                    : level.id === "inter" && play.randomKey
+                      ? () => setSheet({ target: "level", id: "natural" })
+                      : undefined,
+            }))
+          : [];
+        if (on && play.randomKey && play.naturalKeys) pills[0] = { ...pills[0], label: tr("Tonalité : hasard, sans ♯ ni ♭") };
+        return (
+          <GameCard
+            key={c.id}
+            testID={`challenge-cat-${c.id}`}
+            name={tr(c.name)}
+            meta={tr(c.meta)}
+            badges={
+              <>
+                {(c.degrees.length > 4 ? c.degrees.slice(0, 3) : c.degrees).map((n) => (
+                  <DegreeBadge key={n} num={n} label={level.base.contextRandom ? n : prettyLabel(labelOfNum(ctx, n))} />
+                ))}
+                {c.degrees.length > 4 ? <Text style={styles.more}>…</Text> : null}
+              </>
+            }
+            open={on}
+            onToggle={() => setCatIdx({ ...catIdx, [level.id]: on ? null : i })}
+            pills={pills}
+            countLabel={tr("Tours")}
+            counts={sprint ? undefined : roundChoices}
+            count={levelRoundCount}
+            onCount={(n) => setLevelRounds({ ...levelRounds, [roundsKey]: n })}
+            extra={sprint ? <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de tours possible.", { s: play.sprintSec })}</Text> : null}
+            record={on ? recordText : null}
+            warning={on ? micWarning : null}
+            startTestID="challenge-start"
+            startLabel={tr("Démarrer · {name}", { name: tr(c.name) })}
+            onStart={requestStart}
+          />
+        );
+      })}
+    </View>
+  ) : null;
 
   const customSetup = (
-    <>
-      <View style={styles.keyRow}>
-        {!opts.randomKey ? <KeyButton rootPc={opts.rootPc} nameOf={nameOf} onChange={(pc) => setOpts({ ...opts, rootPc: pc })} testID="challenge-key" /> : null}
-        <Chip testID="challenge-random-key" label={tr("Tonalité au hasard")} selected={opts.randomKey} onPress={() => setOpts({ ...opts, randomKey: !opts.randomKey })} />
-      </View>
-
-      <SectionLabel>{tr("Tours")}</SectionLabel>
-      <View style={styles.wrap}>
-        {ROUND_CHOICES[kind].map((n) => (
-          <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
-        ))}
-      </View>
-
-      {kind === "degree" ? (
-        <>
-          <SectionLabel>{tr("Tonalité")}</SectionLabel>
-          <View style={styles.wrap}>
-            {DEGREE_SCALES.map((id) => (
-              <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={!opts.contextRandom && opts.scaleId === id} onPress={() => setOpts({ ...opts, scaleId: id, contextRandom: false })} />
-            ))}
-            <Chip testID="challenge-scale-random" label={tr("Majeur / mineur au hasard")} selected={opts.contextRandom} onPress={() => setOpts({ ...opts, contextRandom: true })} />
-          </View>
-          <SectionLabel>{tr("Degrés")}</SectionLabel>
-          <View style={styles.wrap}>
-            {degreeNums.map((n) => (
-              <Chip
-                key={n}
-                testID={`challenge-degree-${n}`}
-                label={n === "1" ? tr("Tonique (1)") : opts.contextRandom ? n : prettyLabel(labelOfNum(opts.scaleId, n))}
-                selected={opts.degrees.includes(n)}
-                onPress={() => toggleDegree(n)}
-              />
-            ))}
-          </View>
-          <Text style={styles.muted}>{tr("Chaque tour demande un autre degré, tiré parmi ceux choisis.")}</Text>
-          <SectionLabel>{tr("Zone")}</SectionLabel>
-          <View style={styles.wrap}>
-            <Chip testID="challenge-scope-position" label={tr("Une position")} selected={opts.scope === "position"} onPress={() => setOpts({ ...opts, scope: "position" })} />
-            <Chip testID="challenge-scope-neck" label={tr("Tout le manche")} selected={opts.scope === "neck"} onPress={() => setOpts({ ...opts, scope: "neck" })} />
-            <Chip testID="challenge-hide-tonic" label={tr("Cacher la tonique")} selected={opts.hideTonic} onPress={() => setOpts({ ...opts, hideTonic: !opts.hideTonic })} />
-          </View>
-        </>
-      ) : (
-        <>
-          <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque tour)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
-          <View style={styles.wrap}>
-            {SCALE_CHOICES.map((id) => (
-              <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scales.includes(id)} onPress={() => toggleScale(id)} />
-            ))}
-          </View>
-          {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque tour.")}</Text> : null}
-          <SectionLabel>{tr("Ordre")}</SectionLabel>
-          <View style={styles.wrap}>
-            <Chip testID="challenge-order-free" label={tr("Libre")} selected={opts.order === "free"} onPress={() => setOpts({ ...opts, order: "free" })} />
-            <Chip testID="challenge-order-up" label={tr("Montant (grave → aigu)")} selected={opts.order === "up"} onPress={() => setOpts({ ...opts, order: "up" })} />
-          </View>
-        </>
-      )}
-
-      {kind === "scale" || opts.scope === "position" ? (
-        <>
-          <SectionLabel>{tr("Position")}</SectionLabel>
-          <View style={styles.wrap}>
-            {[0, 1, 2, 3, 4].map((p) => (
-              <Chip key={p} testID={`challenge-pos-${p}`} label={tr("Pos. {n}", { n: p + 1 })} selected={opts.position === p} onPress={() => setOpts({ ...opts, position: p })} />
-            ))}
-            <Chip testID="challenge-pos-cycle" label={tr("1 → 5")} selected={opts.position === -2} onPress={() => setOpts({ ...opts, position: -2 })} />
-            <Chip testID="challenge-pos-random" label={tr("Au hasard")} selected={opts.position === -1} onPress={() => setOpts({ ...opts, position: -1 })} />
-          </View>
-        </>
-      ) : null}
-    </>
+    <View style={styles.cats}>
+      {customGames.map((g) => {
+        const on = g === customGame;
+        const o = customOf(g);
+        const pills = on ? g.edit.map((id) => customPill(g, o, id)).filter((p): p is Pill => !!p) : [];
+        return (
+          <GameCard
+            key={g.id}
+            testID={`challenge-game-${g.id}`}
+            name={tr(g.name)}
+            meta={tr(g.meta)}
+            open={on}
+            onToggle={customGames.length > 1 ? () => setCustomId(on ? null : g.id) : undefined}
+            pills={pills}
+            countLabel={tr("Tours")}
+            counts={g.rounds}
+            count={o.rounds}
+            onCount={(n) => setCustom(g, { ...o, rounds: n })}
+            extra={
+              kind === "scale" && o.rounds > 1 && o.scales.length < 2 ? (
+                <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque tour.")}</Text>
+              ) : null
+            }
+            record={on ? recordText : null}
+            warning={on ? micWarning : null}
+            startTestID="challenge-start"
+            startLabel={tr("Démarrer · {name}", { name: tr(g.name) })}
+            onStart={requestStart}
+          />
+        );
+      })}
+    </View>
   );
 
   return (
@@ -878,18 +961,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               ))}
             </View>
           ) : null}
-          {level ? (
-            levelSetup
-          ) : (
-            <>
-              {customSetup}
-              {recordLine}
-              {micWarning}
-              {startButton(tr("Démarrer · {name}", { name: tr(kind === "scale" ? TITLES.scale : "Perso") }))}
-            </>
-          )}
+          {level ? levelSetup : customSetup}
         </ScrollView>
       )}
+      <OptionSheet def={sheetDef()} onClose={() => setSheet(null)} />
     </View>
   );
 }

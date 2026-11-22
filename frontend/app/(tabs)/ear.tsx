@@ -9,7 +9,9 @@ import { FEEDBACK_MS, playFeedback, playNote, preloadFeedback, restorePlaybackMo
 import { usePitchDetector } from "@/src/audio/usePitchDetector";
 import { ChallengeView, type Feedback } from "@/src/ear/ChallengeView";
 import { ResultView } from "@/src/ear/ResultView";
-import { SetupPanel } from "@/src/ear/SetupPanel";
+import { EarLibrary, earBestKey } from "@/src/ear/EarLibrary";
+import { EAR_GAMES, defaultCountOf, type EarGame } from "@/src/ear/games";
+import { resumeWebAudio } from "@/src/audio/webAudio";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
 import { ChordQuiz } from "@/src/ear/ChordQuiz";
 import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
@@ -19,8 +21,6 @@ import { reasonText } from "@/src/ear/labels";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import {
   DEFAULT_OPTIONS,
-  SECTIONS,
-  bestKey,
   lowestPosition,
   candidateKeys,
   makeQuestion,
@@ -85,11 +85,25 @@ export default function EarScreen() {
   const zoneRef = useRef<string[] | null>(null);
   const [progress, setProgress] = useState<ReturnType<typeof sessionProgress> | null>(null);
   const [tab, setTab] = useState<"play" | "results">("play");
-  const [chordPhase, setChordPhase] = useState<"setup" | "running" | "done">("setup"); // Accords runs its own quiz
-  const chordRunning = section === "chords" && chordPhase === "running";
+  // The library (src/ear/games.ts): the open card, and the settings / length kept for each game.
+  const [openGame, setOpenGame] = useState<string | null>(null);
+  const [gameOpts, setGameOpts] = useState<Record<string, Options>>({});
+  const [gameCounts, setGameCounts] = useState<Record<string, number>>({});
+  const optsOf = (g: EarGame): Options => gameOpts[g.id] ?? { ...DEFAULT_OPTIONS, count: defaultCountOf(g), ...g.preset };
+  const countOf = (g: EarGame) => (g.family === "mic" ? optsOf(g).count : (gameCounts[g.id] ?? defaultCountOf(g)));
+  // The micro game being played (its record key).
+  const gameRef = useRef<EarGame>(EAR_GAMES[0]);
+  const [curGame, setCurGame] = useState<EarGame>(EAR_GAMES[0]);
+  // Accords: the game launched runs its own quiz (ChordQuiz), mounted until it is left.
+  const [chordGame, setChordGame] = useState<{ game: EarGame; count: number; token: number } | null>(null);
+  const [chordPhase, setChordPhase] = useState<"setup" | "running" | "done">("setup");
+  const chordRunning = !!chordGame && chordPhase === "running";
   // (Accords: only while its quiz is on screen, i.e. on the “play” tab.)
-  const showingDone = phase === "done" || (section === "chords" && tab === "play" && chordPhase === "done");
-  const [chordReset, setChordReset] = useState(0); // asks the Accords quiz to go back to its games
+  const showingDone = phase === "done" || (!!chordGame && tab === "play" && chordPhase === "done");
+  const leaveChords = useCallback(() => {
+    setChordGame(null);
+    setChordPhase("setup");
+  }, []);
   const stable = useRef({ midi: -1, count: 0 });
   const ignoreUntil = useRef(0);
   const resultsRef = useRef<boolean[]>([]);
@@ -129,17 +143,18 @@ export default function EarScreen() {
   bestRef.current = best;
 
   const resultsV = useResultsVersion(); // results erased in Réglages: reload the record
+  const micKey = () => earBestKey(gameRef.current, optsRef.current.count);
   const loadBest = useCallback(() => {
-    const key = bestKey(section, opts.count);
+    const key = earBestKey(curGame, opts.count);
     storage.getItem(key, null).then((v) => {
-      if (key !== bestKey(sectionRef.current, optsRef.current.count)) return;
+      if (key !== earBestKey(gameRef.current, optsRef.current.count)) return;
       try {
         setBest(typeof v === "string" ? (JSON.parse(v) as Best) : null);
       } catch {
         setBest(null);
       }
     });
-  }, [section, opts.count, resultsV]);
+  }, [curGame, opts.count, resultsV]);
 
   useEffect(() => {
     loadBest();
@@ -237,7 +252,7 @@ export default function EarScreen() {
     if (better) {
       const next = { score, timeMs: t, at: Date.now() };
       setBest(next);
-      storage.setItem(bestKey(sectionRef.current, optsRef.current.count), JSON.stringify(next));
+      storage.setItem(micKey(), JSON.stringify(next));
     }
   };
 
@@ -441,6 +456,31 @@ export default function EarScreen() {
     newQuestion();
   };
 
+  /** Makes this micro game the current one (settings, section, record). */
+  const selectGame = (g: EarGame, o: Options) => {
+    gameRef.current = g;
+    setCurGame(g);
+    sectionRef.current = g.section;
+    setSection(g.section);
+    optsRef.current = o;
+    setOpts(o);
+  };
+  const micGameOf = (s: Section) => EAR_GAMES.find((g) => g.family === "mic" && g.section === s) ?? EAR_GAMES[0];
+
+  /** “Démarrer · <jeu>” on a card of the library. */
+  const startGame = (g: EarGame) => {
+    if (g.family === "chords") {
+      resumeWebAudio(); // Safari (iPhone): the audio clock only runs after a tap
+      setSection("chords");
+      setChordPhase("setup");
+      setChordGame({ game: g, count: countOf(g), token: Date.now() });
+      return;
+    }
+    zoneRef.current = null;
+    selectGame(g, optsOf(g));
+    start();
+  };
+
   const skip = () => {
     if (correctingRef.current) {
       // Already counted as missed: just move on.
@@ -458,7 +498,7 @@ export default function EarScreen() {
   };
 
   const sectionLabel =
-    tr(SECTIONS.find((s) => s.id === section)!.label) +
+    tr(curGame.name) +
     (zoneRef.current && section === "board" ? ` · ${tr("Zone")}` : opts.weak ? ` · ${tr("Points faibles")}` : "");
   const micText = suspended
     ? tr("Écoute…")
@@ -502,8 +542,8 @@ export default function EarScreen() {
                   testID="ear-results-back"
                   onPress={() => {
                     if (showingDone) {
-                      // Bilan → back to the games of this section.
-                      if (section === "chords") setChordReset((n) => n + 1);
+                      // Bilan → back to the games.
+                      if (chordGame) leaveChords();
                       else setPhase("setup");
                     } else setTab("play");
                   }}
@@ -514,7 +554,7 @@ export default function EarScreen() {
                 </Pressable>
               ) : null}
               <Text style={styles.title} numberOfLines={1}>
-                {showingDone ? tr(SECTIONS.find((s) => s.id === section)!.label) : tab === "results" ? tr("Mes résultats") : tr("Oreille")}
+                {showingDone ? (chordGame ? tr("Accords") : tr(curGame.name)) : tab === "results" ? tr("Mes résultats") : tr("Oreille")}
               </Text>
               {tab === "play" && !showingDone ? (
                 <Pressable testID="ear-tab-results" onPress={() => setTab("results")} style={styles.iconBtn} accessibilityLabel={tr("Mes résultats")}>
@@ -531,17 +571,17 @@ export default function EarScreen() {
               bottomPad={bottomChrome + spacing.xl}
               onTrainZone={(keys) => {
                 // “Travailler cette zone”: weak-points draw restricted to these frets.
+                const g = micGameOf(section);
+                selectGame(g, { ...optsOf(g), weak: true });
                 zoneRef.current = keys;
-                optsRef.current = { ...optsRef.current, weak: true };
-                setOpts(optsRef.current);
                 setTab("play");
                 start();
               }}
               onTrainWeak={() => {
-                // Straight into a weak-points challenge for this section, with the current settings.
+                // Straight into a weak-points challenge for this section, with the game's settings.
+                const g = micGameOf(section);
                 zoneRef.current = null;
-                optsRef.current = { ...optsRef.current, weak: true };
-                setOpts(optsRef.current);
+                selectGame(g, { ...optsOf(g), weak: true });
                 setTab("play");
                 start();
               }}
@@ -571,28 +611,33 @@ export default function EarScreen() {
                 }}
               />
             </View>
-          ) : section === "chords" ? (
+          ) : chordGame ? (
             <ChordQuiz
-              section={section}
-              onSection={setSection}
+              key={chordGame.token}
+              game={chordGame.game}
+              count={chordGame.count}
               onPhase={setChordPhase}
+              onExit={leaveChords}
               onResults={() => {
-                setChordPhase("setup");
+                leaveChords();
+                setSection("chords");
                 setTab("results");
               }}
-              resetKey={chordReset}
               bottomPad={bottomChrome + spacing.xl}
               topPad={0}
               navInset={navInset}
             />
           ) : (
-            <SetupPanel
-              section={section}
-              onSection={setSection}
-              opts={opts}
-              setOpts={setOpts}
-              best={best}
-              onStart={start}
+            <EarLibrary
+              openId={openGame}
+              onOpen={setOpenGame}
+              optsOf={optsOf}
+              setOptsOf={(g, o) => setGameOpts((m) => ({ ...m, [g.id]: o }))}
+              countOf={countOf}
+              setCountOf={(g, n) =>
+                g.family === "mic" ? setGameOpts((m) => ({ ...m, [g.id]: { ...optsOf(g), count: n } })) : setGameCounts((m) => ({ ...m, [g.id]: n }))
+              }
+              onStart={startGame}
               perm={perm}
               error={error}
               bottomPad={bottomChrome + spacing.xl}

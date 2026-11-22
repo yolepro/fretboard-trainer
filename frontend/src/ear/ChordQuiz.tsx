@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { Play, SpeakerHigh, X } from "phosphor-react-native";
+import { SpeakerHigh, X } from "phosphor-react-native";
 
 import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
 import { resumeWebAudio } from "@/src/audio/webAudio";
-import { Chip, ChipRow } from "@/src/components/Chip";
 import { ResultView } from "@/src/ear/ResultView";
-import { Unfold } from "@/src/components/Unfold";
-import { SECTIONS, bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
+import { bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
+import { EAR_GAMES, type EarGame } from "@/src/ear/games";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
 import { useResultsVersion } from "@/src/results";
 import { useSettings } from "@/src/settings";
@@ -29,23 +28,22 @@ export const CHORD_TYPES = [
 ] as const;
 type ChordId = (typeof CHORD_TYPES)[number]["id"];
 
-/** Sets of chords to tell apart, from easy to hard. */
-export const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = [
-  { id: "majmin", name: "Majeur / mineur", meta: "Le plus important : gai ou triste ?", chords: ["maj", "min"] },
-  { id: "triads", name: "Les 4 triades", meta: "Majeur, mineur et les quintes altérées : diminuée, augmentée", chords: ["maj", "min", "dim", "aug"] },
-  { id: "sevenths", name: "Les accords 7", meta: "∆7, 7, m7, Ø : la couleur de la septième", chords: ["maj7", "dom7", "min7", "m7b5"] },
-  { id: "all", name: "Tout", meta: "Les 8 accords mélangés", chords: ["maj", "min", "dim", "aug", "maj7", "dom7", "min7", "m7b5"] },
-];
+/** Sets of chords to tell apart: the Accords games of Oreille (see src/ear/games.ts). */
+export const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = EAR_GAMES.filter((g) => g.family === "chords").map((g) => ({
+  id: g.id,
+  name: g.name,
+  meta: g.meta,
+  chords: (g.chords ?? []).filter((c): c is ChordId => CHORD_TYPES.some((t) => t.id === c)),
+}));
 type PlayStyle = "block" | "arp" | "both";
-const COUNTS = [5, 10, 20];
 const SECTION: Section = "chords";
 
 type Props = {
-  section: Section;
-  onSection: (s: Section) => void;
+  game: EarGame; // the Accords game launched from Oreille's library
+  count: number;
   onPhase: (phase: "setup" | "running" | "done") => void; // Oreille hides its header while a quiz runs
+  onExit: () => void; // back to Oreille's games
   onResults: () => void;
-  resetKey?: number; // changes when Oreille's back arrow asks to return to the games
   bottomPad: number;
   topPad: number;
   navInset: number;
@@ -54,15 +52,14 @@ type Props = {
 type Q = { chord: (typeof CHORD_TYPES)[number]; root: number };
 
 /** Oreille › Accords: a chord is played, the player says which kind it is. */
-export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bottomPad, topPad, navInset }: Props) {
+export function ChordQuiz({ game, count, onPhase, onExit, onResults, bottomPad, topPad, navInset }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
   // The choice grid is rebuilt when the screen turns: its wrapped rows kept the old width otherwise (iOS).
   const { width: winW } = useWindowDimensions();
-  const [setId, setSetId] = useState<string | null>(null); // no game selected on arrival; tap again to close
+  const setId = game.id;
   const style: PlayStyle = settings.chordStyle; // Réglages › Entraînement
-  const [count, setCount] = useState(10);
   const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
   const [q, setQ] = useState<Q | null>(null);
   const [answer, setAnswer] = useState<ChordId | null>(null);
@@ -73,6 +70,8 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
   const [isRecord, setIsRecord] = useState(false);
 
   const set = SETS.find((s) => s.id === setId) ?? SETS[0];
+  const exitRef = useRef(onExit);
+  exitRef.current = onExit;
   const choices = CHORD_TYPES.filter((c) => set.chords.includes(c.id));
   const startRef = useRef(0);
   const pausedAt = useRef<number | null>(null);
@@ -97,13 +96,15 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
     });
   }, [key, phase, resultsV]);
   useEffect(() => onPhase(phase), [phase, onPhase]);
+  // Launched from the library: the quiz starts at once.
   useEffect(() => {
-    if (resetKey) {
+    start();
+    return () => {
       clearTimers();
-      setPhase("setup");
-    }
-  }, [resetKey]);
-  useEffect(() => () => clearTimers(), []);
+      stopChordNotes();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (phase !== "running") return;
     const id = setInterval(() => {
@@ -117,7 +118,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
       () => () => {
         clearTimers();
         stopChordNotes();
-        setPhase("setup");
+        exitRef.current();
       },
       [],
     ),
@@ -232,7 +233,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
             onPress={() => {
               clearTimers();
               stopChordNotes();
-              setPhase("setup");
+              onExit();
             }}
             style={styles.roundBtn}
             accessibilityLabel={tr("Arrêter")}
@@ -299,61 +300,14 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
           replayLabel={tr("Rejouer")}
           progress={null}
           nameOf={nameOf}
-          onSetup={() => setPhase("setup")}
-          onResults={() => {
-            setPhase("setup");
-            onResults();
-          }}
+          onSetup={onExit}
+          onResults={onResults}
         />
       </View>
     );
   }
 
-  // ---------- setup ----------
-  return (
-    <View style={styles.flex} testID="chord-quiz-setup">
-      <ChipRow testID="ear-section-selector">
-        {SECTIONS.map((s) => (
-          <Chip key={s.id} testID={`ear-section-${s.id}`} label={tr(s.label)} selected={section === s.id} onPress={() => onSection(s.id)} />
-        ))}
-      </ChipRow>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false}>
-        {/* Same layout as S’exercer › Challenges: a plain explanation, then the games. */}
-        <Text style={styles.sectionTitle}>{tr("Accords")}</Text>
-        <Text style={styles.lead}>{tr("Un accord est joué : reconnais son type parmi les choix. Une seule réponse par accord.")}</Text>
-        <View style={styles.sets}>
-          {SETS.map((s) => {
-            const on = s.id === setId;
-            return (
-              <View key={s.id} style={[styles.setCard, on && styles.setCardOn]}>
-                <Pressable testID={`chord-set-${s.id}`} onPress={() => setSetId(on ? null : s.id)} style={({ pressed }) => [styles.setHead, pressed && styles.pressed]}>
-                  <Text style={styles.setName}>{tr(s.name)}</Text>
-                  <Text style={styles.muted}>{tr(s.meta)}</Text>
-                </Pressable>
-                <Unfold open={on}>
-                  <View style={styles.setBody}>
-                    <View style={styles.countRow}>
-                      <Text style={styles.muted}>{tr("Questions")}</Text>
-                      {COUNTS.map((n) => (
-                        <Chip key={n} testID={`chord-count-${n}`} label={String(n)} selected={count === n} onPress={() => setCount(n)} />
-                      ))}
-                    </View>
-                    {best ? <Text style={styles.muted}>{tr("Record : {score}/{n} en {time}", { score: best.score, n: count, time: formatTime(best.timeMs) })}</Text> : null}
-                    <Pressable testID="chord-start" onPress={start} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-                      <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-                      <Text style={styles.primaryText} numberOfLines={1}>
-                        {tr("Démarrer · {name}", { name: tr(s.name) })}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </Unfold>
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </View>
-  );
+  return null; // between two games: Oreille shows its library
 }
 
 const useStyles = makeStyles((c) => ({

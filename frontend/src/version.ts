@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.51.0 — Une seule façon de choisir un jeu : carte dépliable partagée (GameCard) avec pastilles = un réglage par feuille, longueur, record et Démarrer · <jeu>. Oreille devient une liste de jeux (Joue sur ta guitare : Manche, Écoute & rejoue, Degrés d’accord, Intervalles ; Accords : ses 4 jeux), sans sélecteur de sections ni cadre ; Trouve la gamme et Perso passent en carte à pastilles ; Trouve le degré : la tonalité se change par sa pastille. Jeux décrits dans src/ear/games.ts et src/challenge/games.ts
 // 1.50.0 — Réglages › Mes résultats : ce qui est enregistré par famille (Oreille, Challenges, Accords : records et parties) ; « Effacer mes résultats… » ouvre une feuille où l’on coche les familles à remettre à zéro (records, parties, points faibles), bouton « Tout effacer » / « Effacer : … » ; les écrans ouverts rechargent leurs records après effacement
 // 1.49.1 — Corrections (tests sur simulateur) : paysage — le X des jeux d’Oreille et l’icône Résultats ne passent plus sous la pastille d’onglets, listes et réglages décalés de l’encoche ; Réinitialiser demande confirmation et efface aussi les records des Challenges et d’Accords ; choix d’accords recalculés après rotation ; plus de pause au lancement à cause de la demande du micro ; records d’Accords par jeu dans Mes résultats
 // 1.49.0 — Vocabulaire : « tour » pour une étape de partie (Tour 3/5, Tours 3·5·10, 12 tours en 60 s), « manche » réservé à la guitare ; « partie » au lieu de « challenge » dans Oreille ; boutons « Démarrer · <jeu> » partout
@@ -124,4 +125,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.50.0";
+export const APP_VERSION = "1.51.0";
