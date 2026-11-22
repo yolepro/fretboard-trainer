@@ -357,7 +357,15 @@ export default function FingeringScreen() {
         cancelled = true;
       };
       setPlaying(true);
-      playRendered(renderSpec(), () => {}).then((h) => {
+      // The screen follows the sound itself (its position in the file), not a separate timer.
+      playRendered(renderSpec(), {
+        onBeat: (bt) => setBeat(countOffset + bt + 1),
+        onNote: (n) => {
+          if (n === 0) setBeat(null);
+          showStep(n, true);
+        },
+        onEnd: finish,
+      }).then((h) => {
         if (cancelled) {
           h?.stop();
           return;
@@ -366,25 +374,7 @@ export default function FingeringScreen() {
           startLive(finish); // could not load the mixed file: the live sampler plays it
           return;
         }
-        // The screen follows the same grid, without sound.
-        const cancelView = runSequence({
-          length: sequence.length,
-          noteMs: 60000 / bpm / pulse.notesPerPulse,
-          beatMs: 60000 / bpm,
-          beats: countBeats,
-          loop,
-          leadMs: 0,
-          onBeat: (bt) => setBeat(countOffset + bt + 1),
-          onNote: (n) => {
-            if (n === 0) setBeat(null);
-            showStep(n, true);
-          },
-          onEnd: finish,
-        });
-        cancelRef.current = () => {
-          cancelView();
-          h.stop();
-        };
+        cancelRef.current = h.stop;
       });
       return;
     }

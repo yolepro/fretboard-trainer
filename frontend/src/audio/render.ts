@@ -214,13 +214,23 @@ export function prerender(spec: RenderSpec) {
   }
 }
 
-/**
- * Plays a mixed sequence. Resolves with a stop function once the sound has started (the count-in begins then),
- * or null when the player could not load it (the caller falls back to the live sampler).
- */
 let current: (() => void) | null = null; // the mixed sequence playing (or still ringing), stopped by the next one
 
-export async function playRendered(spec: RenderSpec, onEnd: () => void): Promise<{ stop: () => void; startedAt: number } | null> {
+/** What the screen shows while the sound plays: the count-in beat, the note, the end. */
+export type RenderView = {
+  onBeat: (beat: number) => void; // count-in beat index (0 = first click of the count-in)
+  onNote: (index: number) => void;
+  onEnd: () => void; // last note over (non-looping)
+};
+
+/**
+ * Plays a mixed sequence and drives the screen FROM THE SOUND: each frame, the position in the file gives the beat
+ * or the note to highlight. A late frame never queues up: the highlight jumps straight to the note being heard.
+ * The player's own position (status updates) anchors the clock — the earliest-looking report is the most accurate,
+ * since a report can only arrive late. Resolves with a stop function, or null when the file could not be loaded
+ * (the caller falls back to the live sampler).
+ */
+export async function playRendered(spec: RenderSpec, view: RenderView): Promise<{ stop: () => void } | null> {
   if (!renderedPlayback) return null;
   initAudio();
   current?.();
@@ -239,8 +249,8 @@ export async function playRendered(spec: RenderSpec, onEnd: () => void): Promise
     return null;
   }
   // Wait until it is loaded (a data URI loads in a few ms; give up after 2 s).
-  const t0 = Date.now();
-  while (!player.isLoaded && Date.now() - t0 < 2000) await new Promise((res) => setTimeout(res, 15));
+  const w0 = Date.now();
+  while (!player.isLoaded && Date.now() - w0 < 2000) await new Promise((res) => setTimeout(res, 15));
   if (!player.isLoaded) {
     try {
       player.remove();
@@ -249,23 +259,72 @@ export async function playRendered(spec: RenderSpec, onEnd: () => void): Promise
     }
     return null;
   }
+
+  const { countInMs, cycleMs } = r;
+  const n = spec.midis.length;
+  const notesEndMs = countInMs + n * spec.noteMs; // non-looping: the screen stops after the last note's length
+  // File time (ms) = Date.now() - anchor. Before the player reports its position: a guess of its start latency.
+  const START_LATENCY_GUESS = 60;
+  let anchor = Date.now() + START_LATENCY_GUESS;
+  let measured = false;
   let stopped = false;
-  const loopFrom = r.countInMs / 1000;
-  const sub = player.addListener("playbackStatusUpdate", (s) => {
-    if (stopped || !s.didJustFinish) return;
-    if (spec.loop) {
-      // Back to the first note (the count-in is only played once).
-      Promise.resolve(player.seekTo(loopFrom))
-        .then(() => player.play())
-        .catch(() => {});
-    } else {
-      stop();
-      onEnd();
+  let lastShown = ""; // what is on screen (“b2”, “n5”), to update it only when it changes
+  let raf: ReturnType<typeof requestAnimationFrame> | null = null;
+
+  const frame = () => {
+    if (stopped) return;
+    const f = Date.now() - anchor;
+    if (f >= 0) {
+      if (f < countInMs) {
+        const b = Math.min(spec.beats - 1, Math.floor(f / spec.beatMs));
+        if (lastShown !== `b${b}`) {
+          lastShown = `b${b}`;
+          view.onBeat(b);
+        }
+      } else if (!spec.loop && f >= notesEndMs) {
+        stopView();
+        view.onEnd();
+        return;
+      } else {
+        const inCycle = (f - countInMs) % cycleMs;
+        const i = Math.floor(inCycle / spec.noteMs);
+        if (i < n && lastShown !== `n${i}`) {
+          lastShown = `n${i}`;
+          view.onNote(i);
+        }
+      }
     }
+    raf = requestAnimationFrame(frame);
+  };
+  const stopView = () => {
+    if (raf !== null) cancelAnimationFrame(raf);
+    raf = null;
+  };
+
+  const sub = player.addListener("playbackStatusUpdate", (s) => {
+    if (stopped) return;
+    if (s.didJustFinish) {
+      if (spec.loop) {
+        // Back to the first note (the count-in is only played once); the clock is re-anchored on the new reports.
+        anchor = Date.now() + START_LATENCY_GUESS - countInMs;
+        measured = false;
+        Promise.resolve(player.seekTo(countInMs / 1000))
+          .then(() => player.play())
+          .catch(() => {});
+      } else stopSound();
+      return;
+    }
+    if (!s.playing || !(s.currentTime > 0)) return;
+    const a = Date.now() - s.currentTime * 1000;
+    // A report can only be late: the earliest anchor seen is the right one (the first report replaces the guess).
+    if (!measured || a < anchor) anchor = a;
+    measured = true;
   });
-  const stop = () => {
+
+  const stopSound = () => {
     if (stopped) return;
     stopped = true;
+    stopView();
     sub.remove();
     try {
       player.pause();
@@ -274,8 +333,12 @@ export async function playRendered(spec: RenderSpec, onEnd: () => void): Promise
       // ignore
     }
   };
-  current = stop;
+  // Stopping by the user ends both; the natural end lets the last note ring (the sound stops itself).
+  const stop = () => stopSound();
+  current = stopSound;
   player.volume = 1;
   player.play();
-  return { stop, startedAt: Date.now() };
+  anchor = Date.now() + START_LATENCY_GUESS;
+  raf = requestAnimationFrame(frame);
+  return { stop };
 }

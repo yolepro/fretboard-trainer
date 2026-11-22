@@ -239,7 +239,15 @@ export default function FretboardScreen() {
         cancelled = true;
       };
       setPlaying(true);
-      playRendered(renderSpec(), () => {}).then((h) => {
+      // The screen follows the sound itself (its position in the file), not a separate timer.
+      playRendered(renderSpec(), {
+        onBeat: (b) => setBeat(4 - countBeats + b + 1),
+        onNote: (i) => {
+          if (i === 0) setBeat(null);
+          showPathStep(i);
+        },
+        onEnd: endPlay,
+      }).then((h) => {
         if (cancelled) {
           h?.stop();
           return;
@@ -248,24 +256,7 @@ export default function FretboardScreen() {
           playLive(); // could not load the mixed file: the live sampler plays it
           return;
         }
-        const cancelView = runSequence({
-          length: path.length,
-          noteMs: 60000 / bpm / 2,
-          beatMs: 60000 / bpm,
-          beats: countBeats,
-          loop,
-          leadMs: 0,
-          onBeat: (b) => setBeat(4 - countBeats + b + 1),
-          onNote: (i) => {
-            if (i === 0) setBeat(null);
-            showPathStep(i);
-          },
-          onEnd: endPlay,
-        });
-        cancelRef.current = () => {
-          cancelView();
-          h.stop();
-        };
+        cancelRef.current = h.stop;
       });
       return;
     }
