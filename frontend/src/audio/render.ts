@@ -1,5 +1,5 @@
 /**
- * Android: a sequence (count-in, notes, metronome) is mixed AHEAD OF TIME into one sound file, then played by a
+ * iOS and Android: a sequence (count-in, notes, metronome) is mixed AHEAD OF TIME into one sound file, then played by a
  * single player. The rhythm then depends on nothing but the audio hardware: a busy JavaScript thread (drawing the
  * neck and the score, Expo Go's development mode…) can delay the highlighting, never the sound.
  *
@@ -10,7 +10,43 @@ import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 
 import { initAudio } from "@/src/audio/sampler";
 
-export const renderedPlayback = Platform.OS === "android";
+export const renderedPlayback = Platform.OS !== "web";
+
+/**
+ * Where the mixed sound goes. iOS: a file in the cache (its player does not read data URIs). Android: a data URI
+ * (no file needed). expo-file-system comes with Expo; if it cannot be loaded, the data URI is tried.
+ */
+type FsFile = { uri: string; exists: boolean; create: (o?: { overwrite?: boolean }) => void; write: (b: Uint8Array) => void; delete: () => void };
+let fsApi: { File: new (...parts: unknown[]) => FsFile; Paths: { cache: unknown } } | null | undefined;
+function fileApi() {
+  if (fsApi === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const m = require("expo-file-system");
+      fsApi = m?.File && m?.Paths ? m : null;
+    } catch {
+      fsApi = null;
+    }
+  }
+  return fsApi;
+}
+let fileSeq = 0;
+function toUri(bytes: Uint8Array): { uri: string; file?: FsFile } {
+  if (Platform.OS === "ios") {
+    const api = fileApi();
+    if (api) {
+      try {
+        const f = new api.File(api.Paths.cache, `fretstudio-seq-${Date.now()}-${fileSeq++}.wav`);
+        f.create({ overwrite: true });
+        f.write(bytes);
+        return { uri: f.uri, file: f };
+      } catch {
+        // fall through to the data URI
+      }
+    }
+  }
+  return { uri: `data:audio/wav;base64,${encodeBase64(bytes)}` };
+}
 
 export type RenderSpec = {
   midis: number[]; // the notes, in order
@@ -131,7 +167,7 @@ function mixIn(mix: Float32Array, src: Float32Array, at: number, gain: number, r
 /** Length of the loop: whole beats (as runSequence). */
 export const cycleMsOf = (s: RenderSpec) => Math.max(1, Math.ceil((s.midis.length * s.noteMs) / s.beatMs - 1e-6)) * s.beatMs;
 
-type Rendered = { uri: string; countInMs: number; cycleMs: number; durationMs: number };
+type Rendered = { uri: string; file?: FsFile; countInMs: number; cycleMs: number; durationMs: number };
 const cache = new Map<string, Rendered>();
 const keyOf = (s: RenderSpec) =>
   JSON.stringify([s.midis, Math.round(s.noteMs), Math.round(s.beatMs), s.beats, s.firstBeat, s.loop, s.volume, s.metronome]);
@@ -198,8 +234,17 @@ export function renderSequence(spec: RenderSpec): Rendered | null {
     const x = Math.max(-1, Math.min(1, mix[i]));
     v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true);
   }
-  const out = { uri: `data:audio/wav;base64,${encodeBase64(bytes)}`, countInMs, cycleMs, durationMs };
-  if (cache.size > 12) cache.delete(cache.keys().next().value as string);
+  const out: Rendered = { ...toUri(bytes), countInMs, cycleMs, durationMs };
+  if (cache.size > 12) {
+    // Oldest mix out (and its file, iOS).
+    const oldKey = cache.keys().next().value as string;
+    try {
+      cache.get(oldKey)?.file?.delete();
+    } catch {
+      // ignore
+    }
+    cache.delete(oldKey);
+  }
   cache.set(key, out);
   return out;
 }

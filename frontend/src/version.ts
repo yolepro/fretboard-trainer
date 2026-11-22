@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.53.0 — iPhone : même principe qu’Android — gamme mixée à l’avance (fichier WAV dans le cache, expo-file-system) jouée par un seul lecteur, surbrillance pilotée par la position du son ; échantillons PCM communs (pcm.native.ts)
 // 1.52.1 — Android : la surbrillance suit le son lui-même (position du lecteur, recalée sur ses rapports) à chaque image ; une image en retard ne s’empile plus, la note affichée saute directement à celle qu’on entend
 // 1.52.0 — Android : la gamme (Explorer, exercices) est mixée à l’avance en un seul fichier son (décompte, notes, métronome) et jouée par un seul lecteur ; le rythme ne dépend plus du fil JavaScript. Mixage préparé pendant les temps morts après chaque changement ; repli sur la lecture note à note si le fichier ne se charge pas
 // 1.51.1 — Trouve le degré › Intermédiaire : « Arpège 7 » (3, 5, 7) retiré, doublon des Piliers (1, 3, 5, 7)
@@ -128,4 +129,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.52.1";
+export const APP_VERSION = "1.53.0";

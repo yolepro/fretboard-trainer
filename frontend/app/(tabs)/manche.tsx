@@ -196,7 +196,7 @@ export default function FretboardScreen() {
   // Each note is highlighted on the neck while it sounds, at the place closest to the left of the position.
   // Count-in: one bar (4 beats), or its second half ("3, 4") when the tempo is under 70.
   const countBeats = bpm < 70 ? 2 : 4;
-  // Android: the whole sequence is mixed ahead into one sound file (render.ts), so the rhythm no longer depends on
+  // iPhone / Android: the whole sequence is mixed ahead into one sound file (render.ts), so the rhythm no longer depends on
   // the JavaScript thread; it is mixed while nothing plays, a moment after each change.
   const renderSpec = (): RenderSpec => ({
     midis: path.map((st) => st.midi),

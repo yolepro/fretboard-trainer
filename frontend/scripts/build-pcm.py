@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Builds src/audio/pcm.android.ts: the guitar samples and claves as raw PCM (22 050 Hz, mono, 16-bit, base64),
-so Android can mix a whole sequence ahead of time into one sound file (see src/audio/render.ts).
+"""Builds src/audio/pcm.native.ts: the guitar samples and claves as raw PCM (22 050 Hz, mono, 16-bit, base64),
+so iOS and Android can mix a whole sequence ahead of time into one sound file (see src/audio/render.ts).
 Run from frontend/: python3 scripts/build-pcm.py   (needs ffmpeg)."""
 import base64, os, subprocess, struct
 
@@ -33,5 +33,5 @@ for m, name in NAMES.items():
 out.append("};")
 out.append(f'export const CLAVE_HIGH = "{pcm("assets/sounds/clave_high.wav")}";')
 out.append(f'export const CLAVE_LOW = "{pcm("assets/sounds/clave_low.wav")}";')
-open("src/audio/pcm.android.ts", "w").write("\n".join(out) + "\n")
-print(os.path.getsize("src/audio/pcm.android.ts"))
+open("src/audio/pcm.native.ts", "w").write("\n".join(out) + "\n")
+print(os.path.getsize("src/audio/pcm.native.ts"))

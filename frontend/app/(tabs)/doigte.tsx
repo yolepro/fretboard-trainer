@@ -319,7 +319,7 @@ export default function FingeringScreen() {
     setView("library");
   };
 
-  // Android: the whole sequence is mixed ahead into one sound file (render.ts) — the rhythm no longer depends on
+  // iPhone / Android: the whole sequence is mixed ahead into one sound file (render.ts) — the rhythm no longer depends on
   // the JavaScript thread. It is mixed while nothing plays, a moment after each change, so Play starts at once.
   const renderSpec = (): RenderSpec => ({
     midis: sequence.map((st) => st.midi),
