@@ -82,9 +82,9 @@ export function ChallengeResults({ kind, nameOf, bottomPad, variant, lengths }: 
       <View style={styles.records}>
         {lengths.map((n, i) => (
           <View key={String(n)} style={styles.recordCard}>
-            <Text style={styles.muted}>{n === "sprint" ? tr("Contre-la-montre") : tr("{n} manches", { n })}</Text>
+            <Text style={styles.muted}>{n === "sprint" ? tr("Contre-la-montre") : tr("{n} tours", { n })}</Text>
             <Text style={styles.recordTime}>
-              {bests[i] ? (n === "sprint" ? tr("{n} manches", { n: bests[i]!.score ?? 0 }) : formatTime(bests[i]!.timeMs)) : "—"}
+              {bests[i] ? (n === "sprint" ? tr("{n} tours", { n: bests[i]!.score ?? 0 }) : formatTime(bests[i]!.timeMs)) : "—"}
             </Text>
             <Text style={styles.small}>{bests[i] ? tr(bests[i]!.errors === 1 ? "{n} erreur" : "{n} erreurs", { n: bests[i]!.errors }) : tr("pas encore joué")}</Text>
           </View>
@@ -159,7 +159,7 @@ export function ChallengeResults({ kind, nameOf, bottomPad, variant, lengths }: 
         </View>
         <Text style={styles.small}>{tr("Gris : jamais demandée. Une case n’est coloriée qu’après 3 essais.")}</Text>
       </View>
-      {attempts && list.length === 0 ? <Text style={styles.empty}>{tr("Aucune réponse sur cette période : lance un challenge pour remplir ton tableau de bord.")}</Text> : null}
+      {attempts && list.length === 0 ? <Text style={styles.empty}>{tr("Aucune réponse sur cette période : lance une partie pour remplir ton tableau de bord.")}</Text> : null}
     </ScrollView>
   );
 }

@@ -231,7 +231,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
                 <Text style={styles.trainText}>{tr("Travailler cette zone")}</Text>
               </Pressable>
               <Text style={styles.muted}>
-                {tr("Cases {a} à {b}, cordes {s} · le challenge pioche dans le cadre orange, les cases les plus faibles plus souvent.", { a: zf0, b: zf1, s: zoneStrings })}
+                {tr("Cases {a} à {b}, cordes {s} · le jeu pioche dans le cadre orange, les cases les plus faibles plus souvent.", { a: zf0, b: zf1, s: zoneStrings })}
               </Text>
             </View>
           ) : null}
@@ -365,7 +365,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
               <Text style={styles.foot}>{tr("Temps par note (plus bas = plus rapide) · point plein : 80 % de bonnes réponses ou plus")}</Text>
             </>
           ) : (
-            <Text style={styles.muted}>{tr("Termine au moins 2 challenges pour voir ta progression.")}</Text>
+            <Text style={styles.muted}>{tr("Termine au moins 2 parties pour voir ta progression.")}</Text>
           )}
         </View>
 
@@ -402,7 +402,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
           <CaretRight size={18} color={colors.onSurfaceTertiary} weight="bold" />
         </Pressable>
 
-        {history && attempts.length === 0 ? <Text style={styles.empty}>{tr("Aucune réponse sur cette période : lance un challenge pour remplir ton tableau de bord.")}</Text> : null}
+        {history && attempts.length === 0 ? <Text style={styles.empty}>{tr("Aucune réponse sur cette période : lance une partie pour remplir ton tableau de bord.")}</Text> : null}
       </ScrollView>
     </View>
   );

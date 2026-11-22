@@ -398,7 +398,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
       if (!sprinting) sound("success");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const idx = roundIdxRef.current;
-      setMessage({ text: tr("Manche réussie !"), bad: false });
+      setMessage({ text: tr("Tour réussi !"), bad: false });
       later(
         () => {
           if (!sprinting && idx + 1 >= optsRef.current.rounds) finish();
@@ -544,10 +544,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     return (
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
-        {header(sprint ? tr("Manche {i}", { i: roundIdx + 1 }) : tr("Manche {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
+        {header(sprint ? tr("Tour {i}", { i: roundIdx + 1 }) : tr("Tour {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
         {away ? (
           <View style={styles.pauseOverlay} testID="challenge-paused">
-            <Text style={styles.rotateTitle}>{tr("Challenge en pause")}</Text>
+            <Text style={styles.rotateTitle}>{tr("Partie en pause")}</Text>
             <Text style={styles.rotateText}>{tr("Le chrono s’est arrêté quand tu as quitté l’écran.")}</Text>
             <Pressable testID="challenge-resume" onPress={comeBack} style={({ pressed }) => [styles.primary, styles.resumeBtn, pressed && styles.pressed]}>
               <Play size={22} color={colors.onBrandPrimary} weight="fill" />
@@ -606,7 +606,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             layout={landscape ? "full" : "zoom"} min={round.min} max={round.max} scope={round.scope} found={found} tonics={round.tonics} wrong={wrong} revealed={revealed} onPress={onTouch} disabled={play.input === "mic"} />
           {revealed.length ? (
             <Pressable testID="challenge-next" onPress={() => advanceRef.current()} style={({ pressed }) => [styles.nextBtn, pressed && styles.pressed]}>
-              <Text style={styles.nextText}>{tr("J’ai retenu, manche suivante")}</Text>
+              <Text style={styles.nextText}>{tr("J’ai retenu, tour suivant")}</Text>
             </Pressable>
           ) : null}
           <View style={[styles.message, message?.bad && styles.messageBad, message && !message.bad && styles.messageGood]} testID="challenge-message">
@@ -620,7 +620,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           {round.tonics.length ? <Text style={styles.hint}>{tr("Cercles rouges : la tonique, pour te repérer.")}</Text> : null}
           {!revealed.length ? (
             <Text style={styles.hint}>
-              {tr("Erreurs dans cette manche : {e}/{n}", { e: Math.min(roundErrorsRef.current, mistakesAllowed(round.scope)), n: mistakesAllowed(round.scope) })}
+              {tr("Erreurs dans ce tour : {e}/{n}", { e: Math.min(roundErrorsRef.current, mistakesAllowed(round.scope)), n: mistakesAllowed(round.scope) })}
             </Text>
           ) : null}
           <Text style={styles.hint}>{tr("{n} erreur(s)", { n: errors })}</Text>
@@ -643,12 +643,12 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           ) : null}
           <Text style={styles.doneTime}>{sprint ? String(score) : formatTime(finalMs)}</Text>
           <Text style={styles.muted}>
-            {sprint ? tr("manches réussies en {s} s", { s: play.sprintSec }) : tr("{n} manches", { n: play.rounds })} ·{" "}
+            {sprint ? tr("tours réussis en {s} s", { s: play.sprintSec }) : tr("{n} tours", { n: play.rounds })} ·{" "}
             {tr(errors === 1 ? "{n} erreur" : "{n} erreurs", { n: errors })}
-            {failed ? ` · ${tr(failed === 1 ? "{n} manche ratée" : "{n} manches ratées", { n: failed })}` : ""}
+            {failed ? ` · ${tr(failed === 1 ? "{n} tour raté" : "{n} tours ratés", { n: failed })}` : ""}
           </Text>
           <Text style={styles.muted}>
-            {best ? (sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record : {time}", { time: formatTime(best.timeMs) })) : ""}
+            {best ? (sprint ? tr("Record : {n} tours", { n: best.score ?? 0 }) : tr("Record : {time}", { time: formatTime(best.timeMs) })) : ""}
           </Text>
           <Pressable testID="challenge-replay" onPress={requestStart} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
             <ArrowClockwise size={20} color={colors.onBrandPrimary} weight="bold" />
@@ -690,7 +690,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const micWarning = micDenied && play.input !== "touch" ? <Text style={styles.warn}>{tr("Micro indisponible : réponds en touchant le manche.")}</Text> : null;
   const recordLine = best ? (
     <Text style={styles.muted}>
-      {sprint ? tr("Record : {n} manches", { n: best.score ?? 0 }) : tr("Record ({n} manches) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
+      {sprint ? tr("Record : {n} tours", { n: best.score ?? 0 }) : tr("Record ({n} tours) : {time}", { n: play.rounds, time: formatTime(best.timeMs) })}
     </Text>
   ) : null;
   const startButton = (label: string) => (
@@ -750,10 +750,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                     </View>
                   ) : null}
                   {sprint ? (
-                    <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de manches possible.", { s: play.sprintSec })}</Text>
+                    <Text style={styles.muted}>{tr("{s} secondes : enchaîne le plus de tours possible.", { s: play.sprintSec })}</Text>
                   ) : (
                     <View style={styles.roundsRow}>
-                      <Text style={styles.roundsLabel}>{tr("Manches")}</Text>
+                      <Text style={styles.roundsLabel}>{tr("Tours")}</Text>
                       {roundChoices.map((n) => (
                         <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={levelRoundCount === n} onPress={() => setLevelRounds({ ...levelRounds, [roundsKey]: n })} />
                       ))}
@@ -777,7 +777,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         <Chip testID="challenge-random-key" label={tr("Tonalité au hasard")} selected={opts.randomKey} onPress={() => setOpts({ ...opts, randomKey: !opts.randomKey })} />
       </View>
 
-      <SectionLabel>{tr("Manches")}</SectionLabel>
+      <SectionLabel>{tr("Tours")}</SectionLabel>
       <View style={styles.wrap}>
         {ROUND_CHOICES[kind].map((n) => (
           <Chip key={n} testID={`challenge-rounds-${n}`} label={String(n)} selected={opts.rounds === n} onPress={() => setOpts({ ...opts, rounds: n })} />
@@ -805,7 +805,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               />
             ))}
           </View>
-          <Text style={styles.muted}>{tr("Chaque manche demande un autre degré, tiré parmi ceux choisis.")}</Text>
+          <Text style={styles.muted}>{tr("Chaque tour demande un autre degré, tiré parmi ceux choisis.")}</Text>
           <SectionLabel>{tr("Zone")}</SectionLabel>
           <View style={styles.wrap}>
             <Chip testID="challenge-scope-position" label={tr("Une position")} selected={opts.scope === "position"} onPress={() => setOpts({ ...opts, scope: "position" })} />
@@ -815,13 +815,13 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         </>
       ) : (
         <>
-          <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque manche)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
+          <SectionLabel>{opts.rounds > 1 ? tr("Gammes (une différente à chaque tour)") : tr("Gammes (tirée au hasard)")}</SectionLabel>
           <View style={styles.wrap}>
             {SCALE_CHOICES.map((id) => (
               <Chip key={id} testID={`challenge-scale-${id}`} label={tr(scaleOf(id).name)} selected={opts.scales.includes(id)} onPress={() => toggleScale(id)} />
             ))}
           </View>
-          {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque manche.")}</Text> : null}
+          {opts.rounds > 1 && opts.scales.length < 2 ? <Text style={styles.warn}>{tr("Choisis au moins 2 gammes pour qu’elles changent à chaque tour.")}</Text> : null}
           <SectionLabel>{tr("Ordre")}</SectionLabel>
           <View style={styles.wrap}>
             <Chip testID="challenge-order-free" label={tr("Libre")} selected={opts.order === "free"} onPress={() => setOpts({ ...opts, order: "free" })} />
@@ -880,7 +880,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               {customSetup}
               {recordLine}
               {micWarning}
-              {startButton(tr("Démarrer le challenge"))}
+              {startButton(tr("Démarrer · {name}", { name: tr(kind === "scale" ? TITLES.scale : "Perso") }))}
             </>
           )}
         </ScrollView>

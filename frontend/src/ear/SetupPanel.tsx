@@ -159,7 +159,7 @@ export function SetupPanel({ section, onSection, opts, setOpts, best, onStart, p
 
         <Pressable testID="start-challenge-button" onPress={onStart} style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
           <Play size={22} color={colors.onBrandPrimary} weight="fill" />
-          <Text style={styles.startText}>{tr("Démarrer le challenge")}</Text>
+          <Text style={styles.startText}>{tr("Démarrer · {name}", { name: tr(meta.label) })}</Text>
         </Pressable>
       </ScrollView>
     </View>
