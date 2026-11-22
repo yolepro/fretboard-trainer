@@ -4,6 +4,7 @@ import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { CaretLeft, CaretRight, Crosshair } from "phosphor-react-native";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
+import { SETS as CHORD_SETS } from "@/src/ear/ChordQuiz";
 import { SECTIONS, bestKey, formatTime, intervalName, positionText, type Best, type Section } from "@/src/ear/questions";
 import { MIN_TRIES, loadHistory, since, targetStats, tops, type Attempt, type Period, type SessionRec, type TargetStat } from "@/src/ear/stats";
 import { STRING_LABELS, TUNING, octaveOf, pcOf } from "@/src/music/theory";
@@ -59,6 +60,8 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
   const [mode, setMode] = useState<Mode>("speed");
   const [history, setHistory] = useState<{ attempts: Attempt[]; sessions: SessionRec[] } | null>(null);
   const [bests, setBests] = useState<(Best | null)[]>([]);
+  // Accords: one record per set and per length (key `${bestKey}_${set}`).
+  const [chordBests, setChordBests] = useState<Record<string, Best | null>>({});
   const [sel, setSel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +79,18 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
         }),
       ),
     ).then(setBests);
+    if (section === "chords") {
+      const parse = (v: unknown) => {
+        try {
+          return typeof v === "string" ? (JSON.parse(v) as Best) : null;
+        } catch {
+          return null;
+        }
+      };
+      Promise.all(
+        CHORD_SETS.flatMap((st) => COUNTS.map((n) => storage.getItem(`${bestKey("chords", n)}_${st.id}`, null).then((v) => [`${st.id}_${n}`, parse(v)] as const))),
+      ).then((pairs) => setChordBests(Object.fromEntries(pairs)));
+    }
     setSel(null);
     if (section !== "board" && view === "map") setView("home");
   }, [section, view]);
@@ -328,6 +343,34 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
           <Text style={styles.label}>{tr("Records")}</Text>
           {periodChip}
         </View>
+        {section === "chords" ? (
+          <View style={styles.card} testID="results-chord-records">
+            <View style={styles.chordRow}>
+              <Text style={[styles.muted, styles.chordName]}> </Text>
+              {COUNTS.map((n) => (
+                <Text key={n} style={[styles.muted, styles.chordCell]}>
+                  {tr("{n} accords", { n })}
+                </Text>
+              ))}
+            </View>
+            {CHORD_SETS.map((st) => (
+              <View key={st.id} style={styles.chordRow}>
+                <Text style={[styles.chordSet, styles.chordName]} numberOfLines={2}>
+                  {tr(st.name)}
+                </Text>
+                {COUNTS.map((n) => {
+                  const b = chordBests[`${st.id}_${n}`];
+                  return (
+                    <View key={n} style={styles.chordCell}>
+                      <Text style={b ? styles.chordScore : styles.muted}>{b ? `${b.score}/${n}` : "—"}</Text>
+                      {b ? <Text style={styles.recordTime}>{formatTime(b.timeMs)}</Text> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        ) : (
         <View style={styles.records}>
           {COUNTS.map((n, i) => {
             const b = bests[i];
@@ -343,6 +386,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
             );
           })}
         </View>
+        )}
 
         <View style={styles.card} testID="results-progress">
           <View style={styles.cardHead}>
@@ -392,7 +436,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
 
         <Pressable testID="results-open-tops" onPress={() => setView("tops")} style={({ pressed }) => [styles.card, styles.linkCard, pressed && styles.pressed]}>
           <View style={styles.linkText}>
-            <Text style={styles.cardTitle}>{tr("Notes rapides, lentes, fragiles")}</Text>
+            <Text style={styles.cardTitle}>{section === "chords" ? tr("Accords rapides, lents, fragiles") : tr("Notes rapides, lentes, fragiles")}</Text>
             <Text style={styles.muted} numberOfLines={2}>
               {top.slow[0] || top.fragile[0]
                 ? [top.slow[0] && tr("Plus lente : {x}", { x: nameOfStat(top.slow[0]) }), top.fragile[0] && tr("plus ratée : {x}", { x: nameOfStat(top.fragile[0]) })].filter(Boolean).join(" · ")
@@ -426,6 +470,11 @@ const useStyles = makeStyles((c) => ({
   periodPill: { height: 32, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   periodText: { fontFamily: fonts.display, fontSize: 13, color: c.onSurface },
   records: { flexDirection: "row", gap: spacing.sm },
+  chordRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: 4 },
+  chordName: { flex: 1.4 },
+  chordCell: { flex: 1, alignItems: "center", textAlign: "center" },
+  chordSet: { fontFamily: fonts.display, fontSize: 14, fontWeight: "700", color: c.onSurface },
+  chordScore: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
   recordCard: { flex: 1, minWidth: 0, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", gap: 2 },
   recordScore: { fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.onSurface },
   recordTime: { fontFamily: fonts.display, fontSize: 14, color: c.brandPrimary, fontVariant: ["tabular-nums"] },

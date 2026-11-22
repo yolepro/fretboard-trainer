@@ -185,7 +185,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   useFocusEffect(useCallback(() => () => goAway(), []));
   useEffect(() => {
     const sub = AppState.addEventListener("change", (st) => {
-      if (st !== "active") goAway();
+      // Only a real departure: "inactive" also comes with the mic permission prompt, the control centre, a call banner…
+      if (st === "background") goAway();
     });
     return () => sub.remove();
   }, []);
@@ -633,7 +634,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     return (
       <View style={styles.screen} testID="find-challenge-done">
         <StudioBackground />
-        <ScrollView contentContainerStyle={[styles.doneWrap, { paddingTop: insets.top + spacing.xl, paddingBottom: bottom + spacing.xl }]}>
+        <ScrollView contentContainerStyle={[styles.doneWrap, { paddingTop: insets.top + spacing.xl, paddingBottom: bottom + spacing.xl, paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + spacing.lg }]}>
           <Text style={styles.muted}>{tr("{title} · terminé", { title: tr(TITLES[kind]) })}</Text>
           {isRecord ? (
             <View style={styles.recordBadge}>
@@ -859,9 +860,11 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         ) : null,
       )}
       {tab === "results" ? (
-        <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} variant={variant} lengths={sprint ? ["sprint"] : roundChoices} />
+        <View style={{ flex: 1, paddingLeft: insets.left, paddingRight: insets.right }}>
+          <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} variant={variant} lengths={sprint ? ["sprint"] : roundChoices} />
+        </View>
       ) : (
-        <ScrollView contentContainerStyle={[styles.setup, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.setup, { paddingBottom: bottom + spacing.xl, paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + spacing.lg }]} showsVerticalScrollIndicator={false}>
           {kind === "degree" ? (
             <View style={styles.levels}>
               {(["beginner", "inter", "expert", "custom"] as const).map((m) => (

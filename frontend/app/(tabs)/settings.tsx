@@ -27,6 +27,7 @@ import { StudioBackground } from "@/src/components/StudioBackground";
 import { useSettings } from "@/src/settings";
 import { clearHistory } from "@/src/ear/stats";
 import { storage } from "@/src/utils/storage";
+import { confirmAction } from "@/src/utils/confirm";
 import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
@@ -92,7 +93,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={styles.screen} testID="settings-screen">
+    <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="settings-screen">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }, width > height && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         <Text style={styles.title}>{tr("Réglages")}</Text>
@@ -235,19 +236,22 @@ export default function SettingsScreen() {
             testID="setting-reset-best"
             icon={Trash}
             title={tr("Réinitialiser les résultats")}
-            subtitle={resetDone ? tr("Résultats effacés") : tr("Records et historique des challenges Oreille")}
+            subtitle={resetDone ? tr("Résultats effacés") : tr("Records et historique : Oreille, Challenges, Accords")}
             right={
               <Pressable
                 testID="reset-best-button"
-                onPress={async () => {
-                  await Promise.all([
-                    ...["board", "listen", "degree", "interval"].flatMap((s) =>
-                      [5, 10, 20].map((n) => storage.removeItem(`fretstudio_best_${s}_${n}`)),
-                    ),
-                    clearHistory(),
-                  ]);
-                  setResetDone(true);
-                }}
+                onPress={() =>
+                  confirmAction(
+                    tr("Effacer tous tes résultats ?"),
+                    tr("Records, parties et points faibles d’Oreille, des Challenges et d’Accords. Tes réglages ne changent pas. C’est définitif."),
+                    tr("Effacer"),
+                    async () => {
+                      // Every record (Oreille, Accords: fretstudio_best_*; Challenges: fretstudio_chbest_*) + the history.
+                      await Promise.all([storage.removeByPrefix(["fretstudio_best_", "fretstudio_chbest_"]), clearHistory()]);
+                      setResetDone(true);
+                    },
+                  )
+                }
                 style={({ pressed }) => [styles.smallBtn, styles.dangerBtn, pressed && styles.pressed]}
               >
                 <Text style={[styles.smallBtnText, styles.dangerText]}>{tr("Effacer")}</Text>

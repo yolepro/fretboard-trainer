@@ -66,6 +66,18 @@ export class Storage extends StorageBase {
     }
   }
 
+  /** Removes every key starting with one of these prefixes (e.g. all the records). */
+  async removeByPrefix(prefixes: string[]): Promise<boolean> {
+    try {
+      const keys = (await AsyncStorage.getAllKeys()).filter((k) => prefixes.some((p) => k.startsWith(p)));
+      if (keys.length) await AsyncStorage.multiRemove(keys);
+      return true;
+    } catch (e) {
+      this.warn("removeByPrefix", prefixes.join(","), e);
+      return false;
+    }
+  }
+
   // Sensitive values — Keychain (iOS) / EncryptedSharedPreferences (Android).
   // Use these (not getItem) for auth tokens; whatever writes with secureSet must read with secureGet under the same key.
   // Key must match /^[A-Za-z0-9._-]+$/ — no ":", "/" or spaces — or SecureStore throws and nothing is stored.

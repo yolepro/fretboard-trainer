@@ -470,7 +470,7 @@ export default function EarScreen() {
     <View style={styles.screen} testID="ear-screen">
       <StudioBackground />
       {phase === "running" && question ? (
-        <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: bottomChrome }]}>
+        <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: bottomChrome, paddingLeft: insets.left, paddingRight: insets.right }]}>
           <ChallengeView
             sectionLabel={sectionLabel}
             question={question}
@@ -491,7 +491,7 @@ export default function EarScreen() {
           />
         </View>
       ) : (
-        <View style={[styles.flex, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={[styles.flex, { paddingTop: insets.top + spacing.sm, paddingLeft: insets.left, paddingRight: insets.right }]}>
           {/* Same pattern as S’exercer: results behind a chart icon, a back arrow to return to the games. */}
           {!chordRunning ? (
             <View style={[styles.headRow, { paddingRight: navInset + spacing.lg }]}>

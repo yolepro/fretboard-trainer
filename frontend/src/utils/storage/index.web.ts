@@ -48,6 +48,18 @@ export class Storage extends StorageBase {
     }
   }
 
+  /** Removes every key starting with one of these prefixes (e.g. all the records). */
+  async removeByPrefix(prefixes: string[]): Promise<boolean> {
+    try {
+      const keys = (await AsyncStorage.getAllKeys()).filter((k) => prefixes.some((p) => k.startsWith(p)));
+      if (keys.length) await AsyncStorage.multiRemove(keys);
+      return true;
+    } catch (e) {
+      this.warn("removeByPrefix", prefixes.join(","), e);
+      return false;
+    }
+  }
+
   // Browsers have no Keychain — secure* helpers fall through to AsyncStorage.
   async secureGet<Fallback extends StorageItemValue>(
     key: string,

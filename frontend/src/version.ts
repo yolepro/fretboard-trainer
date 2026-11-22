@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.49.1 — Corrections (tests sur simulateur) : paysage — le X des jeux d’Oreille et l’icône Résultats ne passent plus sous la pastille d’onglets, listes et réglages décalés de l’encoche ; Réinitialiser demande confirmation et efface aussi les records des Challenges et d’Accords ; choix d’accords recalculés après rotation ; plus de pause au lancement à cause de la demande du micro ; records d’Accords par jeu dans Mes résultats
 // 1.49.0 — Vocabulaire : « tour » pour une étape de partie (Tour 3/5, Tours 3·5·10, 12 tours en 60 s), « manche » réservé à la guitare ; « partie » au lieu de « challenge » dans Oreille ; boutons « Démarrer · <jeu> » partout
 // 1.48.2 — Oreille › Accords : titre de section « ACCORDS » comme les familles de S’exercer
 // 1.48.1 — Oreille › Accords : explication en texte simple (plus de cadre qui ressemblait à un jeu), mise en page alignée sur S’exercer › Challenges
@@ -122,4 +123,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.49.0";
+export const APP_VERSION = "1.49.1";

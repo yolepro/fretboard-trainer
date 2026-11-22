@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Play, SpeakerHigh, X } from "phosphor-react-native";
 
@@ -29,7 +29,7 @@ export const CHORD_TYPES = [
 type ChordId = (typeof CHORD_TYPES)[number]["id"];
 
 /** Sets of chords to tell apart, from easy to hard. */
-const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = [
+export const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = [
   { id: "majmin", name: "Majeur / mineur", meta: "Le plus important : gai ou triste ?", chords: ["maj", "min"] },
   { id: "triads", name: "Les 4 triades", meta: "Majeur, mineur et les quintes altérées : diminuée, augmentée", chords: ["maj", "min", "dim", "aug"] },
   { id: "sevenths", name: "Les accords 7", meta: "∆7, 7, m7, Ø : la couleur de la septième", chords: ["maj7", "dom7", "min7", "m7b5"] },
@@ -57,6 +57,8 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
+  // The choice grid is rebuilt when the screen turns: its wrapped rows kept the old width otherwise (iOS).
+  const { width: winW } = useWindowDimensions();
   const [setId, setSetId] = useState<string | null>(null); // no game selected on arrival; tap again to close
   const style: PlayStyle = settings.chordStyle; // Réglages › Entraînement
   const [count, setCount] = useState(10);
@@ -241,7 +243,7 @@ export function ChordQuiz({ section, onSection, onPhase, onResults, resetKey, bo
             <View key={i} style={[styles.dot, i < done && { backgroundColor: results[i] ? colors.success : colors.error }, i === done && styles.dotNow]} />
           ))}
         </View>
-        <ScrollView contentContainerStyle={[styles.runContent, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
+        <ScrollView key={`run-${Math.round(winW)}`} contentContainerStyle={[styles.runContent, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
           <Pressable testID="chord-replay" onPress={() => playChord(q)} style={({ pressed }) => [styles.listen, pressed && styles.pressed]}>
             <SpeakerHigh size={40} color={colors.onBrandPrimary} weight="fill" />
           </Pressable>
