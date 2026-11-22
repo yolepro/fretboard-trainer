@@ -16,6 +16,7 @@ import { ScalePicker } from "@/src/components/ScalePicker";
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { Score, useScore } from "@/src/components/Score";
 import { runSequence } from "@/src/audio/sequencer";
+import { playRendered, prerender, renderedPlayback, type RenderSpec } from "@/src/audio/render";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { TempoButton } from "@/src/components/TempoSheet";
@@ -195,17 +196,82 @@ export default function FretboardScreen() {
   // Each note is highlighted on the neck while it sounds, at the place closest to the left of the position.
   // Count-in: one bar (4 beats), or its second half ("3, 4") when the tempo is under 70.
   const countBeats = bpm < 70 ? 2 : 4;
+  // Android: the whole sequence is mixed ahead into one sound file (render.ts), so the rhythm no longer depends on
+  // the JavaScript thread; it is mixed while nothing plays, a moment after each change.
+  const renderSpec = (): RenderSpec => ({
+    midis: path.map((st) => st.midi),
+    noteMs: 60000 / bpm / 2,
+    beatMs: 60000 / bpm,
+    beats: countBeats,
+    firstBeat: 4 - countBeats,
+    loop,
+    volume: settings.volume,
+    metronome: metronome ? { barPulses: 4, volume: settings.volume * 0.8 } : null,
+  });
+  useEffect(() => {
+    if (!renderedPlayback || playing || !path.length) return;
+    const id = setTimeout(() => prerender(renderSpec()), 700);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, bpm, loop, metronome, settings.volume, countBeats, playing]);
+  const showPathStep = (i: number) => {
+    const step = path[i];
+    setStepIdx(i);
+    setActive(step.loc ? { midi: step.midi, string: step.loc.string, fret: step.loc.fret } : null);
+  };
+  const endPlay = () => {
+    cancelRef.current = null;
+    setPlaying(false);
+    setActive(null);
+    setStepIdx(null);
+    setBeat(null);
+  };
   const playFormula = () => {
     if (playing) {
       cancelRef.current?.();
-      cancelRef.current = null;
-      setPlaying(false);
-      setActive(null);
-      setStepIdx(null);
-      setBeat(null);
+      endPlay();
       return;
     }
     if (!path.length) return;
+    if (renderedPlayback) {
+      let cancelled = false;
+      cancelRef.current = () => {
+        cancelled = true;
+      };
+      setPlaying(true);
+      playRendered(renderSpec(), () => {}).then((h) => {
+        if (cancelled) {
+          h?.stop();
+          return;
+        }
+        if (!h) {
+          playLive(); // could not load the mixed file: the live sampler plays it
+          return;
+        }
+        const cancelView = runSequence({
+          length: path.length,
+          noteMs: 60000 / bpm / 2,
+          beatMs: 60000 / bpm,
+          beats: countBeats,
+          loop,
+          leadMs: 0,
+          onBeat: (b) => setBeat(4 - countBeats + b + 1),
+          onNote: (i) => {
+            if (i === 0) setBeat(null);
+            showPathStep(i);
+          },
+          onEnd: endPlay,
+        });
+        cancelRef.current = () => {
+          cancelView();
+          h.stop();
+        };
+      });
+      return;
+    }
+    playLive();
+  };
+  const playLive = () => {
     resumeWebAudio();
     cancelRef.current = runSequence({
       length: path.length,

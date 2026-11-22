@@ -23,6 +23,7 @@ import { Score, useScore } from "@/src/components/Score";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { playClick, playNote, preloadClicks, preloadNotes, initAudio } from "@/src/audio/sampler";
 import { runSequence } from "@/src/audio/sequencer";
+import { playRendered, prerender, renderedPlayback, type RenderSpec } from "@/src/audio/render";
 import {
   EXERCISES,
   EXTENTS,
@@ -318,6 +319,25 @@ export default function FingeringScreen() {
     setView("library");
   };
 
+  // Android: the whole sequence is mixed ahead into one sound file (render.ts) — the rhythm no longer depends on
+  // the JavaScript thread. It is mixed while nothing plays, a moment after each change, so Play starts at once.
+  const renderSpec = (): RenderSpec => ({
+    midis: sequence.map((st) => st.midi),
+    noteMs: 60000 / bpm / pulse.notesPerPulse,
+    beatMs: 60000 / bpm,
+    beats: countBeats,
+    firstBeat: countOffset,
+    loop,
+    volume: settings.volume,
+    metronome: metronome ? { barPulses: pulse.barPulses, volume: settings.volume * 0.8 } : null,
+  });
+  useEffect(() => {
+    if (!renderedPlayback || playing || !sequence.length) return;
+    const id = setTimeout(() => prerender(renderSpec()), 700);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequence, bpm, loop, metronome, settings.volume, countBeats, playing]);
+
   const togglePlay = () => {
     if (playing) {
       stop();
@@ -331,6 +351,47 @@ export default function FingeringScreen() {
       setStepIdx(null);
       setBeat(null);
     };
+    if (renderedPlayback) {
+      let cancelled = false;
+      cancelRef.current = () => {
+        cancelled = true;
+      };
+      setPlaying(true);
+      playRendered(renderSpec(), () => {}).then((h) => {
+        if (cancelled) {
+          h?.stop();
+          return;
+        }
+        if (!h) {
+          startLive(finish); // could not load the mixed file: the live sampler plays it
+          return;
+        }
+        // The screen follows the same grid, without sound.
+        const cancelView = runSequence({
+          length: sequence.length,
+          noteMs: 60000 / bpm / pulse.notesPerPulse,
+          beatMs: 60000 / bpm,
+          beats: countBeats,
+          loop,
+          leadMs: 0,
+          onBeat: (bt) => setBeat(countOffset + bt + 1),
+          onNote: (n) => {
+            if (n === 0) setBeat(null);
+            showStep(n, true);
+          },
+          onEnd: finish,
+        });
+        cancelRef.current = () => {
+          cancelView();
+          h.stop();
+        };
+      });
+      return;
+    }
+    startLive(finish);
+  };
+
+  const startLive = (finish: () => void) => {
     resumeWebAudio();
     cancelRef.current = runSequence({
       length: sequence.length,
