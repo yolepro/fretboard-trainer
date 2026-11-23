@@ -145,7 +145,19 @@ export default function FingeringScreen() {
   const colored = useMemo(() => new Set<DegreeKey>(["root"]), []);
   const boxes = useMemo(() => scaleBoxes(rootPc, pairs ? MAJOR : formula, true), [rootPc, pairs, formula, settings.fretCount]);
   const pos = Math.min(position, boxes.length - 1);
-  const variant = variants[pos] ?? 0;
+  // 2/2 (the same position an octave up) only where it fits on the neck and gives something to play.
+  const hasSecond = useMemo(
+    () =>
+      boxes.map((b) => {
+        const w = boxVariant(b, 1);
+        if (w.max > settings.fretCount || w.min > w.max) return false;
+        if (arp || horizontal || twoStrings) return true;
+        const seq = pairs ? pairSequence(rootPc, w, pairStyle) : buildExercise(positionLadder(rootPc, formula, w), exerciseId, rootPc, startOnRoot);
+        return seq.length > 0;
+      }),
+    [boxes, settings.fretCount, arp, horizontal, twoStrings, pairs, rootPc, pairStyle, formula, exerciseId, startOnRoot],
+  );
+  const variant = hasSecond[pos] ? (variants[pos] ?? 0) : 0;
   const positionWindow = useMemo(() => boxVariant(boxes[pos], variant), [boxes, pos, variant]);
 
   // Exercises that don't fit the scale (triads on a pentatonic, anything but the scale on special scales).
@@ -274,6 +286,7 @@ export default function FingeringScreen() {
     (i: number | null) => {
       if (i === null) return;
       if (i === pos) {
+        if (!hasSecond[i]) return; // no 2/2 here
         setVariants((prev) => {
           const next = Array.from({ length: boxes.length }, (_, k) => prev[k] ?? 0);
           next[i] = next[i] === 1 ? 0 : 1;
@@ -284,7 +297,7 @@ export default function FingeringScreen() {
         setPosition(i);
       }
     },
-    [pos, boxes.length],
+    [pos, boxes.length, hasSecond],
   );
 
   const showStep = useCallback(
@@ -493,7 +506,7 @@ export default function FingeringScreen() {
   const arpOther = ARP_SHAPES[(arpShape + (towardBody ? 1 : ARP_SHAPES.length - 1)) % ARP_SHAPES.length];
   const arpBadge = (horizontal ? `${tr(ARP_SHAPES[arpShape])} → ${tr(arpOther)}` : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })) + (arpList.length > 1 ? ` · ${arpV + 1}/${arpList.length}` : "");
   const twoBadge = withSeventh ? tr("2 cordes · avec 7e") : tr("2 cordes · triade");
-  const positionBadge = twoStrings ? twoBadge : arp ? arpBadge : horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : `Pos. ${pos + 1} · ${variant + 1}/2`;
+  const positionBadge = twoStrings ? twoBadge : arp ? arpBadge : horizontal ? tr("Horizontal · {strings}", { strings: stringSetName(stringSets[setI]) }) : (hasSecond[pos] ? `Pos. ${pos + 1} · ${variant + 1}/2` : `Pos. ${pos + 1}`);
   const scaleExercise = EXERCISES.find((e) => e.id === exerciseId)!;
   const preset = PRESETS.find((p) => p.id === presetId);
   const exerciseTitle = preset ? tr(preset.name) : pairs
@@ -515,7 +528,7 @@ export default function FingeringScreen() {
         : tr("Schéma {name}", { name: tr(ARP_SHAPES[arpShape]) })
       : horizontal
         ? stringSetName(stringSets[setI])
-        : `Pos. ${pos + 1} · ${variant + 1}/2`;
+        : (hasSecond[pos] ? `Pos. ${pos + 1} · ${variant + 1}/2` : `Pos. ${pos + 1}`);
   const modeLabel = !pairs ? (horizontal ? tr("Horizontal") : tr("Sur une position")) : null;
   const keyLabel = `${nameOf(rootPc)}${arp ? arpSymbol : ""}`;
   const paceNotes = PACE_NOTES[exercise.perBeat] ?? ["noires", "croches"];
@@ -601,7 +614,7 @@ export default function FingeringScreen() {
   ) : (
     <>
       <SectionLabel>{tr("Position")}</SectionLabel>
-      <PositionChips boxes={boxes} selected={pos} variants={variants} onChange={selectPosition} prefix="fingering-position" hideAll />
+      <PositionChips boxes={boxes} selected={pos} variants={variants} single={hasSecond.map((ok) => !ok)} onChange={selectPosition} prefix="fingering-position" hideAll />
       {!pairs ? (
         <>
           <SectionLabel>{tr("Départ")}</SectionLabel>

@@ -109,7 +109,16 @@ export default function FretboardScreen() {
       setVariants([]);
     }
   }, [mode]);
-  const variant = position !== null ? variants[position] ?? 0 : 0;
+  // 2/2 only where the position fits on the neck (setting: 20–24 frets).
+  const hasSecond = useMemo(
+    () =>
+      boxes.map((b) => {
+        const w = boxVariant(b, 1);
+        return w.max <= settings.fretCount && w.min <= w.max && (!w.cells || w.cells.size > 0);
+      }),
+    [boxes, settings.fretCount],
+  );
+  const variant = position !== null && hasSecond[position] ? (variants[position] ?? 0) : 0;
   // Memoized so the Fretboard's scroll effect only fires when the window really changes.
   const windowRange = useMemo(
     () => (position !== null && boxes[position] ? boxVariant(boxes[position], variant) : null),
@@ -161,6 +170,7 @@ export default function FretboardScreen() {
   const selectPosition = useCallback(
     (i: number | null) => {
       if (i !== null && i === position) {
+        if (!hasSecond[i]) return; // no 2/2 here
         setVariants((prev) => {
           const next = Array.from({ length: boxes.length }, (_, k) => prev[k] ?? 0);
           next[i] = next[i] === 1 ? 0 : 1;
@@ -171,7 +181,7 @@ export default function FretboardScreen() {
         setPosition(i);
       }
     },
-    [position, boxes.length],
+    [position, boxes.length, hasSecond],
   );
 
   const onNotePress = useCallback(
@@ -315,7 +325,7 @@ export default function FretboardScreen() {
     [playing, path, settings.volume],
   );
 
-  const positionLabel = position === null ? tr("Tout le manche") : `Pos. ${position + 1} · ${variant + 1}/2`;
+  const positionLabel = position === null ? tr("Tout le manche") : hasSecond[position] ? `Pos. ${position + 1} · ${variant + 1}/2` : `Pos. ${position + 1}`;
   const formulaPillLabel = `${mode === "scale" ? tr("Gamme") : tr("Accord")} · ${isLandscape ? shortName(formula) : tr(formula.name)}`;
 
   const legend = (
@@ -330,7 +340,7 @@ export default function FretboardScreen() {
   const whereSheet = (
     <>
       <SectionLabel>{tr("Position")}</SectionLabel>
-      <PositionChips boxes={boxes} selected={position} variants={variants} onChange={selectPosition} prefix="manche-position" />
+      <PositionChips boxes={boxes} selected={position} variants={variants} single={hasSecond.map((ok) => !ok)} onChange={selectPosition} prefix="manche-position" />
       {windowRange ? (
         <>
           <SectionLabel>{tr("Écoute et partition : départ")}</SectionLabel>

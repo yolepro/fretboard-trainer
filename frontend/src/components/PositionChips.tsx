@@ -9,6 +9,8 @@ type Props = {
   selected: number | null;
   /** Per-position variant: 0 = 1/2 (low), 1 = 2/2 (octave +12). Missing entries mean 0. */
   variants?: number[];
+  /** Positions without a usable 2/2 (off the neck, or nothing to play there): no badge, no switch. */
+  single?: boolean[];
   /** Tapping a position selects it; tapping the selected one again switches its variant (handled by the parent). */
   onChange: (i: number | null) => void;
   prefix?: string;
@@ -16,20 +18,20 @@ type Props = {
   hideAll?: boolean;
 };
 
-export function PositionChips({ boxes, selected, variants = [], onChange, prefix = "position", hideAll = false }: Props) {
+export function PositionChips({ boxes, selected, variants = [], single = [], onChange, prefix = "position", hideAll = false }: Props) {
   return (
     <ChipRow testID={`${prefix}-selector`}>
       {hideAll ? null : (
         <Chip testID={`${prefix}-all`} label={tr("Tout le manche")} selected={selected === null} onPress={() => onChange(null)} />
       )}
       {boxes.map((_, i) => {
-        const variant = variants[i] ?? 0;
+        const variant = single[i] ? 0 : (variants[i] ?? 0);
         return (
           <Chip
             key={i}
             testID={`${prefix}-${i + 1}`}
             label={`Pos. ${i + 1}`}
-            badge={`${variant + 1}/2`}
+            badge={single[i] ? undefined : `${variant + 1}/2`}
             badgeTone={variant === 1 ? "accent" : "primary"}
             selected={selected === i}
             onPress={() => onChange(i)}
