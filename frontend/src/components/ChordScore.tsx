@@ -41,7 +41,7 @@ export function ChordScore({ voicings, idxs, selected, width, gap = 7, labelOf, 
   const clefW = 30;
   const mw = (width - clefW) / Math.max(1, idxs.length);
   const y0 = 16 + 3.5 * g; // top staff line
-  const tabTop = y0 + 6.5 * g + 8;
+  const tabTop = y0 + 6.5 * g + 14; // room for the low ledger lines
   const height = tabTop + 5 * tg + 8;
   const sy = (step: number) => y0 + 4 * g - ((step - 30) * g) / 2; // E4 (step 30) on the bottom line
   const spell = settings.accidental === "flat" ? FLAT : SHARP;
