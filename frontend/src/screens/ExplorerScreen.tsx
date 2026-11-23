@@ -9,7 +9,7 @@ import { PositionChips } from "@/src/components/PositionChips";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Metronome, Play, Repeat, Stop } from "phosphor-react-native";
+import { CaretLeft, Metronome, Play, Repeat, Stop } from "phosphor-react-native";
 
 import { Fretboard, fitScale } from "@/src/components/Fretboard";
 import { ScalePicker } from "@/src/components/ScalePicker";
@@ -39,16 +39,18 @@ import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
-type Mode = "scale" | "chord";
+export type ExploreMode = "scale" | "chord";
+type Mode = ExploreMode;
 
-export default function FretboardScreen() {
+/** Apprendre › Explorer: « Les gammes » / « Les accords » — the whole neck, the score, playback. */
+export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMode; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, update, nameOf } = useSettings();
 
-  const [mode, setMode] = useState<Mode>("scale");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [rootPc, setRootPc] = useState(0);
   const [scaleId, setScaleId] = useState("major");
   const [chordId, setChordId] = useState("maj7");
@@ -396,8 +398,11 @@ export default function FretboardScreen() {
       {isLandscape ? (
         // Landscape: one row aligned with the tab bar — like S'exercer.
         <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
+          <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Apprendre")} hitSlop={6}>
+            <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+          </Pressable>
           <Text style={[styles.title, styles.titleCompact]} testID="fretboard-title" numberOfLines={1}>
-            {tr("Explorer")}
+            {mode === "scale" ? tr("Les gammes") : tr("Les accords")}
           </Text>
           <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
           <View style={styles.headerPills}>
@@ -415,10 +420,14 @@ export default function FretboardScreen() {
       ) : (
         <>
           <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+            <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Apprendre")} hitSlop={6}>
+              <CaretLeft size={20} color={colors.onSurface} weight="bold" />
+            </Pressable>
             <View style={styles.headerText}>
               {/* The key, the scale / chord and the position are on the pills just below. */}
+              <Text style={styles.kicker}>{tr("Explorer")}</Text>
               <Text style={styles.title} testID="fretboard-title" numberOfLines={1}>
-                {tr("Explorer")}
+                {mode === "scale" ? tr("Les gammes") : tr("Les accords")}
               </Text>
             </View>
           </View>
@@ -548,6 +557,8 @@ const useStyles = makeStyles((c) => ({
     gap: spacing.md,
   },
   headerText: { flex: 1, flexShrink: 1, minWidth: 0 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  kicker: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
   // Phones in portrait: 4 round buttons of the same size, closer together, that never shrink or get pushed out.
   headerCompact: { gap: spacing.sm },
   playBtnRound: { width: 44, paddingHorizontal: 0, justifyContent: "center", flexShrink: 0 },

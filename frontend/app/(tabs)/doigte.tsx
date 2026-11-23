@@ -5,7 +5,7 @@ import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairSty
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
 import { ExerciseLibrary, PRESETS, type ExercisePreset } from "@/src/components/ExerciseLibrary";
-import { FindChallenge } from "@/src/challenge/FindChallenge";
+import { ExplorerScreen, type ExploreMode } from "@/src/screens/ExplorerScreen";
 import { shortName } from "@/src/music/shortNames";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
@@ -100,8 +100,9 @@ export default function FingeringScreen() {
   // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
   // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
-  const [view, setView] = useState<"library" | "exercise" | "challenge">("library");
-  const [challenge, setChallenge] = useState<"degree" | "scale" | "neck">("degree");
+  // Apprendre: the library, an exercise (S’exercer), or Explorer (Les gammes / Les accords).
+  const [view, setView] = useState<"library" | "exercise" | "explore">("library");
+  const [exploreMode, setExploreMode] = useState<ExploreMode>("scale");
   const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
@@ -313,10 +314,10 @@ export default function FingeringScreen() {
 
   const pickPreset = (p: ExercisePreset) => {
     stop();
-    if (p.subject === "challenge") {
+    if (p.subject === "explore") {
       setPresetId(p.id);
-      setChallenge(p.challenge ?? "degree");
-      setView("challenge");
+      setExploreMode(p.exploreMode ?? "scale");
+      setView("explore");
       return;
     }
     setSubject(p.subject);
@@ -695,7 +696,7 @@ export default function FingeringScreen() {
   );
 
   if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
-  if (view === "challenge") return <FindChallenge key={challenge} kind={challenge === "scale" ? "scale" : "degree"} preset={challenge === "neck" ? "neck" : undefined} onBack={backToLibrary} />;
+  if (view === "explore") return <ExplorerScreen key={exploreMode} initialMode={exploreMode} onBack={backToLibrary} />;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">
@@ -754,7 +755,7 @@ export default function FingeringScreen() {
           <Pressable testID="open-exercise" onPress={() => setSheet("exercise")} style={({ pressed }) => [styles.headerText, pressed && styles.pressed]} accessibilityRole="button">
             <Text style={styles.kicker}>{modeLabel ? `${tr("S’exercer")} · ${modeLabel}` : tr("S’exercer")}</Text>
             <View style={styles.titleRow}>
-              <Text style={styles.title} testID="fingering-title" numberOfLines={1}>
+              <Text style={styles.title} testID="fingering-title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {exerciseTitle}
               </Text>
               <Info size={18} color={colors.onSurfaceTertiary} weight="bold" />

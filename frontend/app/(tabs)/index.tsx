@@ -13,20 +13,16 @@ import { tr } from "@/src/i18n";
 
 const FEATURES = [
   {
-    title: "Explorer",
-    text: "Visualisez gammes, modes, pentatoniques, blues et accords sur tout le manche. 5 positions fixes dans toutes les tonalités (et leur version 2/2), notes colorées par degré, écoute de la gamme avec partition et tablature.",
+    title: "Apprendre",
+    text: "Explorer : vois les gammes, modes et accords sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute. S’exercer : gammes par tierces, triades ou arpèges, sur une position ou le long du manche, arpèges à 4 sons, paires de triades, avec partition, tempo, métronome et boucle.",
   },
   {
-    title: "S’exercer",
-    text: "Exercez-vous sur une position ou en mode horizontal (mêmes cordes, on remonte le manche) : gamme complète, tierces, triades (1-3-5) et triades de septième (1-3-5-7), en montée et descente, avec partition + tablature synchronisées, tempo réglable, débit lent ou normal, décompte, métronome et boucle. Arpèges 4 sons (∆, 7, m7, Ø) en 5 schémas, sur une position ou en enchaînant deux schémas le long du manche. Paires de triades (IV et V de la tonalité) à travers les renversements, dans les 5 positions.",
-  },
-  {
-    title: "Oreille",
-    text: "Entraînez-vous avec votre guitare : jouer la note demandée sur une corde, écouter et rejouer, degrés d’accord, intervalles. Détection par micro.",
+    title: "Défis",
+    text: "Mesure-toi au chrono. Connaître le manche : trouve la note, le degré, la gamme, le degré de l’accord. Entraîner l’oreille : rejoue la note ou l’intervalle, reconnais l’accord. Records, résultats et points faibles.",
   },
   {
     title: "Réglages",
-    text: "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume et diapason.",
+    text: "Langue (français / anglais), notation (Do Ré Mi / C D E), dièses ou bémols, 5 styles de manche, nombre de cases (20 à 24), étiquettes, volume, diapason, test du micro, tes résultats.",
   },
 ];
 

@@ -21,6 +21,7 @@ type Props = {
   name: string;
   meta?: string;
   badges?: ReactNode; // before the name (degree badges…)
+  aside?: ReactNode; // after the name (how the player answers…)
   open: boolean;
   onToggle?: () => void; // none: the card stays open (a screen with a single game)
   pills?: Pill[];
@@ -41,6 +42,7 @@ export function GameCard({
   name,
   meta,
   badges,
+  aside,
   open,
   onToggle,
   pills,
@@ -72,6 +74,7 @@ export function GameCard({
           <Text style={styles.name}>{name}</Text>
           {meta ? <Text style={styles.muted}>{meta}</Text> : null}
         </View>
+        {aside}
       </Pressable>
       <Unfold open={open}>
         <View style={styles.body}>
@@ -113,6 +116,22 @@ export function GameCard({
         </View>
       </Unfold>
     </View>
+  );
+}
+
+/** A game that opens its own screen (its levels, records, results): same card, with an arrow. */
+export function GameLink({ testID, name, meta, aside, onPress }: { testID?: string; name: string; meta?: string; aside?: ReactNode; onPress: () => void }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  return (
+    <Pressable testID={testID} onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.card, styles.head, pressed && styles.pressed]}>
+      <View style={styles.headText}>
+        <Text style={styles.name}>{name}</Text>
+        {meta ? <Text style={styles.muted}>{meta}</Text> : null}
+      </View>
+      {aside}
+      <CaretRight size={16} color={colors.onSurfaceTertiary} weight="bold" />
+    </Pressable>
   );
 }
 

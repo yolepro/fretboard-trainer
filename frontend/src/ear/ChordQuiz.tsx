@@ -7,7 +7,7 @@ import { FEEDBACK_MS, playChordNotes, playFeedback, preloadFeedback, preloadNote
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import { ResultView } from "@/src/ear/ResultView";
 import { bestKey, formatTime, type Best, type Section } from "@/src/ear/questions";
-import { EAR_GAMES, type EarGame } from "@/src/ear/games";
+import { CHORD_LEVELS, type ChordLevel } from "@/src/ear/games";
 import { saveAttempt, saveSession } from "@/src/ear/stats";
 import { useResultsVersion } from "@/src/results";
 import { useSettings } from "@/src/settings";
@@ -28,18 +28,18 @@ export const CHORD_TYPES = [
 ] as const;
 type ChordId = (typeof CHORD_TYPES)[number]["id"];
 
-/** Sets of chords to tell apart: the Accords games of Oreille (see src/ear/games.ts). */
-export const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = EAR_GAMES.filter((g) => g.family === "chords").map((g) => ({
+/** Sets of chords to tell apart: the levels of « Reconnais l’accord » (see src/ear/games.ts). */
+export const SETS: { id: string; name: string; meta: string; chords: ChordId[] }[] = CHORD_LEVELS.map((g) => ({
   id: g.id,
   name: g.name,
   meta: g.meta,
-  chords: (g.chords ?? []).filter((c): c is ChordId => CHORD_TYPES.some((t) => t.id === c)),
+  chords: g.chords.filter((c): c is ChordId => CHORD_TYPES.some((t) => t.id === c)),
 }));
 type PlayStyle = "block" | "arp" | "both";
 const SECTION: Section = "chords";
 
 type Props = {
-  game: EarGame; // the Accords game launched from Oreille's library
+  level: ChordLevel; // the level of « Reconnais l’accord » launched from Défis
   count: number;
   onPhase: (phase: "setup" | "running" | "done") => void; // Oreille hides its header while a quiz runs
   onExit: () => void; // back to Oreille's games
@@ -52,13 +52,13 @@ type Props = {
 type Q = { chord: (typeof CHORD_TYPES)[number]; root: number };
 
 /** Oreille › Accords: a chord is played, the player says which kind it is. */
-export function ChordQuiz({ game, count, onPhase, onExit, onResults, bottomPad, topPad, navInset }: Props) {
+export function ChordQuiz({ level, count, onPhase, onExit, onResults, bottomPad, topPad, navInset }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
   // The choice grid is rebuilt when the screen turns: its wrapped rows kept the old width otherwise (iOS).
   const { width: winW } = useWindowDimensions();
-  const setId = game.id;
+  const setId = level.id;
   const style: PlayStyle = settings.chordStyle; // Réglages › Entraînement
   const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
   const [q, setQ] = useState<Q | null>(null);
@@ -225,7 +225,7 @@ export function ChordQuiz({ game, count, onPhase, onExit, onResults, bottomPad, 
       <View style={[styles.flex, { paddingTop: topPad }]} testID="chord-quiz-running">
         <View style={[styles.topRow, { paddingRight: navInset + spacing.lg }]}>
           <Text style={styles.label} numberOfLines={1}>
-            {tr("Accords")} · {tr(set.name)}
+            {tr("Reconnais l’accord")} · {tr(set.name)}
           </Text>
           <Text style={styles.chrono}>{formatTime(elapsed)}</Text>
           <Pressable
@@ -290,7 +290,7 @@ export function ChordQuiz({ game, count, onPhase, onExit, onResults, bottomPad, 
     return (
       <View style={[styles.flex, { paddingBottom: bottomPad }]}>
         <ResultView
-          sectionLabel={`${tr("Accords")} · ${tr(set.name)}`}
+          sectionLabel={`${tr("Reconnais l’accord")} · ${tr(set.name)}`}
           score={results.filter(Boolean).length}
           count={count}
           timeMs={finalMs}

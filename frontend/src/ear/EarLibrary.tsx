@@ -1,18 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { HandPointing, Microphone } from "phosphor-react-native";
 
-import { FamilyTitle, GameCard, OptionSheet, Segment, type OptionSheetDef, type Pill } from "@/src/components/GameCard";
-import { EAR_FAMILIES, EAR_GAMES, countsOf, type EarGame, type EarSetting } from "@/src/ear/games";
+import { Chip } from "@/src/components/Chip";
+import { FamilyTitle, GameCard, GameLink, OptionSheet, Segment, type OptionSheetDef, type Pill } from "@/src/components/GameCard";
+import { DEFI_FAMILIES, EAR_GAMES, countsOf, type ChordLevel, type EarGame, type EarSetting } from "@/src/ear/games";
 import { LEVEL_LABELS, bestKey, formatTime, intervalName, intervalsForLevel, scaleIntervals, type Best, type Options, type Section } from "@/src/ear/questions";
 import { SCALES, STRING_LABELS } from "@/src/music/theory";
 import { useResultsVersion } from "@/src/results";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
-import { fonts, makeStyles, radius, spacing } from "@/src/theme";
+import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
-/** Record key of an Oreille game (micro: per game id; Accords: per chord set). */
-export const earBestKey = (g: EarGame, count: number) =>
-  g.family === "chords" ? `${bestKey("chords", count)}_${g.id}` : bestKey(g.id as Section, count);
+/** Record key of a Défis game (micro: per game id; Accords: per level). */
+export const earBestKey = (g: EarGame, count: number, levelId?: string) =>
+  g.kind === "chords" ? `${bestKey("chords", count)}_${levelId ?? g.levels?.[0]?.id}` : bestKey(g.id as Section, count);
+
+/** How the player answers: micro, touch, or both (small icons on the card). */
+function InputIcons({ input }: { input: EarGame["input"] }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  return (
+    <View style={styles.inputs} accessibilityLabel={input.length > 1 ? tr("Micro ou toucher") : input[0] === "mic" ? tr("Micro") : tr("Toucher")}>
+      {input.includes("mic") ? (
+        <View style={styles.inputIcon}>
+          <Microphone size={13} color={colors.onSurfaceTertiary} weight="bold" />
+        </View>
+      ) : null}
+      {input.includes("touch") ? (
+        <View style={styles.inputIcon}>
+          <HandPointing size={13} color={colors.onSurfaceTertiary} weight="bold" />
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 type Props = {
   openId: string | null;
@@ -22,13 +44,16 @@ type Props = {
   countOf: (g: EarGame) => number;
   setCountOf: (g: EarGame, n: number) => void;
   onStart: (g: EarGame) => void;
+  onChallenge: (c: "degree" | "scale") => void; // Trouve le degré / Trouve la gamme: their own screen
+  chordLevel: ChordLevel; // Reconnais l’accord: the level chosen
+  setChordLevel: (l: ChordLevel) => void;
   perm: "unknown" | "granted" | "ask" | "blocked";
   error: string | null;
   bottomPad: number;
 };
 
-/** Oreille: every game on one list, the same cards as S’exercer › Challenges. */
-export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCountOf, onStart, perm, error, bottomPad }: Props) {
+/** Défis: every game on one list, in two families (src/ear/games.ts). */
+export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCountOf, onStart, onChallenge, chordLevel, setChordLevel, perm, error, bottomPad }: Props) {
   const styles = useStyles();
   // The open sheet (game + setting); its choices are rebuilt from the current settings at every render.
   const [sheet, setSheet] = useState<{ game: EarGame; id: EarSetting } | null>(null);
@@ -40,7 +65,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
   // The record of the open game, for its current length.
   useEffect(() => {
     if (!open) return;
-    const key = earBestKey(open, openCount);
+    const key = earBestKey(open, openCount, chordLevel.id);
     storage.getItem(key, null).then((v) => {
       let b: Best | null = null;
       try {
@@ -50,7 +75,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
       }
       setBests((m) => ({ ...m, [key]: b }));
     });
-  }, [open, openCount, resultsV]);
+  }, [open, openCount, resultsV, chordLevel.id]);
 
   /** The sheet of one setting of a micro game. */
   const sheetOf = (g: EarGame, id: EarSetting): OptionSheetDef => {
@@ -126,14 +151,26 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
   return (
     <>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false} testID="ear-library">
-        {EAR_FAMILIES.map((fam) => (
+        {DEFI_FAMILIES.map((fam) => (
           <View key={fam.id} style={styles.family}>
             <FamilyTitle title={tr(fam.title)} lead={tr(fam.lead)} />
             {EAR_GAMES.filter((g) => g.family === fam.id).map((g) => {
+              if (g.kind === "challenge") {
+                return (
+                  <GameLink
+                    key={g.id}
+                    testID={`defi-${g.id}`}
+                    name={tr(g.name)}
+                    meta={tr(g.meta)}
+                    aside={<InputIcons input={g.input} />}
+                    onPress={() => onChallenge(g.challenge ?? "degree")}
+                  />
+                );
+              }
               const on = g.id === openId;
               const n = countOf(g);
-              const best = on ? bests[earBestKey(g, n)] : null;
-              const mic = g.family === "mic";
+              const best = on ? bests[earBestKey(g, n, chordLevel.id)] : null;
+              const mic = g.kind === "mic";
               const o = mic ? optsOf(g) : null;
               const pills: Pill[] = o ? (g.edit ?? []).map((id) => ({ id, label: pillLabel(o, id), onPress: () => setSheet({ game: g, id }) })) : [];
               return (
@@ -142,6 +179,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                   testID={`ear-game-${g.id}`}
                   name={tr(g.name)}
                   meta={tr(g.meta)}
+                  aside={<InputIcons input={g.input} />}
                   open={on}
                   onToggle={() => onOpen(on ? null : g.id)}
                   pills={pills}
@@ -167,6 +205,15 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                           </Text>
                         ) : null}
                       </>
+                    ) : g.levels ? (
+                      <>
+                        <View style={styles.levels} testID="chord-level">
+                          {g.levels.map((l) => (
+                            <Chip key={l.id} testID={`chord-level-${l.id}`} label={tr(l.name)} selected={l.id === chordLevel.id} onPress={() => setChordLevel(l)} />
+                          ))}
+                        </View>
+                        <Text style={styles.small}>{tr(chordLevel.meta)}</Text>
+                      </>
                     ) : null
                   }
                   record={
@@ -178,7 +225,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                   }
                   warning={mic ? micNote : null}
                   startTestID={`ear-start-${g.id}`}
-                  startLabel={tr("Démarrer · {name}", { name: tr(g.name) })}
+                  startLabel={tr("Démarrer · {name}", { name: g.levels ? tr(chordLevel.name) : tr(g.name) })}
                   onStart={() => onStart(g)}
                 />
               );
@@ -194,6 +241,9 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
 const useStyles = makeStyles((c) => ({
   content: { paddingHorizontal: spacing.lg, gap: spacing.md },
   family: { gap: spacing.sm },
+  levels: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  inputs: { flexDirection: "row", gap: 4, flexShrink: 0 },
+  inputIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   small: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary, lineHeight: 16 },
   note: { fontFamily: fonts.text, fontSize: 12, color: c.muted },
   error: { fontFamily: fonts.text, fontSize: 12, color: c.error },
