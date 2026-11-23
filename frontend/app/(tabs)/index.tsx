@@ -13,8 +13,12 @@ import { tr } from "@/src/i18n";
 
 const FEATURES = [
   {
-    title: "Apprendre",
-    text: "Explorer : vois les gammes, modes et accords sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute. S’exercer : gammes par tierces, triades ou arpèges, sur une position ou le long du manche, arpèges à 4 sons, paires de triades, avec partition, tempo, métronome et boucle.",
+    title: "Explorer",
+    text: "Les gammes, modes et accords sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute. Les formes à jouer : accords ouverts, barrés, power chords et système CAGED, avec les doigts.",
+  },
+  {
+    title: "S’exercer",
+    text: "Gammes par tierces, triades ou arpèges, sur une position ou le long du manche, arpèges à 4 sons, paires de triades, avec partition, tempo, métronome et boucle.",
   },
   {
     title: "Défis",

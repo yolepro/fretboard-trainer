@@ -5,7 +5,6 @@ import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairSty
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
 import { ExerciseLibrary, PRESETS, type ExercisePreset } from "@/src/components/ExerciseLibrary";
-import { ExplorerScreen, type ExploreMode } from "@/src/screens/ExplorerScreen";
 import { shortName } from "@/src/music/shortNames";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
@@ -100,9 +99,8 @@ export default function FingeringScreen() {
   // Subject of the exercises: scales (with the exercises above) or the 4-note arpeggio shapes.
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
   // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
-  // Apprendre: the library, an exercise (S’exercer), or Explorer (Les gammes / Les accords).
-  const [view, setView] = useState<"library" | "exercise" | "explore">("library");
-  const [exploreMode, setExploreMode] = useState<ExploreMode>("scale");
+  // S’exercer: the library or an exercise.
+  const [view, setView] = useState<"library" | "exercise">("library");
   const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
@@ -314,12 +312,6 @@ export default function FingeringScreen() {
 
   const pickPreset = (p: ExercisePreset) => {
     stop();
-    if (p.subject === "explore") {
-      setPresetId(p.id);
-      setExploreMode(p.exploreMode ?? "scale");
-      setView("explore");
-      return;
-    }
     setSubject(p.subject);
     if (p.exerciseId) setExerciseId(p.exerciseId);
     setHorizontal(p.horizontal);
@@ -696,7 +688,6 @@ export default function FingeringScreen() {
   );
 
   if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
-  if (view === "explore") return <ExplorerScreen key={exploreMode} initialMode={exploreMode} onBack={backToLibrary} />;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">

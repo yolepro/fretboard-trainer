@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 /** Width taken by the landscape navigation at the top right: headers keep this much room on their right. */
-export const LANDSCAPE_NAV_W = 4 * 40 + 3 * 4 + 2 * 4 + spacing.md; // 4 tabs: Accueil, Apprendre, Défis, Réglages
+export const LANDSCAPE_NAV_W = 5 * 40 + 4 * 4 + 2 * 4 + spacing.md; // 5 tabs: Accueil, Explorer, S’exercer, Défis, Réglages
 
 /**
  * The app's tab bar. Portrait: the usual bar at the bottom (icon + label). Landscape: a compact row of icons at the

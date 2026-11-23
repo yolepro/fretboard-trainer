@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { useSettings } from "@/src/settings";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
-import { BookOpen, GearSix, House, Trophy } from "phosphor-react-native";
+import { Compass, GearSix, House, MusicNotes, Trophy } from "phosphor-react-native";
 
 import { usesNativeTabs } from "@/src/navigation";
 import { AppTabBar } from "@/src/components/AppTabBar";
@@ -20,9 +20,13 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Icon sf="house.fill" />
           <NativeTabs.Trigger.Label>{tr("Accueil")}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="manche">
+          <NativeTabs.Trigger.Icon sf="safari.fill" />
+          <NativeTabs.Trigger.Label>{tr("Explorer")}</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="doigte">
-          <NativeTabs.Trigger.Icon sf="book.fill" />
-          <NativeTabs.Trigger.Label>{tr("Apprendre")}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="music.note" />
+          <NativeTabs.Trigger.Label>{tr("S’exercer")}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="ear">
           <NativeTabs.Trigger.Icon sf="trophy.fill" />
@@ -60,13 +64,21 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => <House color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
         }}
       />
-      {/* Apprendre (Explorer + S’exercer) and Défis; the route names stay as they were. */}
+      {/* Explorer · S’exercer · Défis; the route names stay as they were. */}
+      <Tabs.Screen
+        name="manche"
+        options={{
+          title: tr("Explorer"),
+          tabBarButtonTestID: "tab-explore",
+          tabBarIcon: ({ color, focused }) => <Compass color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
+        }}
+      />
       <Tabs.Screen
         name="doigte"
         options={{
-          title: tr("Apprendre"),
+          title: tr("S’exercer"),
           tabBarButtonTestID: "tab-learn",
-          tabBarIcon: ({ color, focused }) => <BookOpen color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
+          tabBarIcon: ({ color, focused }) => <MusicNotes color={color as string} size={24} weight={focused ? "fill" : "regular"} />,
         }}
       />
       <Tabs.Screen

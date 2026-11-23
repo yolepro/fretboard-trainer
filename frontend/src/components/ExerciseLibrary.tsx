@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CaretRight, Eye, MusicNotes, Trophy } from "phosphor-react-native";
+import { CaretRight, MusicNotes, Trophy } from "phosphor-react-native";
 import { useRouter } from "expo-router";
 
-import { Chip, ChipRow } from "@/src/components/Chip";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { tr } from "@/src/i18n";
@@ -18,24 +17,20 @@ export type ExercisePreset = {
   family: Family;
   name: string;
   meta: string;
-  subject: "scale" | "arp" | "pairs" | "explore";
-  exploreMode?: "scale" | "chord";
+  subject: "scale" | "arp" | "pairs";
   exerciseId?: ExerciseId;
   horizontal: boolean;
   arpKind?: "shapes" | "twoStrings";
 };
 
-type Family = "Explorer" | "S’exercer";
-const FAMILIES: Family[] = ["Explorer", "S’exercer"];
+type Family = "S’exercer";
+const FAMILIES: Family[] = ["S’exercer"];
 const LEADS: Record<Family, string> = {
-  Explorer: "Regarder et écouter, sans exercice : le manche en grand, la partition, la lecture.",
   "S’exercer": "Avec la partition, le tempo et le métronome.",
 };
 
-/** Apprendre: one card per screen, Explorer first, then the exercises (S’exercer). Edit names here. */
+/** S’exercer: one card per exercise. Edit names here. */
 export const PRESETS: ExercisePreset[] = [
-  { id: "explore-scale", family: "Explorer", name: "Les gammes", meta: "Gammes, modes, pentatoniques · 5 positions dans toutes les tonalités", subject: "explore", exploreMode: "scale", horizontal: false },
-  { id: "explore-chord", family: "Explorer", name: "Les accords", meta: "Les notes d’un accord sur tout le manche, par position", subject: "explore", exploreMode: "chord", horizontal: false },
   { id: "scale", family: "S’exercer", name: "Montée & descente de gamme", meta: "Sur une position · toutes les gammes", subject: "scale", exerciseId: "scale", horizontal: false },
   { id: "thirds", family: "S’exercer", name: "Gamme par tierces", meta: "Sur une position", subject: "scale", exerciseId: "thirds", horizontal: false },
   { id: "thirds-h", family: "S’exercer", name: "Gamme par tierces horizontales", meta: "Sur 2 cordes, le long du manche", subject: "scale", exerciseId: "thirds", horizontal: true },
@@ -57,8 +52,7 @@ export function ExerciseLibrary({ currentId, onPick }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
-  const [filter, setFilter] = useState<Family | null>(null);
-  const families = filter ? [filter] : FAMILIES;
+  const families = FAMILIES;
   const bottom = usesNativeTabs || landscape ? insets.bottom : 0;
   const router = useRouter();
 
@@ -66,18 +60,11 @@ export function ExerciseLibrary({ currentId, onPick }: Props) {
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="exercise-library">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (landscape ? spacing.xs : spacing.lg) }, landscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
-        <Text style={styles.title}>{tr("Apprendre")}</Text>
+        <Text style={styles.title}>{tr("S’exercer")}</Text>
       </View>
-      <ChipRow testID="library-filters">
-        <Chip testID="library-filter-all" label={tr("Tout")} selected={filter === null} onPress={() => setFilter(null)} />
-        {FAMILIES.map((f) => (
-          <Chip key={f} testID={`library-filter-${f}`} label={tr(f)} selected={filter === f} onPress={() => setFilter(f)} />
-        ))}
-      </ChipRow>
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
         {families.map((fam) => (
           <View key={fam} style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr(fam)}</Text>
             <Text style={styles.lead}>{tr(LEADS[fam])}</Text>
             <View style={[styles.cards, landscape && styles.cardsWide]}>
               {PRESETS.filter((p) => p.family === fam).map((p) => (
@@ -88,8 +75,8 @@ export function ExerciseLibrary({ currentId, onPick }: Props) {
                   style={({ pressed }) => [styles.card, landscape && styles.cardWide, p.id === currentId && styles.cardCurrent, pressed && styles.pressed]}
                   accessibilityRole="button"
                 >
-                  <View style={[styles.cardIcon, p.subject === "explore" && styles.cardIconExplore]}>
-                    {p.subject === "explore" ? <Eye size={18} color={colors.brandSecondary} weight="bold" /> : <MusicNotes size={18} color={colors.onSurfaceSecondary} />}
+                  <View style={styles.cardIcon}>
+                    <MusicNotes size={18} color={colors.onSurfaceSecondary} />
                   </View>
                   <View style={styles.cardText}>
                     <Text style={styles.cardName} numberOfLines={1}>
@@ -131,7 +118,6 @@ const useStyles = makeStyles((c) => ({
   lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18, marginTop: -2 },
   cards: { gap: spacing.sm },
   cardIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  cardIconExplore: { backgroundColor: "rgba(59,130,246,0.16)" },
   toDefis: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 60, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: c.brandPrimary },
   toDefisTitle: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: c.brandPrimary },
   cardsWide: { flexDirection: "row", flexWrap: "wrap" },

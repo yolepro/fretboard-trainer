@@ -42,7 +42,7 @@ import { tr } from "@/src/i18n";
 export type ExploreMode = "scale" | "chord";
 type Mode = ExploreMode;
 
-/** Apprendre › Explorer: « Les gammes » / « Les accords » — the whole neck, the score, playback. */
+/** Explorer: « Les gammes » / « Les accords » — the whole neck, the score, playback. */
 export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMode; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
@@ -398,7 +398,7 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
       {isLandscape ? (
         // Landscape: one row aligned with the tab bar — like S'exercer.
         <View style={[styles.header, styles.headerLandscape, { paddingTop: insets.top + spacing.xs, paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
-          <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Apprendre")} hitSlop={6}>
+          <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Explorer")} hitSlop={6}>
             <CaretLeft size={20} color={colors.onSurface} weight="bold" />
           </Pressable>
           <Text style={[styles.title, styles.titleCompact]} testID="fretboard-title" numberOfLines={1}>
@@ -420,12 +420,11 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
       ) : (
         <>
           <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-            <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Apprendre")} hitSlop={6}>
+            <Pressable testID="explorer-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Explorer")} hitSlop={6}>
               <CaretLeft size={20} color={colors.onSurface} weight="bold" />
             </Pressable>
             <View style={styles.headerText}>
               {/* The key, the scale / chord and the position are on the pills just below. */}
-              <Text style={styles.kicker}>{tr("Explorer")}</Text>
               <Text style={styles.title} testID="fretboard-title" numberOfLines={1}>
                 {mode === "scale" ? tr("Les gammes") : tr("Les accords")}
               </Text>
