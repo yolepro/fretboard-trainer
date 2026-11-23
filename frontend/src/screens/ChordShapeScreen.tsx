@@ -194,7 +194,7 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
     const panelW = Math.round(Math.max(210, Math.min(380, availW * 0.3)));
     const leftW = availW - panelW - spacing.md;
     const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm;
-    const rowH = Math.max(14, Math.min(28, (bodyH - (chips ? 90 : 50) - 24) / 6));
+    const rowH = Math.max(14, Math.min(34, (bodyH - (chips ? 64 : 30) - 30) / 6));
     const scoreW = panelW - 2 * spacing.sm;
     const k = fitCount(scoreW, list.length);
     const idxs = windowOf(at, k, list.length);
@@ -240,7 +240,7 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
                 </>
               ) : null}
             </View>
-            <ChordScore voicings={list} idxs={idxs} selected={at} width={scoreW} gap={6.5} labelOf={shortOf} colorNotes={show === "degrees"} background={colors.surfaceSecondary} onPick={select} testID="shape-score" />
+            <ChordScore voicings={list} idxs={idxs} selected={at} width={scoreW} gap={7.5} labelOf={shortOf} colorNotes={show === "degrees"} background={colors.surfaceSecondary} onPick={select} testID="shape-score" />
             {list.length > k && list.length <= 12 ? (
               <View style={styles.dots}>
                 {list.map((_, i) => (
@@ -478,7 +478,7 @@ const useStyles = makeStyles((c) => ({
   headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center" },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.onSurface },
-  titleLandscape: { flex: 0, flexShrink: 1, fontSize: 20, maxWidth: 220 },
+  titleLandscape: { flex: 0, flexShrink: 1, fontSize: 17, maxWidth: 128 },
   transportPill: { flexDirection: "row", alignItems: "center", padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   body: { flex: 1, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   panel: { alignSelf: "flex-start", padding: spacing.sm, gap: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },

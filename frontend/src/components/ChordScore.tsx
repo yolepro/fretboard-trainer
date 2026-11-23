@@ -37,7 +37,7 @@ export function ChordScore({ voicings, idxs, selected, width, gap = 7, labelOf, 
   const { colors } = useTheme();
   const { settings } = useSettings();
   const g = gap;
-  const tg = g + 1;
+  const tg = Math.max(10.5, g * 1.35); // tab: room for the fret numbers
   const clefW = 30;
   const mw = (width - clefW) / Math.max(1, idxs.length);
   const y0 = 16 + 3.5 * g; // top staff line
@@ -73,7 +73,7 @@ export function ChordScore({ voicings, idxs, selected, width, gap = 7, labelOf, 
           8
         </SvgText>
         {["T", "A", "B"].map((c, k) => (
-          <SvgText key={c} x={8} y={tabTop + tg * 1.1 + k * tg * 1.5} fontSize={Math.max(8, tg * 1.1)} fill={dim} fontWeight="700" textAnchor="middle">
+          <SvgText key={c} x={8} y={tabTop + tg * 1.1 + k * tg * 1.5} fontSize={10} fill={dim} fontWeight="700" textAnchor="middle">
             {c}
           </SvgText>
         ))}
@@ -125,9 +125,9 @@ export function ChordScore({ voicings, idxs, selected, width, gap = 7, labelOf, 
           v.strings.forEach((s, i) => {
             if (!s) return;
             const ty = tabTop + (5 - i) * tg;
-            out.push(<Rect key={`tr${i}`} x={cx - 8} y={ty - tg * 0.6} width={16} height={tg * 1.2} fill={on ? colors.brandTertiary : background} />);
+            out.push(<Rect key={`tr${i}`} x={cx - 8} y={ty - 5.5} width={16} height={11} fill={on ? colors.brandTertiary : background} />);
             out.push(
-              <SvgText key={`tf${i}`} x={cx} y={ty + tg * 0.42} fontSize={Math.max(9, tg * 1.15)} fill={c} fontWeight="700" textAnchor="middle">
+              <SvgText key={`tf${i}`} x={cx} y={ty + Math.min(11, tg * 0.95) * 0.36} fontSize={Math.min(11, tg * 0.95)} fill={c} fontWeight="700" textAnchor="middle">
                 {String(s.fret)}
               </SvgText>,
             );

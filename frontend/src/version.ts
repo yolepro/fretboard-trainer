@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.56.1 — Formes d’accords : tablature plus aérée (les chiffres ne se chevauchent plus), portée plus grande en paysage, manche plus haut, titre réduit pour laisser la place à la pastille Doigts / Degrés
 // 1.56.0 — Formes d’accords : portrait = positions (pastilles), tout le manche (la forme encadrée, les autres en anneaux), zoom ‹ ›, partition solfège + tab de toutes les formes du même accord ; paysage = tout le manche à gauche, partition à côté (nombre de mesures adapté à l’écran, centrée sur la forme en cours), Doigts / Degrés en pastille, Écouter en haut à droite
 // 1.55.1 — Accords ouverts : ajout de F (barré case 1) et B (barré case 2) pour couvrir tous les accords des cases 0 à 5 ; mention sur la carte et sous le nom de l’accord
 // 1.55.0 — 5 onglets : Accueil · Explorer · S’exercer · Défis · Réglages. Explorer = Gammes (Les gammes) + La bible des accords (Les accords) + Les formes à jouer : Accords ouverts, Accords barrés (formes de Mi / La), Power chords (1-5, 1-5-8), Système CAGED — doigts ou degrés, barré, ○ / ×, ‹ › entre les formes, écoute arpégé / plaqué ; Accords à 3 et 4 sons annoncés (étape 2). S’exercer = les exercices seuls
@@ -136,4 +137,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.56.0";
+export const APP_VERSION = "1.56.1";
