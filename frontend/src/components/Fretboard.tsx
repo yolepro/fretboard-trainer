@@ -201,16 +201,32 @@ function FretboardImpl({
     if (fretScale < 1) scrollRef.current?.scrollTo({ x: 0, animated: false });
   }, [fretScale]);
 
-  // Only scroll when the selected position is (partly) off-screen.
-  useEffect(() => {
-    if (!windowRange || noColumns) return;
+  // Bring the selected zone into view. A position (columns): scroll only when it is (partly) off-screen.
+  // A route along the neck (horizontal exercises, chained shapes; no columns): show where it starts — the whole
+  // route centred when it fits on screen.
+  const focusWindow = () => {
+    if (!windowRange || windowRange.max < windowRange.min) return;
     let start = 0;
     for (let f = 0; f < windowRange.min; f++) start += widths[f];
     let end = start;
     for (let f = windowRange.min; f <= windowRange.max; f++) end += widths[f];
-    const visible = start >= scrollX.current && end <= scrollX.current + viewW.current;
-    if (visible && viewW.current > 0) return;
-    scrollRef.current?.scrollTo({ x: Math.max(0, start - widths[0]), animated: true });
+    const vw = viewW.current;
+    const x0 = scrollX.current;
+    if (noColumns) {
+      const firstEnd = start + widths[windowRange.min];
+      if (vw > 0 && start >= x0 && firstEnd <= x0 + vw && end <= x0 + vw) return;
+      const x = vw > 0 && end - start <= vw ? start - (vw - (end - start)) / 2 : start - widths[0];
+      scrollRef.current?.scrollTo({ x: Math.max(0, Math.min(x, totalW - vw)), animated: vw > 0 });
+      return;
+    }
+    if (vw > 0 && start >= x0 && end <= x0 + vw) return;
+    scrollRef.current?.scrollTo({ x: Math.max(0, start - widths[0]), animated: vw > 0 });
+  };
+  const focusRef = useRef(focusWindow);
+  focusRef.current = focusWindow;
+  useEffect(() => {
+    focusWindow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowRange, widths, noColumns]);
 
   // Horizontal routes span the neck: follow the note being played when it leaves the screen.
@@ -232,7 +248,10 @@ function FretboardImpl({
       }}
       scrollEventThrottle={32}
       onLayout={(e) => {
+        const first = viewW.current <= 0;
         viewW.current = e.nativeEvent.layout.width;
+        // A scroll asked before the neck was laid out can be lost (Android): ask again once its width is known.
+        if (first) requestAnimationFrame(() => focusRef.current());
       }}
       horizontal
       showsHorizontalScrollIndicator={false}
