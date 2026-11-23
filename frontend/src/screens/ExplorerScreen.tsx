@@ -510,6 +510,7 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
         onClose={closeSheet}
         mode={mode}
         onModeChange={setMode}
+        scalesOnly
         hideLabels
         rootPc={rootPc}
         onRootChange={setRootPc}

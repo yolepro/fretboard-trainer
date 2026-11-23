@@ -28,7 +28,7 @@ type Props = {
   onPositionChange: (i: number | null) => void;
   labelMode: "note" | "degree";
   onLabelModeChange: (m: "note" | "degree") => void;
-  /** Scales only: hides the Gammes / Accords switch. */
+  /** Hides the Gammes / Accords switch (the screen already says which: Les gammes, Les accords, an exercise). */
   scalesOnly?: boolean;
   /** Hides the "Tout le manche" position chip (a position is always selected). */
   hideAllPosition?: boolean;
