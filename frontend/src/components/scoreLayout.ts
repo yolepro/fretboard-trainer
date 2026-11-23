@@ -28,7 +28,7 @@ const HALF = 4; // half a staff space, in px (one diatonic step)
 const TAB_GAP = 10;
 
 // Own drawing of a treble clef (stroke only), staff coordinates: bottom line y = 0, 8 px per staff space.
-const CLEF_PATH =
+export const CLEF_PATH =
   "M -0.5,-3.5 C -3.5,-3.5 -5,-7.5 -3.5,-11 C -2,-14.5 2,-16 5,-13.5 C 9,-10 9,-2 3.5,1.5 C -2,4.5 -9,1 -9,-6 C -9,-13 -2.5,-19 1.5,-25 C 5,-30 6.5,-36 5.5,-41 C 4.8,-45.5 2,-47 0.5,-44 C -1.5,-40 -0.5,-33 0.3,-27 L 3.2,3 C 4,10 2,14 -1.5,14 C -4.5,14 -5.5,11 -4,9.5";
 
 const SHARP_STEPS = [38, 35, 39, 36, 33, 37, 34]; // F5 C5 G5 D5 A4 E5 B4
