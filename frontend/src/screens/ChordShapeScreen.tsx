@@ -140,6 +140,11 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
             <Text style={styles.muted} numberOfLines={1}>
               {kind === "open" ? tr(v.typeName) : `${tr(v.name)} · ${typeLabel}`}
             </Text>
+            {v.note ? (
+              <Text style={styles.note} testID="shape-note">
+                {tr(v.note)}
+              </Text>
+            ) : null}
           </View>
           <View style={styles.formula}>
             {degs.map((d) => (
@@ -328,6 +333,7 @@ const useStyles = makeStyles((c) => ({
   nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   chordName: { fontFamily: fonts.display, fontSize: 32, fontWeight: "700", color: c.onSurface },
   muted: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary },
+  note: { fontFamily: fonts.text, fontSize: 12, color: c.brandPrimary, marginTop: 2 },
   formula: { flexDirection: "row", gap: 6, flexShrink: 0 },
   degChip: { minWidth: 30, height: 26, paddingHorizontal: 6, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   degChipText: { fontFamily: fonts.display, fontSize: 13, fontWeight: "700", color: "#FFFFFF" },

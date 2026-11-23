@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.55.1 — Accords ouverts : ajout de F (barré case 1) et B (barré case 2) pour couvrir tous les accords des cases 0 à 5 ; mention sur la carte et sous le nom de l’accord
 // 1.55.0 — 5 onglets : Accueil · Explorer · S’exercer · Défis · Réglages. Explorer = Gammes (Les gammes) + La bible des accords (Les accords) + Les formes à jouer : Accords ouverts, Accords barrés (formes de Mi / La), Power chords (1-5, 1-5-8), Système CAGED — doigts ou degrés, barré, ○ / ×, ‹ › entre les formes, écoute arpégé / plaqué ; Accords à 3 et 4 sons annoncés (étape 2). S’exercer = les exercices seuls
 // 1.54.1 — Les gammes / Les accords : plus de sélecteur « Gammes · Accords / Triades » dans la feuille Gamme / Accord (la rubrique choisie le dit déjà)
 // 1.54.0 — Nouvelle organisation en 4 onglets : Accueil · Apprendre · Défis · Réglages. Apprendre = une bibliothèque Explorer (Les gammes, Les accords) + S’exercer (exercices renommés : Montée & descente de gamme, Gamme par tierces…). Défis = Connaître le manche (Trouve la note, Trouve le degré, Trouve la gamme, Trouve le degré de l’accord) + Entraîner l’oreille (Rejoue la note, Rejoue l’intervalle, Reconnais l’accord à 4 niveaux) ; icônes micro / toucher sur les cartes
@@ -134,4 +135,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.55.0";
+export const APP_VERSION = "1.55.1";

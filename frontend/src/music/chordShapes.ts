@@ -12,6 +12,7 @@ export type Voicing = {
   typeName: string; // "Majeur", "Mineur"…
   strings: Played[]; // 6 → 1
   rootString: number; // 6, 5 or 4
+  note?: string; // shown under the chord name (e.g. why an “open” chord is barred)
 };
 
 type Row = (number | null)[];
@@ -30,7 +31,7 @@ function make(name: string, rootPc: number, symbol: string, typeName: string, ro
 }
 
 // ---------- Accords ouverts ----------
-type OpenDef = { root: number; symbol: string; type: string; frets: Row; fingers: Row; degs: (string | null)[] };
+type OpenDef = { root: number; symbol: string; type: string; frets: Row; fingers: Row; degs: (string | null)[]; note?: string };
 const x = null;
 export const OPEN_CHORDS: OpenDef[] = [
   { root: 0, symbol: "", type: "Majeur", frets: [x, 3, 2, 0, 1, 0], fingers: [x, 3, 2, 0, 1, 0], degs: [x, "1", "3", "5", "1", "3"] },
@@ -38,6 +39,9 @@ export const OPEN_CHORDS: OpenDef[] = [
   { root: 7, symbol: "", type: "Majeur", frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3], degs: ["1", "3", "5", "1", "3", "1"] },
   { root: 4, symbol: "", type: "Majeur", frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0], degs: ["1", "5", "1", "3", "5", "1"] },
   { root: 2, symbol: "", type: "Majeur", frets: [x, x, 0, 2, 3, 2], fingers: [x, x, 0, 1, 3, 2], degs: [x, x, "1", "5", "1", "3"] },
+  // F and B have no open shape: they are barred near the nut, so every chord of frets 0 to 5 is here.
+  { root: 5, symbol: "", type: "Majeur", frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], degs: ["1", "5", "1", "3", "5", "1"], note: "Barré en case 1 (forme de Mi) : pas de forme ouverte" },
+  { root: 11, symbol: "", type: "Majeur", frets: [x, 2, 4, 4, 4, 2], fingers: [x, 1, 3, 3, 3, 1], degs: [x, "1", "5", "1", "3", "5"], note: "Barré en case 2 (forme de La) : pas de forme ouverte" },
   { root: 9, symbol: "m", type: "Mineur", frets: [x, 0, 2, 2, 1, 0], fingers: [x, 0, 2, 3, 1, 0], degs: [x, "1", "5", "1", "♭3", "5"] },
   { root: 4, symbol: "m", type: "Mineur", frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0], degs: ["1", "5", "1", "♭3", "5", "1"] },
   { root: 2, symbol: "m", type: "Mineur", frets: [x, x, 0, 2, 3, 1], fingers: [x, x, 0, 2, 3, 1], degs: [x, x, "1", "5", "1", "♭3"] },
@@ -57,7 +61,7 @@ export const OPEN_CHORDS: OpenDef[] = [
 ];
 export const openVoicing = (i: number): Voicing => {
   const d = OPEN_CHORDS[i];
-  return make("Accord ouvert", d.root, d.symbol, d.type, d.frets.findIndex((f) => f !== null) === 0 ? 6 : d.frets[1] !== null ? 5 : 4, d.frets, d.fingers, d.degs);
+  return { ...make("Accord ouvert", d.root, d.symbol, d.type, d.frets.findIndex((f) => f !== null) === 0 ? 6 : d.frets[1] !== null ? 5 : 4, d.frets, d.fingers, d.degs), note: d.note };
 };
 
 // ---------- Movable shapes: offsets from the root's fret on its string ----------

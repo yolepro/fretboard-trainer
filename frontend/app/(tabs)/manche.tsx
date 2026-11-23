@@ -39,7 +39,7 @@ const GROUPS: Group[] = [
     title: "Les formes à jouer",
     lead: "Les doigtés tels qu’on les joue : doigts, barré, cordes à vide et étouffées, joué en arpège puis plaqué.",
     items: [
-      { id: "open", name: "Accords ouverts", meta: "C, A, G, E, D, Am, Em, Dm et leurs 7 · au sillet", open: { shape: "open" } },
+      { id: "open", name: "Accords ouverts", meta: "C, A, G, E, D, F, B, Am, Em, Dm et leurs 7 · cases 0 à 5 (F et B se jouent barrés : pas de forme ouverte)", open: { shape: "open" } },
       { id: "barre", name: "Accords barrés", meta: "Forme de Mi, forme de La · majeur, mineur, 7, m7, maj7", open: { shape: "barre" } },
       { id: "power", name: "Power chords", meta: "1-5 et 1-5-8 · fondamentale sur Mi, La ou Ré", open: { shape: "power" } },
       { id: "caged", name: "Système CAGED", meta: "Les 5 formes d’un accord le long du manche", open: { shape: "caged" } },
@@ -110,7 +110,7 @@ export default function ExplorerTab() {
                     <Text style={styles.cardName} numberOfLines={1}>
                       {tr(it.name)}
                     </Text>
-                    <Text style={styles.cardMeta} numberOfLines={2}>
+                    <Text style={styles.cardMeta} numberOfLines={3}>
                       {tr(it.meta)}
                     </Text>
                   </View>
