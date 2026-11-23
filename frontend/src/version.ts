@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.57.0 — Formes d’accords : le manche de Les gammes (apparence des Réglages, défilement et surbrillance de la zone comme une position) ; cordes à vide jouées remplies, autres formes en anneaux, × pour les cordes étouffées, barré dessiné ; ‹ › sous le manche en portrait
 // 1.56.2 — Partition des formes : plus d’espace entre la portée et la tablature (lignes supplémentaires des notes graves)
 // 1.56.1 — Formes d’accords : tablature plus aérée (les chiffres ne se chevauchent plus), portée plus grande en paysage, manche plus haut, titre réduit pour laisser la place à la pastille Doigts / Degrés
 // 1.56.0 — Formes d’accords : portrait = positions (pastilles), tout le manche (la forme encadrée, les autres en anneaux), zoom ‹ ›, partition solfège + tab de toutes les formes du même accord ; paysage = tout le manche à gauche, partition à côté (nombre de mesures adapté à l’écran, centrée sur la forme en cours), Doigts / Degrés en pastille, Écouter en haut à droite
@@ -138,4 +139,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.56.2";
+export const APP_VERSION = "1.57.0";

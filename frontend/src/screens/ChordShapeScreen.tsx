@@ -6,11 +6,13 @@ import { CaretLeft, CaretRight, Play, Stop } from "phosphor-react-native";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { Chip } from "@/src/components/Chip";
 import { ChordScore, fitCount, windowOf } from "@/src/components/ChordScore";
+import { Fretboard, fitScale, type ChordMark } from "@/src/components/Fretboard";
 import { KeyWheel } from "@/src/components/KeyWheel";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { StudioBackground } from "@/src/components/StudioBackground";
-import { initAudio, playChordNotes, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
+import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
+import { cellKey, type BoxWindow, type DegreeKey, type IntervalDef } from "@/src/music/theory";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import {
   CHORD_TYPES,
@@ -39,6 +41,34 @@ export const SHAPE_TITLES: Record<ShapeKind, string> = {
 
 type SheetId = "type" | "shape" | null;
 type Show = "fingers" | "degrees";
+
+const degKey = (d: string): DegreeKey => (d === "1" ? "root" : d.endsWith("3") ? "third" : d.endsWith("5") ? "fifth" : "seventh");
+const NO_DEGREES = new Map<number, IntervalDef>();
+const NO_LAYERS = new Set<DegreeKey>();
+
+/** The neck drawing of a shape (strings: Fretboard's 0 = high e): played notes, the other shapes as rings, × = muted. */
+function shapeOnNeck(v: Voicing, ghosts: Voicing[], show: "fingers" | "degrees") {
+  const marks = new Map<string, ChordMark>();
+  ghosts.forEach((g) => g.strings.forEach((s, i) => s && marks.set(cellKey(5 - i, s.fret), { kind: "ghost", degree: degKey(s.deg), label: "" })));
+  const played = new Set<string>();
+  v.strings.forEach((s, i) => {
+    const str = 5 - i;
+    if (!s) {
+      marks.set(cellKey(str, 0), { kind: "muted", degree: "root", label: "×" });
+      return;
+    }
+    played.add(cellKey(str, s.fret));
+    marks.set(cellKey(str, s.fret), { kind: "played", degree: degKey(s.deg), label: show === "fingers" ? (s.fret === 0 ? "0" : String(s.finger || "")) : s.deg });
+  });
+  const frets = v.strings.filter((s): s is NonNullable<Played> => !!s).map((s) => s.fret);
+  const fretted = frets.filter((f) => f > 0);
+  const lo = fretted.length ? Math.min(...fretted) : 0;
+  const window: BoxWindow = { min: frets.includes(0) ? 0 : lo, max: Math.max(...frets), cells: played };
+  // The index finger across several strings at the lowest fret.
+  const one = v.strings.map((s, i) => (s && s.fret === lo && lo > 0 && s.finger === 1 ? 5 - i : -1)).filter((x) => x >= 0);
+  const barre = show === "fingers" && one.length >= 2 ? { fret: lo, from: Math.min(...one), to: Math.max(...one) } : null;
+  return { marks, window, barre };
+}
 
 const playedOf = (v: Voicing) => v.strings.filter((s): s is NonNullable<Played> => !!s);
 const fretSpan = (v: Voicing): [number, number] => {
@@ -78,8 +108,26 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
   const [lo, hi] = fretSpan(v);
   const hasOpen = v.strings.some((s) => s?.fret === 0);
   const sameChord = kind !== "open"; // the other shapes of the list are the same chord: ghosts on the neck, positions
-  const ghosts = sameChord ? list.filter((_, i) => i !== at) : [];
-  const neckTo = Math.min(settings.fretCount, Math.max(15, ...list.map((s) => fretSpan(s)[1])));
+  const neck = useMemo(() => shapeOnNeck(v, sameChord ? list.filter((_, i) => i !== at) : [], show), [list, at, v, sameChord, show]);
+  const onNotePress = (midi: number) => {
+    resumeWebAudio();
+    playNote(midi, settings.volume);
+  };
+  const fretboard = (fretScale: number, rowH: number) => (
+    <Fretboard
+      fretScale={fretScale}
+      rowH={rowH}
+      degreeMap={NO_DEGREES}
+      visibleLayers={NO_LAYERS}
+      labelMode="degree"
+      showNeutral={false}
+      nameOf={nameOf}
+      onNotePress={onNotePress}
+      windowRange={neck.window}
+      marks={neck.marks}
+      barre={neck.barre}
+    />
+  );
 
   useEffect(() => {
     preloadNotes(Array.from({ length: 30 }, (_, i) => 40 + i));
@@ -194,7 +242,7 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
     const panelW = Math.round(Math.max(210, Math.min(380, availW * 0.3)));
     const leftW = availW - panelW - spacing.md;
     const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm;
-    const rowH = Math.max(14, Math.min(34, (bodyH - (chips ? 64 : 30) - 30) / 6));
+    const rowH = Math.floor(Math.max(20, Math.min(34, (bodyH - (chips ? 64 : 30) - 30) / 6)));
     const scoreW = panelW - 2 * spacing.sm;
     const k = fitCount(scoreW, list.length);
     const idxs = windowOf(at, k, list.length);
@@ -217,7 +265,7 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
         </View>
         <View style={[styles.body, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={{ width: leftW, gap: spacing.sm }}>
-            <ChordNeck voicing={v} ghosts={ghosts} from={1} to={neckTo} width={leftW} rowH={rowH} show={show} frame testID="chord-neck-full" />
+            {fretboard(fitScale(leftW, 15), rowH)}
             {chips}
             <Text style={styles.muted} numberOfLines={1}>
               {chordName} · {desc}
@@ -257,11 +305,8 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
 
   // ---------- Portrait ----------
   const contentW = width - insets.left - insets.right - 2 * spacing.lg;
-  const zoomW = contentW - 2 * (36 + spacing.sm);
   const k = fitCount(contentW, list.length);
   const idxs = windowOf(at, k, list.length);
-  const zoomFrom = hi <= 5 ? 1 : lo;
-  const zoomTo = zoomFrom + Math.max(5, hi - zoomFrom + 1) - 1;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="chord-shape-screen">
@@ -298,18 +343,15 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
         </View>
 
         {chips}
-        {sameChord ? (
-          <View style={{ gap: 4 }}>
-            <Text style={styles.sectionTitle}>{tr("Sur tout le manche")}</Text>
-            <ChordNeck voicing={v} ghosts={ghosts} from={1} to={neckTo} width={contentW} rowH={9} show={null} frame testID="chord-neck-full" />
-          </View>
-        ) : null}
-
-        <View style={styles.neckRow}>
+        {/* The neck of Les gammes (its look follows Réglages); it scrolls to the shape, like a scale position. */}
+        <View style={styles.neckBleed}>{fretboard(1, 34)}</View>
+        <View style={styles.navRow}>
           <Pressable testID="shape-prev" onPress={() => select(at - 1)} style={({ pressed }) => [styles.arrow, pressed && styles.pressed]} accessibilityLabel={tr("Forme précédente")} hitSlop={6}>
             <CaretLeft size={18} color={colors.onSurface} weight="bold" />
           </Pressable>
-          <ChordNeck voicing={v} from={zoomFrom} to={zoomTo} width={zoomW} rowH={26} show={show} allNums testID="chord-neck" />
+          <Text style={[styles.muted, styles.navText]} numberOfLines={1}>
+            {kind === "open" ? chordName : chipOf(v, at)} · {at + 1} / {list.length}
+          </Text>
           <Pressable testID="shape-next" onPress={() => select(at + 1)} style={({ pressed }) => [styles.arrow, pressed && styles.pressed]} accessibilityLabel={tr("Forme suivante")} hitSlop={6}>
             <CaretRight size={18} color={colors.onSurface} weight="bold" />
           </Pressable>
@@ -341,134 +383,6 @@ function degColor(d: string, c: ReturnType<typeof useTheme>["colors"]) {
   if (d.endsWith("3")) return c.degree3rd;
   if (d.endsWith("5")) return c.degree5th;
   return c.degree7th;
-}
-
-type NeckProps = {
-  voicing: Voicing;
-  ghosts?: Voicing[]; // the other shapes of the same chord, drawn as rings
-  from: number;
-  to: number;
-  width: number;
-  rowH: number;
-  show: Show | null; // null: plain dots (overview)
-  frame?: boolean; // frame the shape's zone
-  allNums?: boolean;
-  testID?: string;
-};
-
-/** A neck drawn as it is held: high e on top, the nut on the left. */
-function ChordNeck({ voicing, ghosts = [], from, to, width, rowH, show, frame, allNums, testID }: NeckProps) {
-  const styles = useStyles();
-  const { colors } = useTheme();
-  const nut = from <= 1;
-  const gutter = rowH >= 16 ? 22 : 14;
-  const n = to - from + 1;
-  const colW = (width - gutter) / n;
-  const dot = Math.max(6, Math.min(rowH - 3, colW - 4, 26));
-  const top = rowH / 2 + 3;
-  const h = rowH * 5;
-  const cx = (f: number) => (f === 0 ? gutter / 2 - 1 : gutter + (f - from + 0.5) * colW);
-  const ry = (i: number) => top + (5 - i) * rowH; // i: 0 = low E
-  const [lo, hi] = fretSpan(voicing);
-  const hasOpen = voicing.strings.some((s) => s?.fret === 0);
-  const strings = voicing.strings;
-
-  // Barre: finger 1 on several strings at the lowest fret.
-  const one = strings.map((s, i) => (s && s.fret === lo && s.fret > 0 && s.finger === 1 ? i : -1)).filter((i) => i >= 0);
-  const barre = show && one.length >= 2 ? { a: Math.max(...one), b: Math.min(...one) } : null;
-  const inlay = Math.max(2, Math.min(5, rowH * 0.2));
-  const markSize = Math.min(13, rowH);
-
-  return (
-    <View style={{ width, height: top + h + rowH / 2 + 18 }} testID={testID}>
-      <View style={{ position: "absolute", left: gutter, top: top - rowH / 2, width: width - gutter, height: rowH * 6, backgroundColor: "#2A1E14", borderRadius: 3 }} />
-      {[3, 5, 7, 9, 12, 15, 17, 19, 21].filter((f) => f >= from && f <= to).flatMap((f) =>
-        (f === 12 || f === 24 ? [1.5, 3.5] : [2.5]).map((k) => (
-          <View key={`in${f}-${k}`} style={{ position: "absolute", left: cx(f) - inlay, top: top + k * rowH - inlay, width: 2 * inlay, height: 2 * inlay, borderRadius: inlay, backgroundColor: "rgba(231,229,228,0.28)" }} />
-        )),
-      )}
-      {Array.from({ length: n + 1 }, (_, i) => {
-        const isNut = nut && i === 0;
-        const w = isNut ? 4 : 1.5;
-        return <View key={`f${i}`} style={{ position: "absolute", left: gutter + i * colW - w / 2, top: top - 2, width: w, height: h + 4, backgroundColor: isNut ? "#E7E5E4" : "#8A8F98" }} />;
-      })}
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const t = Math.max(0.8, 0.7 + (5 - i) * 0.3 * Math.min(1, rowH / 20));
-        return <View key={`s${i}`} style={{ position: "absolute", left: gutter, top: ry(i) - t / 2, width: width - gutter, height: t, backgroundColor: "#C9B79C", opacity: 0.85 }} />;
-      })}
-      {frame && hi > 0 ? (
-        <View
-          style={{
-            position: "absolute",
-            left: hasOpen && nut ? 0 : cx(lo) - colW / 2 - 2,
-            top: top - rowH / 2 - 3,
-            width: cx(hi) + colW / 2 + 2 - (hasOpen && nut ? 0 : cx(lo) - colW / 2 - 2),
-            height: rowH * 6 + 6,
-            borderWidth: 2,
-            borderColor: colors.brandPrimary,
-            borderRadius: 6,
-            backgroundColor: "rgba(245,158,11,0.10)",
-          }}
-        />
-      ) : null}
-      {ghosts.flatMap((g, gi) =>
-        g.strings.map((s, i) => {
-          if (!s || s.fret < from - 1 || s.fret > to || (s.fret === 0 && !nut)) return null;
-          const d = dot * 0.7;
-          return <View key={`g${gi}-${i}`} style={{ position: "absolute", left: cx(s.fret) - d / 2, top: ry(i) - d / 2, width: d, height: d, borderRadius: d / 2, borderWidth: 1.5, borderColor: degColor(s.deg, colors), opacity: 0.55 }} />;
-        }),
-      )}
-      {barre ? (
-        <View
-          style={{
-            position: "absolute",
-            left: cx(lo) - dot / 2 - 2,
-            top: ry(barre.a) - dot / 2 - 2,
-            width: dot + 4,
-            height: ry(barre.b) - ry(barre.a) + dot + 4,
-            borderRadius: dot,
-            backgroundColor: "rgba(244,244,245,0.20)",
-            borderWidth: 1,
-            borderColor: "rgba(244,244,245,0.45)",
-          }}
-        />
-      ) : null}
-      {strings.map((s, i) => {
-        if (s === null)
-          return (
-            <Text key={`m${i}`} style={[styles.mark, { left: cx(0) - 10, top: ry(i) - 9, fontSize: markSize, color: "#F87171" }]}>
-              ×
-            </Text>
-          );
-        if (s.fret === 0) {
-          const d = Math.min(dot * 0.85, gutter - 4);
-          if (show === "degrees")
-            return (
-              <Text key={`m${i}`} style={[styles.mark, { left: cx(0) - 10, top: ry(i) - 9, fontSize: Math.min(12, rowH), color: degColor(s.deg, colors), fontWeight: "700" }]}>
-                {s.deg}
-              </Text>
-            );
-          return <View key={`m${i}`} style={{ position: "absolute", left: cx(0) - d / 2, top: ry(i) - d / 2, width: d, height: d, borderRadius: d / 2, borderWidth: 2, borderColor: degColor(s.deg, colors) }} />;
-        }
-        if (s.fret < from || s.fret > to) return null;
-        return (
-          <View
-            key={`d${i}`}
-            style={{ position: "absolute", left: cx(s.fret) - dot / 2, top: ry(i) - dot / 2, width: dot, height: dot, borderRadius: dot / 2, backgroundColor: degColor(s.deg, colors), alignItems: "center", justifyContent: "center" }}
-          >
-            {show ? <Text style={[styles.dotText, { fontSize: Math.max(9, Math.round(dot * 0.5)) }]}>{show === "fingers" ? (s.finger || "") : s.deg}</Text> : null}
-          </View>
-        );
-      })}
-      {Array.from({ length: n }, (_, i) => from + i).map((f) =>
-        allNums || [3, 5, 7, 9, 12, 15, 17, 19, 21].includes(f) || f === lo ? (
-          <Text key={`n${f}`} style={[styles.fretNum, { left: cx(f) - 12, top: top + h + rowH / 2 + 2 }, f === lo && styles.fretNumOn]}>
-            {f}
-          </Text>
-        ) : null,
-      )}
-    </View>
-  );
 }
 
 const useStyles = makeStyles((c) => ({
@@ -504,7 +418,9 @@ const useStyles = makeStyles((c) => ({
   posChipOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
   posChipText: { fontFamily: fonts.text, fontSize: 12, fontWeight: "600", color: c.onSurface },
   posChipTextOn: { color: c.brandPrimary },
-  neckRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  neckBleed: { marginHorizontal: -spacing.lg },
+  navRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  navText: { flex: 1, textAlign: "center" },
   arrow: { width: 36, height: 44, borderRadius: radius.md, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
   mark: { position: "absolute", width: 20, textAlign: "center", fontFamily: fonts.text, lineHeight: 18 },
   dotText: { fontFamily: fonts.display, fontWeight: "700", color: "#FFFFFF" },

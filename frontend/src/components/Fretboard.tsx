@@ -32,6 +32,9 @@ export function fitScale(available: number, lastFret: number) {
   return Math.min(1, available / w);
 }
 
+/** A chord shape drawn note by note (Explorer › formes): played notes filled, the other shapes as rings, × = muted. */
+export type ChordMark = { kind: "played" | "ghost" | "muted"; degree: DegreeKey; label: string };
+
 type Props = {
   degreeMap: Map<number, IntervalDef>;
   visibleLayers: Set<DegreeKey>;
@@ -50,6 +53,10 @@ type Props = {
   windowRange?: BoxWindow | null;
   /** Notes about to be played (the current group): ringed in a second color. */
   nextCells?: Set<string> | null;
+  /** Chord shapes: draw these cells (key `string:fret`) instead of every note of `degreeMap`. */
+  marks?: Map<string, ChordMark> | null;
+  /** Chord shapes: the index finger lying across strings `from`–`to` (0 = high e) at `fret`. */
+  barre?: { fret: number; from: number; to: number } | null;
 };
 
 type ColumnProps = {
@@ -69,6 +76,8 @@ type ColumnProps = {
   activeString: number;
   /** Bit s set = the note on string s of this fret is in the group to come. */
   nextMask: number;
+  /** Chord shapes: the marks of this fret, by string (undefined: draw the scale notes). */
+  colMarks?: (ChordMark | undefined)[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   styles: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,9 +99,36 @@ const NoteColumn = memo(function NoteColumn({
   windowRange,
   activeString,
   nextMask,
+  colMarks,
   styles,
   colors,
 }: ColumnProps) {
+  if (colMarks) {
+    const node = Math.min(NODE, rowH - 2);
+    return (
+      <View style={{ width }}>
+        {TUNING.map((open, s) => {
+          const m = colMarks[s];
+          const meta = m ? DEGREE_META[m.degree] : null;
+          return (
+            <Pressable key={s} testID={`note-s${s}-f${f}`} onPress={() => onNotePress(open + f, s, f)} style={[styles.slot, { height: rowH }]} hitSlop={2}>
+              {m && meta && m.kind === "played" ? (
+                <View style={[styles.node, { backgroundColor: colors[meta.color], width: node, height: node, borderRadius: node / 2 }, activeString === s && styles.activeNode]}>
+                  <Text style={[styles.nodeText, { color: colors[meta.on] }]} numberOfLines={1}>
+                    {m.label}
+                  </Text>
+                </View>
+              ) : m && meta && m.kind === "ghost" ? (
+                <View style={{ width: node * 0.78, height: node * 0.78, borderRadius: node, borderWidth: 2, borderColor: colors[meta.color], opacity: 0.6 }} />
+              ) : m && m.kind === "muted" ? (
+                <Text style={styles.mutedMark}>×</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
   const inPosition = (string: number) =>
     !windowRange ||
     (windowRange.cells ? windowRange.cells.has(cellKey(string, f)) : f >= windowRange.min && f <= windowRange.max);
@@ -158,6 +194,8 @@ function FretboardImpl({
   rowH = 34,
   windowRange = null,
   nextCells = null,
+  marks = null,
+  barre = null,
 }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -193,6 +231,15 @@ function FretboardImpl({
     });
     return m;
   }, [nextCells, FRETS]);
+  const marksByFret = useMemo(() => {
+    if (!marks) return null;
+    const out: (ChordMark | undefined)[][] = FRETS.map(() => new Array(6).fill(undefined));
+    marks.forEach((m, k) => {
+      const [str, fr] = k.split(":").map(Number);
+      if (fr >= 0 && fr < out.length) out[fr][str] = m;
+    });
+    return out;
+  }, [marks, FRETS]);
   const noColumns = !!windowRange?.noColumns;
   const inColumn = (f: number) => !windowRange || (!noColumns && f >= windowRange.min && f <= windowRange.max);
 
@@ -302,6 +349,24 @@ function FretboardImpl({
             />
           ))}
 
+          {/* Layer 1.5: the barre (index finger across several strings) */}
+          {barre && barre.fret < widths.length ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                left: widths.slice(0, barre.fret).reduce((a, b) => a + b, 0) + widths[barre.fret] / 2 - Math.min(NODE, rowH - 2) / 2 - 2,
+                top: rowH * barre.from + 1,
+                width: Math.min(NODE, rowH - 2) + 4,
+                height: rowH * (barre.to - barre.from + 1) - 2,
+                borderRadius: rowH,
+                backgroundColor: "rgba(244,244,245,0.22)",
+                borderWidth: 1,
+                borderColor: "rgba(244,244,245,0.5)",
+              }}
+            />
+          ) : null}
+
           {/* Layer 2: notes (one memoized column per fret, so a highlight change only re-renders 2 columns) */}
           <View style={[styles.layerRow, styles.abs]}>
             {FRETS.map((f) => (
@@ -320,6 +385,7 @@ function FretboardImpl({
                 onNotePress={onNotePress}
                 windowRange={windowRange}
                 nextMask={nextMasks[f]}
+                colMarks={marksByFret ? marksByFret[f] : undefined}
                 activeString={activeMidi && activeMidi.fret === f ? activeMidi.string : -1}
                 styles={styles}
                 colors={colors}
@@ -391,6 +457,7 @@ const useStyles = makeStyles((c) => ({
     backgroundColor: c.degreeNeutral,
     opacity: 0.75,
   },
+  mutedMark: { fontFamily: fonts.display, fontSize: 15, fontWeight: "700", color: "#F87171" },
   neutralText: { fontFamily: fonts.display, fontSize: 8, color: c.onDegreeNeutral },
   fretNumCell: { height: 22, alignItems: "center", justifyContent: "center" },
   fretNum: { fontFamily: fonts.display, fontSize: 11, color: c.muted },
