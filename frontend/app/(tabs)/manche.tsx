@@ -20,13 +20,6 @@ type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: 
 /** Explorer: the families and their cards. Edit names here. */
 const GROUPS: Group[] = [
   {
-    id: "scales",
-    filter: "scales",
-    title: "Gammes",
-    lead: "Les notes d’une gamme sur tout le manche, position par position, avec la partition et l’écoute.",
-    items: [{ id: "scales", name: "Les gammes", meta: "Majeure, mineures, modes, pentatoniques, blues · 5 positions", open: { explore: "scale" } }],
-  },
-  {
     id: "bible",
     filter: "chords",
     title: "La bible des accords",
@@ -47,11 +40,18 @@ const GROUPS: Group[] = [
       { id: "four", name: "Accords à 4 sons", meta: "Septièmes en Drop 2 et Drop 3 · 4 renversements", soon: true },
     ],
   },
+  {
+    id: "scales",
+    filter: "scales",
+    title: "Gammes",
+    lead: "Les notes d’une gamme sur tout le manche, position par position, avec la partition et l’écoute.",
+    items: [{ id: "scales", name: "Les gammes", meta: "Majeure, mineures, modes, pentatoniques, blues · 5 positions", open: { explore: "scale" } }],
+  },
 ];
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Tout" },
-  { id: "scales", label: "Gammes" },
   { id: "chords", label: "Accords" },
+  { id: "scales", label: "Gammes" },
 ];
 
 export default function ExplorerTab() {

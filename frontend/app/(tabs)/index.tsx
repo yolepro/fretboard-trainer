@@ -14,7 +14,7 @@ import { tr } from "@/src/i18n";
 const FEATURES = [
   {
     title: "Explorer",
-    text: "Les gammes, modes et accords sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute. Les formes à jouer : accords ouverts, barrés, power chords et système CAGED, avec les doigts.",
+    text: "Les accords : la bible pour construire n’importe quel accord, et les formes à jouer (accords ouverts, barrés, power chords, système CAGED) avec les doigts. Puis les gammes et modes sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute.",
   },
   {
     title: "S’exercer",

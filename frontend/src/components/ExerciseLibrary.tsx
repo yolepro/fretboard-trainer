@@ -24,8 +24,9 @@ export type ExercisePreset = {
   arpKind?: "shapes" | "twoStrings";
 };
 
-type Family = "Gammes" | "Arpèges" | "Triades" | "Accords";
-const FAMILIES: Family[] = ["Gammes", "Arpèges", "Triades", "Accords"];
+type Family = "Accords" | "Arpèges" | "Triades" | "Gammes";
+// Chords come first: they are learnt before scales.
+const FAMILIES: Family[] = ["Accords", "Arpèges", "Triades", "Gammes"];
 const LEADS: Record<Family, string> = {
   Gammes: "La gamme en position ou le long du manche, note à note ou par intervalles.",
   Arpèges: "Les arpèges à 4 sons, leurs schémas et leurs enchaînements.",
@@ -35,6 +36,7 @@ const LEADS: Record<Family, string> = {
 
 /** S’exercer: one card per exercise, grouped by family. Edit names here. */
 export const PRESETS: ExercisePreset[] = [
+  { id: "cadences", family: "Accords", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", subject: "cadence", horizontal: false },
   { id: "scale", family: "Gammes", name: "Montée & descente de gamme", meta: "Sur une position · toutes les gammes", subject: "scale", exerciseId: "scale", horizontal: false },
   { id: "thirds", family: "Gammes", name: "Gamme par tierces", meta: "Sur une position", subject: "scale", exerciseId: "thirds", horizontal: false },
   { id: "thirds-h", family: "Gammes", name: "Gamme par tierces horizontales", meta: "Sur 2 cordes, le long du manche", subject: "scale", exerciseId: "thirds", horizontal: true },
@@ -46,7 +48,6 @@ export const PRESETS: ExercisePreset[] = [
   { id: "arp-h", family: "Arpèges", name: "Enchaînement d’arpèges", meta: "D’un schéma au voisin, vers la caisse ou le sillet", subject: "arp", horizontal: true, arpKind: "shapes" },
   { id: "arp-2", family: "Arpèges", name: "Triades sur 2 cordes", meta: "Mi-La, Ré-Sol, Si-Mi · avec ou sans la 7e", subject: "arp", horizontal: true, arpKind: "twoStrings" },
   { id: "pairs", family: "Triades", name: "Paires de triades", meta: "IV et V de la tonalité · Up, Down, Alterné", subject: "pairs", horizontal: false },
-  { id: "cadences", family: "Accords", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", subject: "cadence", horizontal: false },
 ];
 
 type Props = { currentId: string | null; onPick: (p: ExercisePreset) => void };

@@ -413,7 +413,7 @@ const EN: Record<string, string> = {
   "Forme E": "E shape",
   "Forme D": "D shape",
   "Accord ouvert": "Open chord",
-  "Les gammes, modes et accords sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute. Les formes à jouer : accords ouverts, barrés, power chords et système CAGED, avec les doigts.": "Scales, modes and chords across the whole neck, 5 positions in every key, with score and playback. Shapes to play: open chords, barre chords, power chords and the CAGED system, with fingerings.",
+  "Les accords : la bible pour construire n’importe quel accord, et les formes à jouer (accords ouverts, barrés, power chords, système CAGED) avec les doigts. Puis les gammes et modes sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute.": "Chords: the bible to build any chord, and shapes to play (open chords, barre chords, power chords, the CAGED system) with fingerings. Then scales and modes across the whole neck, 5 positions in every key, with score and playback.",
   "Gammes par tierces, triades ou arpèges, sur une position ou le long du manche, arpèges à 4 sons, paires de triades, avec partition, tempo, métronome et boucle.": "Scales in thirds, triads or arpeggios, in one position or along the neck, 4-note arpeggios, triad pairs, with score, tempo, metronome and loop.",
   "ÉTAPE 2": "STEP 2",
   "Forme précédente": "Previous shape",
