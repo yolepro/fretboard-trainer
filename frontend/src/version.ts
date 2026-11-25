@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.59.2 (branche feature/fs-18-cadences) — FS-32 en paysage : glissière Degrés / Fonctions plus petite ; manche raccourci (cases 0 à 12) à gauche, cadres colorés des degrés (ou la progression) et explications à droite
 // 1.59.1 (branche feature/fs-18-cadences) — FS-32 en paysage : sur une ligne en haut, tonalité, basse, glissière Degrés / Fonctions et bouton Écouter (à gauche du menu) ; manche entier à gauche avec les degrés ou la progression dessous, explications dans un panneau à droite
 // 1.59.0 (branche feature/fs-18-cadences) — FS-32 : Explorer › Harmonie › Les degrés de la gamme (IΔ…VIIø en accords à 4 sons, fonctions tonique / sous-dominante / dominante, accords interchangeables et notes communes, vue Fonctions avec remplacement dans I – IV – V – I)
 // 1.58.3 (branche feature/fs-18-cadences) — FS-8 : Fm et Bm barrés dans Accords ouverts ; FS-9 : en paysage, Doigts / Degrés rejoint le bouton Écouter (plus coupé)
@@ -145,4 +146,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.59.1";
+export const APP_VERSION = "1.59.2";

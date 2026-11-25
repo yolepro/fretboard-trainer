@@ -156,7 +156,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     <View style={[styles.segment, compact && styles.segmentCompact]}>
       {(["degrees", "functions"] as const).map((t) => (
         <Pressable key={t} testID={`harmony-tab-${t}`} onPress={() => setTab(t)} style={[styles.segBtn, compact && styles.segBtnCompact, tab === t && styles.segBtnOn]}>
-          <Text style={[styles.segText, tab === t && styles.segTextOn]} numberOfLines={1}>
+          <Text style={[styles.segText, compact && styles.segTextCompact, tab === t && styles.segTextOn]} numberOfLines={1}>
             {t === "degrees" ? (compact ? tr("Degrés") : tr("Les 7 degrés")) : tr("Fonctions")}
           </Text>
         </Pressable>
@@ -314,12 +314,11 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   // ---------- Landscape: everything to choose on one line at the top, the neck on the left, the explanations on the side ----------
   if (landscape) {
     const availW = width - insets.left - insets.right - 2 * spacing.lg;
-    const panelW = Math.round(Math.max(220, Math.min(400, availW * 0.34)));
+    // The neck is shortened (frets 0–12 on screen) to leave room for the degrees and the explanations on its right.
+    const panelW = Math.round(Math.max(260, Math.min(460, availW * 0.46)));
     const leftW = availW - panelW - spacing.md;
     const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm;
-    const boxH = tab === "degrees" ? 62 : 64;
-    const extra = tab === "degrees" ? 0 : 22; // the progression's name under the chords
-    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - boxH - extra - 2 * spacing.sm - 26) / 6)));
+    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - spacing.sm - 26 - 24) / 6)));
     return (
       <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="harmony-screen">
         <StudioBackground />
@@ -340,23 +339,23 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
         </View>
         <View style={[styles.bodyRow, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={{ width: leftW, gap: spacing.sm }}>
-            {fretboard(fitScale(leftW, 15), rowH)}
-            {tab === "degrees" ? tiles(boxH) : (
-              <>
-                {slots(boxH)}
-                {progLine}
-              </>
-            )}
+            {fretboard(fitScale(leftW, 12), rowH)}
+            <Text style={styles.muted} numberOfLines={1}>
+              {shown.roman} · {nameOfChord(shown)} = {notesOf(shown.pcs)}
+            </Text>
           </View>
           <ScrollView style={{ width: panelW }} contentContainerStyle={styles.panel} showsVerticalScrollIndicator={false} testID="harmony-panel">
             {tab === "degrees" ? (
               <>
+                {tiles(52)}
                 {card}
                 {swaps}
               </>
             ) : (
               <>
                 <Text style={styles.sectionTitle}>{tr("Essaie : touche un accord pour le remplacer")}</Text>
+                {slots(56)}
+                {progLine}
                 {swapNote}
                 {reset}
                 {families(true)}
@@ -436,7 +435,8 @@ const useStyles = makeStyles((c) => ({
   headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center" },
   transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   segmentCompact: { marginHorizontal: 0, marginTop: 0, padding: 2 },
-  segBtnCompact: { flex: 0, height: 34, paddingHorizontal: spacing.md },
+  segBtnCompact: { flex: 0, height: 26, paddingHorizontal: 8 },
+  segTextCompact: { fontSize: 11 },
   bodyRow: { flex: 1, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   panel: { padding: spacing.sm, gap: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   familiesStacked: { flexDirection: "column", gap: 4 },
