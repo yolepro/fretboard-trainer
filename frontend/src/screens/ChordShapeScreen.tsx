@@ -179,12 +179,13 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
   }, [v]);
 
   const showLabel = show === "fingers" ? tr("Doigts") : tr("Degrés");
+  const toggleShow = () => setShow(show === "fingers" ? "degrees" : "fingers");
   const pills = (
     <>
       {kind !== "open" ? <Pill testID="pill-key" label={nameOf(rootPc)} accent onPress={() => setKeyOpen(true)} /> : null}
       {kind !== "open" ? <Pill testID="pill-type" label={typeLabel} onPress={() => setSheet("type")} /> : null}
       {kind === "open" ? <Pill testID="pill-shape" label={chordName} accent onPress={() => setSheet("shape")} /> : null}
-      <Pill testID="pill-show" label={showLabel} onPress={() => setShow(show === "fingers" ? "degrees" : "fingers")} />
+      {!landscape ? <Pill testID="pill-show" label={showLabel} onPress={toggleShow} /> : null}
     </>
   );
   const chips =
@@ -258,6 +259,10 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
             <PillRow inset={false}>{pills}</PillRow>
           </View>
           <View style={styles.transportPill}>
+            {/* Landscape: Doigts / Degrés sits with the play button, so it is never pushed off screen. */}
+            <Pressable testID="pill-show" onPress={toggleShow} style={({ pressed }) => [styles.showToggle, pressed && styles.pressed]} accessibilityLabel={showLabel}>
+              <Text style={styles.showToggleText}>{showLabel}</Text>
+            </Pressable>
             <Pressable testID="shape-play" onPress={play} style={({ pressed }) => [styles.playRound, pressed && styles.pressed]} accessibilityLabel={`${tr("Écouter")} · ${styleLabel}`}>
               {playIcon}
             </Pressable>
@@ -393,7 +398,9 @@ const useStyles = makeStyles((c) => ({
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.onSurface },
   titleLandscape: { flex: 0, flexShrink: 1, fontSize: 17, maxWidth: 128 },
-  transportPill: { flexDirection: "row", alignItems: "center", padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
+  showToggle: { height: 40, paddingHorizontal: spacing.md, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  showToggleText: { fontFamily: fonts.text, fontSize: 13, fontWeight: "600", color: c.onSurface },
+  transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   body: { flex: 1, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   panel: { alignSelf: "flex-start", padding: spacing.sm, gap: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   panelHead: { flexDirection: "row", alignItems: "center", gap: 6 },
