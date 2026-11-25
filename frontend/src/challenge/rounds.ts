@@ -1,7 +1,8 @@
 // “Challenges” (S’exercer): find notes on the neck. One round = one zone to fill (a position, or the whole neck).
 import { SCALES, TUNING, buildDegreeMap, pcOf, scaleBoxes, type Formula } from "@/src/music/theory";
+import { cadenceById, cadenceChords, chordLabel, chordNum, positionCells, type Chord, type ChordStyle } from "@/src/music/cadences";
 
-export type ChallengeKind = "degree" | "scale";
+export type ChallengeKind = "degree" | "scale" | "chord";
 export type Order = "free" | "up";
 export type InputMode = "both" | "touch" | "mic";
 
@@ -20,6 +21,10 @@ export type ChallengeOptions = {
   sprintSec: number; // > 0: time trial, as many rounds as possible in this time
   naturalKeys: boolean; // random keys only on natural notes (C D E F G A B, no ♯/♭ tonic)
   input: InputMode;
+  // chord kind (Trouve l’accord de la tonalité)
+  cadences: string[]; // cadence ids (src/music/cadences.ts)
+  chordStyle: ChordStyle; // simple = root in the bass · triads / four = the chord in a position
+  cadenceOrder: "order" | "mix"; // the chords one after the other, or drawn at random
 };
 
 export const DEFAULT_CHALLENGE: ChallengeOptions = {
@@ -37,6 +42,9 @@ export const DEFAULT_CHALLENGE: ChallengeOptions = {
   sprintSec: 0,
   naturalKeys: false,
   input: "both",
+  cadences: ["rock", "pop4"],
+  chordStyle: "triads",
+  cadenceOrder: "order",
 };
 
 /** Scales offered. Degree challenges: the key context (major / natural minor). */
@@ -60,11 +68,67 @@ export type Round = {
   max: number;
   targets: Cell[]; // what must be found (ascending pitch when the order matters)
   tonics: Cell[]; // degree kind, tonic not asked: shown as landmarks
+  /** chord kind: the chord asked, and how many different degrees make the round (one note per degree is enough). */
+  chord?: { name: string; roman: string; cadence: string; root: number; quality: string };
+  need?: number;
 };
 
-export type RoundSetting = { rootPc: number; position: number; scaleId: string; degrees: string[] };
+export type RoundSetting = { rootPc: number; position: number; scaleId: string; degrees: string[]; chordStep?: number };
+
+/** The chords a chord challenge draws from: the chosen cadences, one after the other. */
+export function chordPool(o: ChallengeOptions, rootPc: number): { chord: Chord; cadence: string }[] {
+  const ids = o.cadences.length ? o.cadences : DEFAULT_CHALLENGE.cadences;
+  return ids.flatMap((id) => {
+    const c = cadenceById(id);
+    return cadenceChords(c, rootPc, o.chordStyle === "four" ? "four" : "triads").map((chord) => ({ chord, cadence: c.name }));
+  });
+}
+
+function buildChordRound(o: ChallengeOptions, s: RoundSetting): Round {
+  const pool = chordPool(o, s.rootPc);
+  const { chord, cadence } = pool[(s.chordStep ?? 0) % pool.length];
+  const targets: Cell[] = [];
+  let min: number;
+  let max: number;
+  if (o.chordStyle === "simple") {
+    // Débutant: the root of the chord on the low E or A string (frets 0–12).
+    min = 0;
+    max = 12;
+    [5, 4].forEach((string) => {
+      for (let fret = 0; fret <= 12; fret++) {
+        const midi = TUNING[string] + fret;
+        if (pcOf(midi) === chord.root) targets.push({ string, fret, midi, label: "1", num: 1 });
+      }
+    });
+  } else {
+    const pos = positionCells(s.rootPc, s.position);
+    min = pos.min;
+    max = pos.max;
+    for (let string = 0; string < 6; string++)
+      for (let fret = min; fret <= max; fret++) {
+        const midi = TUNING[string] + fret;
+        if (chord.pcs.includes(pcOf(midi))) targets.push({ string, fret, midi, label: chordLabel(chord, midi), num: chordNum(chord, midi) });
+      }
+  }
+  targets.sort((a, b) => a.midi - b.midi || a.string - b.string);
+  const need = o.chordStyle === "simple" ? 1 : new Set(targets.map((t) => t.label)).size;
+  return {
+    rootPc: s.rootPc,
+    position: s.position,
+    scope: "position",
+    scaleId: "major",
+    degrees: [],
+    min,
+    max,
+    targets,
+    tonics: [],
+    chord: { name: "", roman: chord.roman, cadence, root: chord.root, quality: chord.quality },
+    need,
+  };
+}
 
 export function buildRound(kind: ChallengeKind, o: ChallengeOptions, s: RoundSetting): Round {
+  if (kind === "chord") return buildChordRound(o, s);
   const { rootPc, position, scaleId, degrees } = s;
   const formula = scaleOf(scaleId);
   const boxes = scaleBoxes(rootPc, formula, true);
@@ -116,7 +180,14 @@ export function nextSetting(kind: ChallengeKind, o: ChallengeOptions, idx: numbe
     degree = bag.shift();
   }
   const degrees = kind === "degree" ? [degree ?? pickOther(pool, prev?.degrees[0])!] : [];
+  // Chord challenge: the next chord of the cadences, or one drawn at random (never the same twice in a row).
+  let chordStep: number | undefined;
+  if (kind === "chord") {
+    const n = chordPool(o, o.rootPc).length;
+    chordStep = o.cadenceOrder === "order" ? idx % n : rnd(n, prev?.chordStep);
+  }
   return {
+    chordStep,
     rootPc: o.randomKey
       ? o.naturalKeys
         ? NATURALS[rnd(NATURALS.length, prev ? NATURALS.indexOf(prev.rootPc) : undefined)]
@@ -133,7 +204,7 @@ export const mistakesAllowed = (scope: "position" | "neck") => (scope === "neck"
 
 const NATURALS = [0, 2, 4, 5, 7, 9, 11];
 
-export const ROUND_CHOICES: Record<ChallengeKind, number[]> = { degree: [5, 10, 20], scale: [1, 3, 5] };
+export const ROUND_CHOICES: Record<ChallengeKind, number[]> = { degree: [5, 10, 20], scale: [1, 3, 5], chord: [4, 8, 12] };
 
 export const challengeSection = (kind: ChallengeKind) => `find-${kind}`;
 /** Records are per variant (level + category, or “custom”) and per length (rounds, or “sprint”). */

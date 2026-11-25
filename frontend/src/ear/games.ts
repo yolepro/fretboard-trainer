@@ -20,7 +20,7 @@ export type EarGame = {
   family: DefiFamily;
   kind: "mic" | "chords" | "challenge";
   section?: Section; // micro games and Accords: the question engine and the results it is counted with
-  challenge?: "degree" | "scale"; // challenge games
+  challenge?: "degree" | "scale" | "chord"; // challenge games
   name: string;
   meta: string;
   input: ("mic" | "touch")[]; // how the player answers (shown on the card)
@@ -58,6 +58,7 @@ export const EAR_GAMES: EarGame[] = [
   },
   { id: "find-degree", family: "neck", kind: "challenge", challenge: "degree", name: "Trouve le degré", meta: "Les degrés d’une tonalité, position par position · débutant à expert", input: ["mic", "touch"] },
   { id: "find-scale", family: "neck", kind: "challenge", challenge: "scale", name: "Trouve la gamme", meta: "Toutes les notes d’une gamme dans une position", input: ["mic", "touch"] },
+  { id: "find-chord", family: "neck", kind: "challenge", challenge: "chord", name: "Trouve l’accord de la tonalité", meta: "Le IV de G, le ii de C… dans les cadences choisies · débutant à expert", input: ["mic", "touch"] },
   { id: "degree", family: "neck", kind: "mic", section: "degree", name: "Trouve le degré de l’accord", meta: "Joue le degré demandé d’un accord, à n’importe quelle octave.", input: ["mic"] },
   // ----- Entraîner l’oreille -----
   { id: "listen", family: "ear", kind: "mic", section: "listen", name: "Rejoue la note", meta: "Écoute une note et rejoue-la à la bonne octave.", input: ["mic"] },

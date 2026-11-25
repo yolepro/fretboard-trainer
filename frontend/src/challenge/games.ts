@@ -4,7 +4,7 @@
 import type { ChallengeKind, ChallengeOptions } from "@/src/challenge/rounds";
 
 /** Settings a game can let the player change (each one opens its own sheet). */
-export type ChallengeSetting = "key" | "context" | "degrees" | "scope" | "position" | "hideTonic" | "scales" | "order";
+export type ChallengeSetting = "key" | "context" | "degrees" | "scope" | "position" | "hideTonic" | "scales" | "order" | "cadences" | "cadenceOrder";
 
 export type CustomGame = {
   id: string; // records: fretstudio_chbest_<kind>_<id>_<length> (“custom” keeps the records made before)
@@ -37,6 +37,36 @@ export const CUSTOM_GAMES: Record<ChallengeKind, CustomGame[]> = {
       edit: ["key", "scales", "order", "position"],
       rounds: [1, 3, 5],
       defaultRounds: 1,
+    },
+  ],
+  // Trouve l’accord de la tonalité: one game per level (the three ways of playing a cadence in S’exercer › Cadences).
+  chord: [
+    {
+      id: "beginner",
+      name: "Débutant · Accords simples",
+      meta: "Joue ou touche la fondamentale de l’accord sur la corde de Mi ou de La",
+      preset: { chordStyle: "simple", cadences: ["rock", "pop4"], cadenceOrder: "order", position: 0 },
+      edit: ["key", "cadences", "cadenceOrder"],
+      rounds: [4, 8, 12],
+      defaultRounds: 8,
+    },
+    {
+      id: "inter",
+      name: "Intermédiaire · Triades en position",
+      meta: "Les 3 notes de l’accord sans quitter la position",
+      preset: { chordStyle: "triads", cadences: ["rock", "pop4", "251"], cadenceOrder: "order", position: 0 },
+      edit: ["key", "cadences", "cadenceOrder", "position"],
+      rounds: [4, 8, 12],
+      defaultRounds: 8,
+    },
+    {
+      id: "expert",
+      name: "Expert · Accords à 4 sons en position",
+      meta: "Les 4 notes de l’accord (∆7, m7, 7, ø) sans quitter la position",
+      preset: { chordStyle: "four", cadences: ["251", "turn"], cadenceOrder: "mix", position: -1, randomKey: true },
+      edit: ["key", "cadences", "cadenceOrder", "position"],
+      rounds: [4, 8, 12],
+      defaultRounds: 8,
     },
   ],
 };

@@ -17,7 +17,7 @@ export type ExercisePreset = {
   family: Family;
   name: string;
   meta: string;
-  subject: "scale" | "arp" | "pairs";
+  subject: "scale" | "arp" | "pairs" | "cadence";
   exerciseId?: ExerciseId;
   horizontal: boolean;
   arpKind?: "shapes" | "twoStrings";
@@ -42,6 +42,7 @@ export const PRESETS: ExercisePreset[] = [
   { id: "arp-h", family: "S’exercer", name: "Enchaînement d’arpèges", meta: "D’un schéma au voisin, vers la caisse ou le sillet", subject: "arp", horizontal: true, arpKind: "shapes" },
   { id: "arp-2", family: "S’exercer", name: "Triades sur 2 cordes", meta: "Mi-La, Ré-Sol, Si-Mi · avec ou sans la 7e", subject: "arp", horizontal: true, arpKind: "twoStrings" },
   { id: "pairs", family: "S’exercer", name: "Paires de triades", meta: "IV et V de la tonalité · Up, Down, Alterné", subject: "pairs", horizontal: false },
+  { id: "cadences", family: "S’exercer", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", subject: "cadence", horizontal: false },
 ];
 
 type Props = { currentId: string | null; onPick: (p: ExercisePreset) => void };

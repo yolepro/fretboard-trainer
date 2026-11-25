@@ -35,7 +35,7 @@ import { APP_VERSION } from "@/src/version";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
-const FAMILY_NAMES: Record<Family, string> = { ear: "Défis au micro", challenges: "Trouve le degré, Trouve la gamme", chords: "Reconnais l’accord" };
+const FAMILY_NAMES: Record<Family, string> = { ear: "Défis au micro", challenges: "Trouve le degré, la gamme, l’accord de la tonalité", chords: "Reconnais l’accord" };
 
 type IconType = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
 
@@ -262,7 +262,7 @@ export default function SettingsScreen() {
             subtitle={tr("Trouve la note et Rejoue la note exigent la bonne octave ; aide affichée après 2 erreurs")}
           />
           <View style={styles.sep} />
-          <Row testID="setting-challenge-input" icon={Target} title={tr("Défis : répondre")} subtitle={tr("Trouve le degré, Trouve la gamme : en jouant la note, en touchant le manche, ou les deux")} />
+          <Row testID="setting-challenge-input" icon={Target} title={tr("Défis : répondre")} subtitle={tr("Trouve le degré, la gamme, l’accord de la tonalité : en jouant la note, en touchant le manche, ou les deux")} />
           <View style={styles.inlineChips}>
             <Chip testID="challenge-input-both" label={tr("Les deux")} selected={settings.challengeInput === "both"} onPress={() => update({ challengeInput: "both" })} />
             <Chip testID="challenge-input-mic" label={tr("Guitare (micro)")} selected={settings.challengeInput === "mic"} onPress={() => update({ challengeInput: "mic" })} />

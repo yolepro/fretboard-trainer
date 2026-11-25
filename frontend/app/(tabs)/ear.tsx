@@ -94,7 +94,7 @@ export default function EarScreen() {
   const countOf = (g: EarGame) => (g.kind === "mic" ? optsOf(g).count : (gameCounts[g.id] ?? defaultCountOf(g)));
   // Reconnais l’accord: the level chosen. Trouve le degré / la gamme: their own screen while open.
   const [chordLevel, setChordLevel] = useState<ChordLevel>(CHORD_LEVELS[0]);
-  const [challenge, setChallenge] = useState<"degree" | "scale" | null>(null);
+  const [challenge, setChallenge] = useState<"degree" | "scale" | "chord" | null>(null);
   // The micro game being played (its record key).
   const gameRef = useRef<EarGame>(EAR_GAMES[0]);
   const [curGame, setCurGame] = useState<EarGame>(EAR_GAMES[0]);
