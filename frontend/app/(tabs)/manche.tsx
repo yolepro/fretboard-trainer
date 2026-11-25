@@ -1,21 +1,22 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BookOpen, CaretRight, Eye, HandPointing } from "phosphor-react-native";
+import { BookOpen, CaretRight, Eye, HandPointing, MusicNotes } from "phosphor-react-native";
 
 import { Chip, ChipRow } from "@/src/components/Chip";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { ExplorerScreen, type ExploreMode } from "@/src/screens/ExplorerScreen";
 import { ChordShapeScreen, type ShapeKind } from "@/src/screens/ChordShapeScreen";
+import { HarmonyScreen } from "@/src/screens/HarmonyScreen";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
-type Filter = "all" | "scales" | "chords";
-type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind }; bible?: boolean; soon?: boolean };
-type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: string; items: Item[] };
+type Filter = "all" | "chords" | "harmony" | "scales";
+type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind } | { lesson: "degrees" }; bible?: boolean; soon?: boolean };
+type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: string; isNew?: boolean; items: Item[] };
 
 /** Explorer: the families and their cards. Edit names here. */
 const GROUPS: Group[] = [
@@ -41,6 +42,14 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    id: "harmony",
+    filter: "harmony",
+    isNew: true,
+    title: "Harmonie",
+    lead: "Comment les accords d’une tonalité s’enchaînent et se remplacent.",
+    items: [{ id: "degrees", name: "Les degrés de la gamme", meta: "IΔ, IIm7, IIIm7, IVΔ, V7, VIm7, VIIø · tonique, sous-dominante, dominante, relatifs", open: { lesson: "degrees" } }],
+  },
+  {
     id: "scales",
     filter: "scales",
     title: "Gammes",
@@ -51,6 +60,7 @@ const GROUPS: Group[] = [
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Tout" },
   { id: "chords", label: "Accords" },
+  { id: "harmony", label: "Harmonie" },
   { id: "scales", label: "Gammes" },
 ];
 
@@ -67,6 +77,7 @@ export default function ExplorerTab() {
 
   if (view && "explore" in view) return <ExplorerScreen key={view.explore} initialMode={view.explore} onBack={back} />;
   if (view && "shape" in view) return <ChordShapeScreen key={view.shape} kind={view.shape} onBack={back} />;
+  if (view && "lesson" in view) return <HarmonyScreen onBack={back} />;
 
   const groups = filter === "all" ? GROUPS : GROUPS.filter((g) => g.filter === filter);
   const bottom = usesNativeTabs || landscape ? insets.bottom : 0;
@@ -85,7 +96,10 @@ export default function ExplorerTab() {
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
         {groups.map((g) => (
           <View key={g.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr(g.title)}</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>{tr(g.title)}</Text>
+              {g.isNew ? <Text style={styles.newBadge}>{tr("NOUVEAU")}</Text> : null}
+            </View>
             <Text style={styles.lead}>{tr(g.lead)}</Text>
             <View style={[styles.cards, landscape && styles.cardsWide]}>
               {g.items.map((it) => (
@@ -98,7 +112,9 @@ export default function ExplorerTab() {
                   accessibilityRole="button"
                 >
                   <View style={[styles.cardIcon, it.bible && styles.cardIconBible]}>
-                    {g.id === "scales" ? (
+                    {g.id === "harmony" ? (
+                      <MusicNotes size={18} color="#A78BFA" weight="bold" />
+                    ) : g.id === "scales" ? (
                       <Eye size={18} color={colors.brandSecondary} weight="bold" />
                     ) : it.bible ? (
                       <BookOpen size={18} color={colors.brandPrimary} weight="bold" />
@@ -131,6 +147,8 @@ const useStyles = makeStyles((c) => ({
   title: { fontFamily: fonts.display, fontSize: 26, fontWeight: "700", color: c.onSurface },
   list: { paddingHorizontal: spacing.lg, gap: spacing.lg, paddingTop: spacing.sm },
   section: { gap: spacing.sm },
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  newBadge: { fontFamily: fonts.text, fontSize: 10, fontWeight: "700", color: "#101114", backgroundColor: c.brandPrimary, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, overflow: "hidden" },
   sectionTitle: { fontFamily: fonts.text, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "600", color: c.onSurfaceTertiary },
   lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18, marginTop: -2 },
   cards: { gap: spacing.sm },
