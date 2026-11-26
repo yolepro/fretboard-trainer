@@ -20,13 +20,14 @@ import {
   SYMBOL,
   commonPcs,
   degreeChords,
-  degreeVoicing,
+  keyVoicings,
   fnOfDegree,
   progName,
   swapDegree,
   whyOf,
   BASSES,
   type Bass,
+  type Placement,
   type DegreeChord,
   type Fn,
 } from "@/src/music/harmony";
@@ -55,6 +56,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const [tab, setTab] = useState<"degrees" | "functions">("degrees");
   const [sel, setSel] = useState(0); // IΔ
   const [bass, setBass] = useState<Bass>(6);
+  const [placement, setPlacement] = useState<Placement>("string");
   const [prog, setProg] = useState<number[]>(START);
   const [slot, setSlot] = useState(0);
   const [lastFn, setLastFn] = useState<Fn>("SD");
@@ -65,7 +67,8 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const nameOfChord = (ch: DegreeChord) => `${nameOf(ch.root)}${SYMBOL[ch.quality]}`;
   const notesOf = (pcs: number[]) => pcs.map((p) => nameOf(p)).join(" ");
   const shown = tab === "degrees" ? chords[sel] : chords[prog[slot]];
-  const v = useMemo(() => degreeVoicing(shown, bass), [shown, bass]);
+  const voicings = useMemo(() => keyVoicings(chords, bass, placement), [chords, bass, placement]);
+  const v = voicings[shown.deg];
   const fn = FUNCTIONS[shown.fn];
 
   const neck = useMemo(() => {
@@ -92,8 +95,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   useEffect(stop, [keyPc, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const midisOf = (ch: DegreeChord) =>
-    degreeVoicing(ch, bass)
-      .notes.map((n) => TUNING[n.string] + n.fret)
+    voicings[ch.deg].notes.map((n) => TUNING[n.string] + n.fret)
       .sort((a, b) => a - b);
   /**
    * Degrees: the 7 degrees in a row, back to I (FS-33). Fonctions: the progression. Each chord is played once, as set in
@@ -154,9 +156,30 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const pills = (
     <>
       <Pill testID="pill-key" label={tr("{k} majeur", { k: nameOf(keyPc) })} accent onPress={() => setKeyOpen(true)} />
+    </>
+  );
+  /** Par corde: every root on the chosen string. Par zone: IΔ on the chosen string, the other chords around it. */
+  const placementPicker = (
+    <View style={styles.bassBox} testID="placement-picker">
+      {(["string", "zone"] as const).map((p) => (
+        <Pressable
+          key={p}
+          testID={`placement-${p}`}
+          onPress={() => setPlacement(p)}
+          style={({ pressed }) => [styles.choiceBtn, placement === p && styles.bassBtnOn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: placement === p }}
+        >
+          <Text style={[styles.bassText, placement === p && styles.bassTextOn]}>{p === "string" ? tr("Par corde") : tr("Par zone")}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+  const bassPicker = (
+    <>
       {/* The bass string: the one lit up is the one on the neck. */}
       <View style={styles.bassBox} testID="bass-picker">
-        <Text style={styles.bassLabel}>{tr("Basse sur la corde")}</Text>
+        <Text style={styles.bassLabel}>{placement === "string" ? tr("Basse sur la corde") : tr("IΔ sur la corde")}</Text>
         {BASSES.map((b) => (
           <Pressable
             key={b}
@@ -339,7 +362,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     const panelW = Math.round(Math.max(260, Math.min(460, availW * 0.46)));
     const leftW = availW - panelW - spacing.md;
     const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm;
-    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - spacing.sm - 26 - 24) / 6)));
+    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - 2 * spacing.sm - 26 - 24 - 36) / 6)));
     return (
       <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="harmony-screen">
         <StudioBackground />
@@ -349,10 +372,13 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
             {tr("Les degrés de la gamme")}
           </Text>
           <View style={styles.headerPills}>
-            <PillRow inset={false}>{pills}</PillRow>
+            <PillRow inset={false}>
+              {pills}
+              {placementPicker}
+              {bassPicker}
+            </PillRow>
           </View>
           <View style={styles.transportPill}>
-            {segment(true)}
             <Pressable testID="harmony-play" onPress={play} style={({ pressed }) => [styles.playRound, styles.playRoundSmall, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : playLabel}>
               {playIcon}
             </Pressable>
@@ -364,6 +390,9 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
             <Text style={styles.muted} numberOfLines={1}>
               {shown.roman} · {nameOfChord(shown)} = {notesOf(shown.pcs)}
             </Text>
+            <View style={{ flex: 1 }} />
+            {/* Down here so the top line keeps room for the settings. */}
+            {segment(true)}
           </View>
           <ScrollView style={{ width: panelW }} contentContainerStyle={styles.panel} showsVerticalScrollIndicator={false} testID="harmony-panel">
             {tab === "degrees" ? (
@@ -400,7 +429,11 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
           {tr("Les degrés de la gamme")}
         </Text>
       </View>
-      <PillRow testID="harmony-pills">{pills}</PillRow>
+      <PillRow testID="harmony-pills">
+        {pills}
+        {placementPicker}
+      </PillRow>
+      <PillRow testID="harmony-bass">{bassPicker}</PillRow>
       {segment(false)}
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -455,7 +488,7 @@ const useStyles = makeStyles((c) => ({
   titleLandscape: { flex: 0, flexShrink: 1, fontSize: 17, maxWidth: 150 },
   headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center" },
   transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
-  segmentCompact: { marginHorizontal: 0, marginTop: 0, padding: 2 },
+  segmentCompact: { marginHorizontal: 0, marginTop: 0, padding: 2, alignSelf: "flex-start" },
   segBtnCompact: { flex: 0, height: 26, paddingHorizontal: 8 },
   segTextCompact: { fontSize: 11 },
   bodyRow: { flex: 1, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
@@ -463,9 +496,10 @@ const useStyles = makeStyles((c) => ({
   familiesStacked: { flexDirection: "column", gap: 4 },
   familyChordsRow: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.md, rowGap: 2 },
   playRoundSmall: { width: 40, height: 40, borderRadius: 20 },
-  bassBox: { height: 36, flexDirection: "row", alignItems: "center", gap: 3, paddingLeft: 12, paddingRight: 3, borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary },
-  bassLabel: { fontFamily: fonts.display, fontSize: 14, color: c.onSurface, marginRight: 4 },
+  bassBox: { height: 36, flexDirection: "row", alignItems: "center", gap: 3, paddingLeft: 3, paddingRight: 3, borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary },
+  bassLabel: { fontFamily: fonts.display, fontSize: 14, color: c.onSurface, marginLeft: 9, marginRight: 4 },
   bassBtn: { width: 30, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent" },
+  choiceBtn: { height: 28, paddingHorizontal: 10, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent" },
   bassBtnOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },
   bassText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "600", color: c.onSurfaceTertiary },
   bassTextOn: { color: c.onBrandTertiary, fontWeight: "700" },

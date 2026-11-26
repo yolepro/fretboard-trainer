@@ -80,8 +80,8 @@ const rootFret = (ch: Chord, s: Bass) => {
   const f = pcOf(ch.root - OPEN_PC[s]);
   return f + low < 1 ? f + 12 : f;
 };
-export function degreeVoicing(ch: Chord, bass: Bass): ChordVoicing & { bass: Bass } {
-  const r = rootFret(ch, bass);
+export function degreeVoicing(ch: Chord, bass: Bass, up = 0): ChordVoicing & { bass: Bass } {
+  const r = rootFret(ch, bass) + up;
   const notes: ChordNote[] = [];
   const muted: number[] = [];
   SHAPES[bass][ch.quality].forEach((o, i) => {
@@ -92,6 +92,38 @@ export function degreeVoicing(ch: Chord, bass: Bass): ChordVoicing & { bass: Bas
   });
   const frets = notes.map((n) => n.fret);
   return { notes, muted, min: Math.min(...frets), max: Math.max(...frets), bass };
+}
+
+/**
+ * The 7 voicings of the key (index = degree).
+ * - "string": every root on the chosen bass string (the positions follow one another along the neck);
+ * - "zone": IΔ on the chosen bass string, every other chord in the shape (bass on 6, 5 or 4) closest to it, so the 7 chords
+ *   stay in a few frets and the hand barely moves.
+ */
+export type Placement = "string" | "zone";
+const MAX_FRET = 15;
+export function keyVoicings(chords: Chord[], bass: Bass, placement: Placement): (ChordVoicing & { bass: Bass })[] {
+  if (placement === "string") return chords.map((c) => degreeVoicing(c, bass));
+  const anchor = degreeVoicing(chords[0], bass);
+  const center = (v: ChordVoicing) => (v.min + v.max) / 2;
+  const c0 = center(anchor);
+  return chords.map((ch, i) => {
+    if (i === 0) return anchor;
+    let best: (ChordVoicing & { bass: Bass }) | null = null;
+    let bestD = Infinity;
+    for (const s of [bass, ...BASSES.filter((b) => b !== bass)]) {
+      for (const up of [0, 12]) {
+        const v = degreeVoicing(ch, s, up);
+        if (v.max > MAX_FRET) continue;
+        const d = Math.abs(center(v) - c0);
+        if (d < bestD - 0.01) {
+          best = v;
+          bestD = d;
+        }
+      }
+    }
+    return best ?? degreeVoicing(ch, bass);
+  });
 }
 
 // ---------- Fonctions: a progression where each chord can be swapped for one of the same function ----------

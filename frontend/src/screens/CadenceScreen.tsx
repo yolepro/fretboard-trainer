@@ -11,7 +11,7 @@ import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
-import { barHits } from "@/src/audio/chordPlay";
+import { chordOnce } from "@/src/audio/chordPlay";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import {
   ALL_CADENCES,
@@ -116,15 +116,19 @@ export function CadenceScreen({ onBack }: { onBack: () => void }) {
     initAudio();
     const beat = 60000 / tempo;
     const seq: { midi: number; at: number }[] = [];
-    voicings.forEach((vo, i) => {
-      const t0 = i * 4 * beat;
-      const midis = vo.notes.map((n) => TUNING[n.string] + n.fret).sort((a, b) => a - b);
-      seq.push(...barHits(midis, settings.chordStyle, t0, beat)); // FS-34: Réglages › Accords : façon de jouer
+    // Each chord once, as set in Réglages › Accords : façon de jouer (arpeggio, strum, or both), at the tempo.
+    const starts: number[] = [];
+    let total = 0;
+    voicings.forEach((vo) => {
+      const midis = vo.notes.map((n) => TUNING[n.string] + n.fret);
+      const one = chordOnce(midis, settings.chordStyle, total, beat);
+      starts.push(total);
+      seq.push(...one.hits);
+      total = one.next;
     });
-    const total = voicings.length * 4 * beat;
     const run = () => {
       playChordNotes(seq, settings.volume * 0.85);
-      voicings.forEach((_, i) => timers.current.push(setTimeout(() => setIdx(i), i * 4 * beat)));
+      starts.forEach((t, i) => timers.current.push(setTimeout(() => setIdx(i), t)));
       timers.current.push(setTimeout(() => (loopRef.current ? run() : setPlaying(false)), total));
     };
     setPlaying(true);
@@ -210,7 +214,7 @@ export function CadenceScreen({ onBack }: { onBack: () => void }) {
           </Pressable>
           <Pressable testID="cadence-tempo" onPress={() => setTempo(TEMPOS[(TEMPOS.indexOf(tempo) + 1) % TEMPOS.length])} style={styles.tempo} accessibilityLabel={tr("Tempo")}>
             <Text style={styles.tempoText}>♩ {tempo}</Text>
-            <Text style={styles.tempoSub}>{tr("1 mesure par accord")}</Text>
+            <Text style={styles.tempoSub}>{tr("Tempo")}</Text>
           </Pressable>
           <Pressable testID="cadence-play" onPress={play} style={({ pressed }) => [styles.playRound, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : tr("Écouter")}>
             {playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />}

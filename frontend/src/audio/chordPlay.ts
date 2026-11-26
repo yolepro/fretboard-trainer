@@ -1,41 +1,22 @@
 // How a chord sounds, from Réglages › Entraînement › « Accords : façon de jouer » (settings.chordStyle).
-// One helper for every screen that plays chords in time (Cadences, Harmonie), so the setting applies everywhere.
+// One helper for the screens that play chords one after the other (Cadences, Harmonie), so the setting applies everywhere.
 export type ChordStyle = "both" | "block" | "arp";
 export type Hit = { midi: number; at: number };
 
-const STRUM_MS = 25; // between two strings of a strum
-
-/**
- * The notes of one chord filling one 4-beat bar starting at `t0` (ms):
- * - "block": strummed on beats 1 and 3;
- * - "arp": arpeggio in eighth notes over the whole bar (up and down when the chord has few notes);
- * - "both": arpeggio in eighth notes on beats 1–2, then strummed on beat 3.
- */
-export function barHits(midis: number[], style: ChordStyle, t0: number, beat: number): Hit[] {
-  const notes = [...new Set(midis)].sort((a, b) => a - b);
-  if (!notes.length) return [];
-  const strum = (at: number) => notes.map((midi, k) => ({ midi, at: at + k * STRUM_MS }));
-  if (style === "block") return [...strum(t0), ...strum(t0 + 2 * beat)];
-  if (style === "arp") {
-    const slots = Math.max(8, notes.length);
-    const step = (4 * beat) / slots;
-    const cycle = notes.length < slots && notes.length > 2 ? [...notes, ...notes.slice(1, -1).reverse()] : notes;
-    return Array.from({ length: slots }, (_, i) => ({ midi: cycle[i % cycle.length], at: t0 + i * step }));
-  }
-  const step = Math.min(beat / 2, (2 * beat) / notes.length);
-  return [...notes.map((midi, i) => ({ midi, at: t0 + i * step })), ...strum(t0 + 2 * beat)];
-}
-
-const ARP_MS = 280; // between two notes of an arpeggio (as in Explorer › Les formes à jouer)
-const GAP_MS = 350; // between the arpeggio and the strum
-const RING_MS = 1300; // how long a strum rings before the next chord
+const ARP = 280; // between two notes of an arpeggio (as in Explorer › Les formes à jouer)
+const GAP = 350; // between the arpeggio and the strum
+const RING = 1300; // how long a strum rings before the next chord
 
 /**
  * One chord played once, as in Explorer › Les formes à jouer: the arpeggio, the strum, or the arpeggio then the strum.
- * Returns the notes from `t0` and when the next chord can start.
+ * Returns the notes from `t0` and when the next chord can start. `beat` (ms): follow a tempo instead of the default speed.
  */
-export function chordOnce(midis: number[], style: ChordStyle, t0 = 0): { hits: Hit[]; next: number } {
+export function chordOnce(midis: number[], style: ChordStyle, t0 = 0, beat?: number): { hits: Hit[]; next: number } {
   const notes = [...new Set(midis)].sort((a, b) => a - b);
+  // With a tempo (Cadences): eighth-note arpeggio, a half-beat gap, the strum rings 2 beats.
+  const ARP_MS = beat ? beat / 2 : ARP;
+  const GAP_MS = beat ? beat / 2 : GAP;
+  const RING_MS = beat ? 2 * beat : RING;
   const hits: Hit[] = [];
   let t = t0;
   if (style !== "block") {
