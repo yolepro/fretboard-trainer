@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CaretLeft, CaretRight, Play, Stop } from "phosphor-react-native";
@@ -11,6 +11,7 @@ import { KeyWheel } from "@/src/components/KeyWheel";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { StudioBackground } from "@/src/components/StudioBackground";
+import { chordOnce } from "@/src/audio/chordPlay";
 import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
 import { cellKey, type BoxWindow, type DegreeKey, type IntervalDef } from "@/src/music/theory";
 import { resumeWebAudio } from "@/src/audio/webAudio";
@@ -94,6 +95,9 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
   const [keyOpen, setKeyOpen] = useState(false);
   const [sheet, setSheet] = useState<SheetId>(null);
   const [playing, setPlaying] = useState(false);
+  const [pin, setPin] = useState<number[] | null>(null); // while playing: the chords that were on the score, kept in place
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const shown = useRef<number[]>([]); // the chords on the score right now (set by the layout below)
 
   // Every shape the arrows go through. Barré, power chords and CAGED: the shapes of the same chord along the neck.
   const list: Voicing[] = useMemo(() => {
@@ -131,33 +135,48 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
 
   useEffect(() => {
     preloadNotes(Array.from({ length: 30 }, (_, i) => 40 + i));
-    return () => stopChordNotes();
+    return () => {
+      timers.current.forEach(clearTimeout);
+      stopChordNotes();
+    };
   }, []);
 
-  const play = () => {
-    if (playing) {
-      stopChordNotes();
-      setPlaying(false);
-      return;
-    }
-    resumeWebAudio(); // Safari (iPhone): the audio clock only runs after a tap
-    initAudio();
-    const notes = voicingMidis(v);
-    const seq: { midi: number; at: number }[] = [];
-    let t = 0;
-    if (settings.chordStyle !== "block") {
-      notes.forEach((m, i) => seq.push({ midi: m, at: i * 280 }));
-      t = notes.length * 280 + 350;
-    }
-    if (settings.chordStyle !== "arp") notes.forEach((m, i) => seq.push({ midi: m, at: t + i * 30 })); // a light strum
-    playChordNotes(seq, settings.volume * 0.85);
-    setPlaying(true);
-    const last = (seq[seq.length - 1]?.at ?? 0) + 1600;
-    setTimeout(() => setPlaying(false), last);
-  };
-  const select = (i: number) => {
+  const stop = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
     stopChordNotes();
     setPlaying(false);
+    setPin(null);
+  };
+  useEffect(stop, [list]); // eslint-disable-line react-hooks/exhaustive-deps
+  /**
+   * Every chord on the score, one after the other, like the cadences: each played once, as set in Réglages › Accords :
+   * façon de jouer; the chord being played is selected on the neck and the score, which stays still meanwhile.
+   */
+  const play = () => {
+    if (playing) return stop();
+    resumeWebAudio(); // Safari (iPhone): the audio clock only runs after a tap
+    initAudio();
+    const run = shown.current.length ? shown.current.slice() : [at];
+    const seq: { midi: number; at: number }[] = [];
+    let t = 0;
+    run.forEach((i) => {
+      const t0 = t;
+      const one = chordOnce(voicingMidis(list[i]), settings.chordStyle, t0);
+      seq.push(...one.hits);
+      t = one.next;
+      timers.current.push(setTimeout(() => setIdx(i), t0));
+    });
+    playChordNotes(seq, settings.volume * 0.85);
+    setPin(run);
+    setPlaying(true);
+    timers.current.push(setTimeout(() => {
+      setPlaying(false);
+      setPin(null);
+    }, t));
+  };
+  const select = (i: number) => {
+    stop();
     setIdx(((i % list.length) + list.length) % list.length);
   };
 
@@ -246,7 +265,8 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
     const rowH = Math.floor(Math.max(20, Math.min(34, (bodyH - (chips ? 64 : 30) - 30) / 6)));
     const scoreW = panelW - 2 * spacing.sm;
     const k = fitCount(scoreW, list.length);
-    const idxs = windowOf(at, k, list.length);
+    const idxs = pin ?? windowOf(at, k, list.length);
+    shown.current = idxs;
     return (
       <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="chord-shape-screen">
         <StudioBackground />
@@ -311,7 +331,8 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
   // ---------- Portrait ----------
   const contentW = width - insets.left - insets.right - 2 * spacing.lg;
   const k = fitCount(contentW, list.length);
-  const idxs = windowOf(at, k, list.length);
+  const idxs = pin ?? windowOf(at, k, list.length);
+  shown.current = idxs;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="chord-shape-screen">
@@ -371,7 +392,7 @@ export function ChordShapeScreen({ kind, onBack }: { kind: ShapeKind; onBack: ()
         <Pressable testID="shape-play" onPress={play} style={({ pressed }) => [styles.playbar, pressed && styles.pressed]} accessibilityRole="button">
           <View style={styles.playRound}>{playIcon}</View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.playTitle}>{tr("Écouter")}</Text>
+            <Text style={styles.playTitle} numberOfLines={1}>{idxs.length > 1 ? tr("Écouter les {n} accords de la partition", { n: idxs.length }) : tr("Écouter")}</Text>
             <Text style={styles.muted} numberOfLines={1}>
               {styleLabel} · {tr("à changer dans Réglages")}
             </Text>
