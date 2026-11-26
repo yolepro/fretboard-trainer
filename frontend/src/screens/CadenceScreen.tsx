@@ -11,6 +11,7 @@ import { Pill, PillRow } from "@/src/components/Pill";
 import { Sheet } from "@/src/components/Sheet";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
+import { barHits } from "@/src/audio/chordPlay";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import {
   ALL_CADENCES,
@@ -106,9 +107,9 @@ export function CadenceScreen({ onBack }: { onBack: () => void }) {
     stopChordNotes();
     setPlaying(false);
   };
-  useEffect(stop, [cadId, keyPc, style]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(stop, [cadId, keyPc, style, settings.chordStyle]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** One bar per chord (4 beats): strummed (simple), arpeggio then strummed (triads), eighth-note arpeggio (4 notes). */
+  /** One bar per chord (4 beats), played as set in Réglages › Accords : façon de jouer. */
   const play = () => {
     if (playing) return stop();
     resumeWebAudio();
@@ -118,12 +119,7 @@ export function CadenceScreen({ onBack }: { onBack: () => void }) {
     voicings.forEach((vo, i) => {
       const t0 = i * 4 * beat;
       const midis = vo.notes.map((n) => TUNING[n.string] + n.fret).sort((a, b) => a - b);
-      const uniq = [...new Set(midis)];
-      if (style === "simple") [0, 2].forEach((b) => uniq.forEach((m, k) => seq.push({ midi: m, at: t0 + b * beat + k * 25 })));
-      else if (style === "triads") {
-        uniq.forEach((m, k) => seq.push({ midi: m, at: t0 + k * beat }));
-        uniq.forEach((m, k) => seq.push({ midi: m, at: t0 + 3 * beat + k * 25 }));
-      } else uniq.slice(0, 8).forEach((m, k) => seq.push({ midi: m, at: t0 + (k * beat) / 2 }));
+      seq.push(...barHits(midis, settings.chordStyle, t0, beat)); // FS-34: Réglages › Accords : façon de jouer
     });
     const total = voicings.length * 4 * beat;
     const run = () => {

@@ -9,6 +9,7 @@ import { KeyWheel } from "@/src/components/KeyWheel";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
+import { barHits } from "@/src/audio/chordPlay";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import { chordNum } from "@/src/music/cadences";
 import {
@@ -104,20 +105,17 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     const seq: { midi: number; at: number }[] = [];
     let total = 0;
     if (tab === "degrees") {
-      // FS-33: the 7 degrees in a row, back to I at the end; each one as an arpeggio, then strummed; its tile lights up.
+      // FS-33: the 7 degrees in a row, back to I at the end, one bar each; its tile lights up.
       DEGREE_RUN.forEach((d, i) => {
         const t0 = i * 4 * beat;
-        const m = midisOf(chords[d]);
-        m.forEach((x, k) => seq.push({ midi: x, at: t0 + k * beat * 0.5 }));
-        m.forEach((x, k) => seq.push({ midi: x, at: t0 + 2 * beat + k * 25 }));
+        seq.push(...barHits(midisOf(chords[d]), settings.chordStyle, t0, beat));
         timers.current.push(setTimeout(() => setSel(d), t0));
       });
       total = DEGREE_RUN.length * 4 * beat;
     } else {
       prog.forEach((d, i) => {
         const t0 = i * 4 * beat;
-        const m = midisOf(chords[d]);
-        [0, 2].forEach((b) => m.forEach((x, k) => seq.push({ midi: x, at: t0 + b * beat + k * 25 })));
+        seq.push(...barHits(midisOf(chords[d]), settings.chordStyle, t0, beat));
         timers.current.push(setTimeout(() => setSlot(i), t0));
       });
       total = prog.length * 4 * beat;
@@ -127,16 +125,14 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     setPlaying(true);
   };
 
-  /** Touching a degree's tile: select it and hear it (arpeggio, then strummed). */
+  /** Touching a degree's tile: select it and hear it (as set in Réglages › Accords : façon de jouer). */
   const pickDegree = (i: number) => {
     stop();
     setSel(i);
     resumeWebAudio();
     initAudio();
     const beat = 60000 / TEMPO;
-    const m = midisOf(chords[i]);
-    const seq = [...m.map((x, k) => ({ midi: x, at: k * beat * 0.5 })), ...m.map((x, k) => ({ midi: x, at: 2 * beat + k * 25 }))];
-    playChordNotes(seq, settings.volume * 0.85);
+    playChordNotes(barHits(midisOf(chords[i]), settings.chordStyle, 0, beat), settings.volume * 0.85);
   };
 
   const onNotePress = (midi: number) => {
@@ -430,7 +426,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
               {playLabel}
             </Text>
             <Text style={styles.playSub} numberOfLines={1}>
-              {tab === "degrees" ? tr("IΔ → VIIø → IΔ · arpège puis plaqué") : tr("1 mesure par accord")}
+              {tab === "degrees" ? tr("IΔ → VIIø → IΔ · 1 mesure par accord") : tr("1 mesure par accord")}
             </Text>
           </View>
           <Pressable testID="harmony-play" onPress={play} style={({ pressed }) => [styles.playRound, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : tr("Écouter")}>

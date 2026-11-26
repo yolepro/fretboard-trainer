@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.60.1 (branche feature/fs-18-cadences) — FS-34 : le réglage « Accords : façon de jouer » (arpégé puis plaqué, plaqué, arpégé) s’applique aussi aux Cadences et à Harmonie (déjà appliqué aux formes d’accords et à Reconnais l’accord)
 // 1.60.0 (branche feature/fs-18-cadences) — FS-33 : Harmonie › Les 7 degrés, Écouter joue tous les degrés à la suite (IΔ → VIIø → IΔ, une mesure chacun, le cadre du degré joué s’allume) ; toucher un cadre fait entendre son accord
 // 1.59.2 (branche feature/fs-18-cadences) — FS-32 en paysage : glissière Degrés / Fonctions plus petite ; manche raccourci (cases 0 à 12) à gauche, cadres colorés des degrés (ou la progression) et explications à droite
 // 1.59.1 (branche feature/fs-18-cadences) — FS-32 en paysage : sur une ligne en haut, tonalité, basse, glissière Degrés / Fonctions et bouton Écouter (à gauche du menu) ; manche entier à gauche avec les degrés ou la progression dessous, explications dans un panneau à droite
@@ -147,4 +148,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.60.0";
+export const APP_VERSION = "1.60.1";
