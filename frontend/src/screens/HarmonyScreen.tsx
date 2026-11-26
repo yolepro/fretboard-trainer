@@ -38,6 +38,7 @@ const NO_DEGREES = new Map<number, IntervalDef>();
 const NO_LAYERS = new Set<DegreeKey>();
 const BASSES: Bass[] = ["auto", 6, 5];
 const TEMPO = 80;
+const DEGREE_RUN = [0, 1, 2, 3, 4, 5, 6, 0];
 const pretty = (l: string) => l.replace(/^b/, "♭");
 
 /** Explorer › Harmonie › Les degrés de la gamme: the 7 chords of a key, their function, and which ones replace each other. */
@@ -103,10 +104,15 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     const seq: { midi: number; at: number }[] = [];
     let total = 0;
     if (tab === "degrees") {
-      const m = midisOf(shown);
-      m.forEach((x, k) => seq.push({ midi: x, at: k * beat * 0.5 }));
-      m.forEach((x, k) => seq.push({ midi: x, at: 2 * beat + k * 25 }));
-      total = 4 * beat;
+      // FS-33: the 7 degrees in a row, back to I at the end; each one as an arpeggio, then strummed; its tile lights up.
+      DEGREE_RUN.forEach((d, i) => {
+        const t0 = i * 4 * beat;
+        const m = midisOf(chords[d]);
+        m.forEach((x, k) => seq.push({ midi: x, at: t0 + k * beat * 0.5 }));
+        m.forEach((x, k) => seq.push({ midi: x, at: t0 + 2 * beat + k * 25 }));
+        timers.current.push(setTimeout(() => setSel(d), t0));
+      });
+      total = DEGREE_RUN.length * 4 * beat;
     } else {
       prog.forEach((d, i) => {
         const t0 = i * 4 * beat;
@@ -119,6 +125,18 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     playChordNotes(seq, settings.volume * 0.85);
     timers.current.push(setTimeout(() => setPlaying(false), total));
     setPlaying(true);
+  };
+
+  /** Touching a degree's tile: select it and hear it (arpeggio, then strummed). */
+  const pickDegree = (i: number) => {
+    stop();
+    setSel(i);
+    resumeWebAudio();
+    initAudio();
+    const beat = 60000 / TEMPO;
+    const m = midisOf(chords[i]);
+    const seq = [...m.map((x, k) => ({ midi: x, at: k * beat * 0.5 })), ...m.map((x, k) => ({ midi: x, at: 2 * beat + k * 25 }))];
+    playChordNotes(seq, settings.volume * 0.85);
   };
 
   const onNotePress = (midi: number) => {
@@ -164,7 +182,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     </View>
   );
   const playIcon = playing ? <Stop size={20} color={colors.onBrandPrimary} weight="fill" /> : <Play size={20} color={colors.onBrandPrimary} weight="fill" />;
-  const playLabel = tab === "degrees" ? tr("Écouter {c}", { c: nameOfChord(shown) }) : tr("Écouter la progression");
+  const playLabel = tab === "degrees" ? tr("Écouter les 7 degrés") : tr("Écouter la progression");
 
   const tiles = (h: number) => (
     <View style={styles.tiles}>
@@ -175,7 +193,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
           <Pressable
             key={i}
             testID={`harmony-degree-${i}`}
-            onPress={() => setSel(i)}
+            onPress={() => pickDegree(i)}
             style={({ pressed }) => [styles.tile, { height: h }, on && { backgroundColor: f.bg, borderColor: f.color, borderWidth: 2 }, pressed && styles.pressed]}
           >
             <Text style={[styles.tileRoman, { color: f.color }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -412,7 +430,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
               {playLabel}
             </Text>
             <Text style={styles.playSub} numberOfLines={1}>
-              {tab === "degrees" ? tr("Arpège puis plaqué") : tr("1 mesure par accord")}
+              {tab === "degrees" ? tr("IΔ → VIIø → IΔ · arpège puis plaqué") : tr("1 mesure par accord")}
             </Text>
           </View>
           <Pressable testID="harmony-play" onPress={play} style={({ pressed }) => [styles.playRound, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : tr("Écouter")}>
