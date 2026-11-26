@@ -14,7 +14,7 @@ import { tr } from "@/src/i18n";
 const FEATURES = [
   {
     title: "Explorer",
-    text: "Les accords : la bible pour construire n’importe quel accord, et les formes à jouer (accords ouverts, barrés, power chords, système CAGED) avec les doigts. L’harmonie : les 7 degrés d’une tonalité, leur fonction et les accords qui se remplacent. Puis les gammes et modes sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute.",
+    text: "Les accords : les formes à jouer (accords ouverts, barrés, power chords, système CAGED) avec les doigts, et les cadences (Les bases du rock, Pop 4 accords, II–V–I…). Les arpèges de n’importe quel accord sur tout le manche. L’harmonie : les 7 degrés d’une tonalité, leur fonction et les accords qui se remplacent. Puis les gammes et modes sur tout le manche, 5 positions dans toutes les tonalités, avec partition et écoute.",
   },
   {
     title: "S’exercer",

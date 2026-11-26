@@ -4,7 +4,6 @@ import { resumeWebAudio, stopWebNotes, webAudioScheduling } from "@/src/audio/we
 import { MAJOR, PAIR_FORMULA, PAIR_STYLES, pairRoots, pairSequence, type PairStyle } from "@/src/music/triadPairs";
 import { TempoButton } from "@/src/components/TempoSheet";
 import { KeyButton, KeyWheel } from "@/src/components/KeyWheel";
-import { CadenceScreen } from "@/src/screens/CadenceScreen";
 import { ExerciseLibrary, PRESETS, type ExercisePreset } from "@/src/components/ExerciseLibrary";
 import { shortName } from "@/src/music/shortNames";
 import { Pill, PillRow } from "@/src/components/Pill";
@@ -101,7 +100,7 @@ export default function FingeringScreen() {
   const [subject, setSubject] = useState<"scale" | "arp" | "pairs">("scale");
   // The tab opens on the exercise library; a card opens the exercise screen, set for that exercise.
   // S’exercer: the library or an exercise.
-  const [view, setView] = useState<"library" | "exercise" | "cadence">("library");
+  const [view, setView] = useState<"library" | "exercise">("library");
   const [presetId, setPresetId] = useState<string | null>(null);
   const arp = subject === "arp";
   // Triad pairs (IV & V of the key, through a position of the major scale), played in triplets.
@@ -313,11 +312,6 @@ export default function FingeringScreen() {
 
   const pickPreset = (p: ExercisePreset) => {
     stop();
-    if (p.subject === "cadence") {
-      setPresetId(p.id);
-      setView("cadence");
-      return;
-    }
     setSubject(p.subject);
     if (p.exerciseId) setExerciseId(p.exerciseId);
     setHorizontal(p.horizontal);
@@ -694,7 +688,6 @@ export default function FingeringScreen() {
   );
 
   if (view === "library") return <ExerciseLibrary currentId={presetId} onPick={pickPreset} />;
-  if (view === "cadence") return <CadenceScreen onBack={backToLibrary} />;
 
   return (
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="fingering-screen">

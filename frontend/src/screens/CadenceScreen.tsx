@@ -46,7 +46,7 @@ function asScoreVoicing(v: ChordVoicing, ch: Chord, name: string): Voicing {
   return { name, rootPc: ch.root, symbol: ch.quality, typeName: "", strings, rootString: 6 };
 }
 
-/** S’exercer › Cadences: a cadence chosen by its name, played in a key, three ways to play it on the neck. */
+/** Explorer › Accords › Cadences: a cadence chosen by its name, played in a key, three ways to play it on the neck. */
 export function CadenceScreen({ onBack }: { onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const styles = useStyles();
@@ -150,7 +150,7 @@ export function CadenceScreen({ onBack }: { onBack: () => void }) {
     <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="cadence-screen">
       <StudioBackground />
       <View style={[styles.header, { paddingTop: insets.top + (landscape ? spacing.xs : spacing.sm) }, landscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
-        <Pressable testID="cadence-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("S’exercer")} hitSlop={6}>
+        <Pressable testID="cadence-back" onPress={onBack} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} accessibilityLabel={tr("Explorer")} hitSlop={6}>
           <CaretLeft size={20} color={colors.onSurface} weight="bold" />
         </Pressable>
         <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} testID="cadence-title">

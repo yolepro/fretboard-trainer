@@ -9,24 +9,18 @@ import { StudioBackground } from "@/src/components/StudioBackground";
 import { ExplorerScreen, type ExploreMode } from "@/src/screens/ExplorerScreen";
 import { ChordShapeScreen, type ShapeKind } from "@/src/screens/ChordShapeScreen";
 import { HarmonyScreen } from "@/src/screens/HarmonyScreen";
+import { CadenceScreen } from "@/src/screens/CadenceScreen";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
 
-type Filter = "all" | "chords" | "harmony" | "scales";
-type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind } | { lesson: "degrees" }; bible?: boolean; soon?: boolean };
+type Filter = "all" | "chords" | "arps" | "harmony" | "scales";
+type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind } | { lesson: "degrees" } | { cadence: true }; bible?: boolean; soon?: boolean };
 type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: string; isNew?: boolean; items: Item[] };
 
 /** Explorer: the families and their cards. Edit names here. */
 const GROUPS: Group[] = [
-  {
-    id: "bible",
-    filter: "chords",
-    title: "La bible des accords",
-    lead: "Construis n’importe quel accord sur n’importe quelle note et vois toutes ses notes sur le manche.",
-    items: [{ id: "chords", name: "Les accords", meta: "Triades, sus, septièmes, 6, 9, 11, 13 · partition et écoute", open: { explore: "chord" }, bible: true }],
-  },
   {
     id: "shapes",
     filter: "chords",
@@ -40,6 +34,20 @@ const GROUPS: Group[] = [
       { id: "three", name: "Accords à 3 sons", meta: "Triades sur 3 cordes · 3 renversements", soon: true },
       { id: "four", name: "Accords à 4 sons", meta: "Septièmes en Drop 2 et Drop 3 · 4 renversements", soon: true },
     ],
+  },
+  {
+    id: "cadences",
+    filter: "chords",
+    title: "Cadences",
+    lead: "Les accords d’une cadence, en accords simples ou sans changer de position.",
+    items: [{ id: "cadences", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", open: { cadence: true } }],
+  },
+  {
+    id: "arps",
+    filter: "arps",
+    title: "Arpèges",
+    lead: "Construis l’arpège de n’importe quel accord sur n’importe quelle note et joue ses notes une à une sur tout le manche.",
+    items: [{ id: "chords", name: "Les arpèges", meta: "Triades, sus, septièmes, 6, 9, 11, 13 · partition et écoute", open: { explore: "chord" }, bible: true }],
   },
   {
     id: "harmony",
@@ -60,6 +68,7 @@ const GROUPS: Group[] = [
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Tout" },
   { id: "chords", label: "Accords" },
+  { id: "arps", label: "Arpèges" },
   { id: "harmony", label: "Harmonie" },
   { id: "scales", label: "Gammes" },
 ];
@@ -78,6 +87,7 @@ export default function ExplorerTab() {
   if (view && "explore" in view) return <ExplorerScreen key={view.explore} initialMode={view.explore} onBack={back} />;
   if (view && "shape" in view) return <ChordShapeScreen key={view.shape} kind={view.shape} onBack={back} />;
   if (view && "lesson" in view) return <HarmonyScreen onBack={back} />;
+  if (view && "cadence" in view) return <CadenceScreen onBack={back} />;
 
   const groups = filter === "all" ? GROUPS : GROUPS.filter((g) => g.filter === filter);
   const bottom = usesNativeTabs || landscape ? insets.bottom : 0;

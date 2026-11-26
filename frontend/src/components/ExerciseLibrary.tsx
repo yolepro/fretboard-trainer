@@ -18,25 +18,23 @@ export type ExercisePreset = {
   family: Family;
   name: string;
   meta: string;
-  subject: "scale" | "arp" | "pairs" | "cadence";
+  subject: "scale" | "arp" | "pairs";
   exerciseId?: ExerciseId;
   horizontal: boolean;
   arpKind?: "shapes" | "twoStrings";
 };
 
-type Family = "Accords" | "Arpèges" | "Triades" | "Gammes";
-// Chords come first: they are learnt before scales.
-const FAMILIES: Family[] = ["Accords", "Arpèges", "Triades", "Gammes"];
+type Family = "Arpèges" | "Triades" | "Gammes";
+// The cadences moved to Explorer › Accords.
+const FAMILIES: Family[] = ["Arpèges", "Triades", "Gammes"];
 const LEADS: Record<Family, string> = {
   Gammes: "La gamme en position ou le long du manche, note à note ou par intervalles.",
   Arpèges: "Les arpèges à 4 sons, leurs schémas et leurs enchaînements.",
   Triades: "Deux triades voisines de la tonalité, en alternance.",
-  Accords: "Les accords d’une cadence, en accords simples ou sans changer de position.",
 };
 
 /** S’exercer: one card per exercise, grouped by family. Edit names here. */
 export const PRESETS: ExercisePreset[] = [
-  { id: "cadences", family: "Accords", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", subject: "cadence", horizontal: false },
   { id: "scale", family: "Gammes", name: "Montée & descente de gamme", meta: "Sur une position · toutes les gammes", subject: "scale", exerciseId: "scale", horizontal: false },
   { id: "thirds", family: "Gammes", name: "Gamme par tierces", meta: "Sur une position", subject: "scale", exerciseId: "thirds", horizontal: false },
   { id: "thirds-h", family: "Gammes", name: "Gamme par tierces horizontales", meta: "Sur 2 cordes, le long du manche", subject: "scale", exerciseId: "thirds", horizontal: true },
