@@ -510,7 +510,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     if (cands.length && stable.current.count === 2) tryCells(cands, null, false);
     else if (!cands.length && stable.current.clear === 6) onMistake(null, notHere(), false);
   };
-  usePitchDetector(listening, onFrame);
+  const { mic } = usePitchDetector(listening, onFrame);
 
   // ---------- Views ----------
 
@@ -581,6 +581,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     return (
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
+        {mic}
         {header(sprint ? tr("Tour {i}", { i: roundIdx + 1 }) : tr("Tour {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
         {away ? (
           <View style={styles.pauseOverlay} testID="challenge-paused">

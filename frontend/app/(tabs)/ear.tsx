@@ -388,7 +388,7 @@ export default function EarScreen() {
     else if (!match && stable.current.count === 6) onWrong(midi);
   };
 
-  const { status, error } = usePitchDetector(listening && !suspended, onFrame);
+  const { status, error, mic } = usePitchDetector(listening && !suspended, onFrame);
 
   const stop = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -539,6 +539,7 @@ export default function EarScreen() {
   return (
     <View style={styles.screen} testID="ear-screen">
       <StudioBackground />
+      {mic}
       {phase === "running" && question ? (
         <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: bottomChrome, paddingLeft: insets.left, paddingRight: insets.right }]}>
           <ChallengeView

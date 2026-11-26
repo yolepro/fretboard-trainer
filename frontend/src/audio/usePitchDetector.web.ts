@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { detectPitch, rmsOf, type PitchFrame } from "@/src/music/yin";
@@ -55,5 +56,5 @@ export function usePitchDetector(enabled: boolean, onFrame: (f: PitchFrame, leve
     };
   }, [enabled]);
 
-  return { status, error };
+  return { status, error, mic: null as React.ReactElement | null }; // same shape as native (nothing to render on the web)
 }
