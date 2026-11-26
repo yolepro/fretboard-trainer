@@ -46,6 +46,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
+import { useLeaveGuard } from "@/src/tabNav";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Props = { kind: ChallengeKind; onBack: () => void; preset?: "neck" };
@@ -382,6 +383,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setSuspended(false);
     setPhase("setup");
   }, []);
+  // FS-36: pressing a tab during a round pauses it (the pause screen) and asks before leaving.
+  useLeaveGuard(phase === "running", { pause: goAway, resume: comeBack, quit: stop });
 
   const onFound = (c: Cell, fromTouch: boolean) => {
     const now = Date.now();

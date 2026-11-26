@@ -40,6 +40,7 @@ import { storage } from "@/src/utils/storage";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { CaretLeft, ChartBar } from "phosphor-react-native";
 import { tr } from "@/src/i18n";
+import { useLeaveGuard, useTabReset } from "@/src/tabNav";
 
 type Phase = "setup" | "running" | "done";
 type Perm = "unknown" | "granted" | "ask" | "blocked";
@@ -511,6 +512,26 @@ export default function EarScreen() {
       : status === "listening"
         ? tr("Joue la note…")
         : tr("Micro en pause");
+
+  // FS-36: the Défis tab always opens on the games; a game in progress is paused and confirmed before leaving.
+  useTabReset("ear", () => {
+    stop();
+    setChallenge(null);
+    leaveChords();
+    setTab("play");
+    setOpenGame(null);
+  });
+  useLeaveGuard(phase === "running", {
+    pause: () => {
+      pauseChrono();
+      setListening(false);
+    },
+    resume: () => {
+      resumeChrono();
+      setListening(true);
+    },
+    quit: stop,
+  });
 
   // Trouve le degré / Trouve la gamme: their own screen (levels, records, results), back to Défis with its arrow.
   if (challenge) return <FindChallenge key={challenge} kind={challenge} onBack={() => setChallenge(null)} />;

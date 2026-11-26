@@ -13,6 +13,7 @@ import { useResultsVersion } from "@/src/results";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
+import { useLeaveGuard } from "@/src/tabNav";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 /** Chord qualities the quiz can ask (intervals in semitones from the root). */
@@ -132,6 +133,18 @@ export function ChordQuiz({ level, count, onPhase, onExit, onResults, bottomPad,
     startRef.current += Date.now() - pausedAt.current;
     pausedAt.current = null;
   };
+  // FS-36: pressing a tab during the quiz pauses the chrono and asks before leaving.
+  useLeaveGuard(phase === "running", {
+    pause: () => {
+      pause();
+      stopChordNotes();
+    },
+    resume,
+    quit: () => {
+      clearTimers();
+      exitRef.current();
+    },
+  });
 
   // A guitar-like close voicing; arpeggio (low → high) then the chord, or one of the two.
   const playChord = (qq: Q, how: PlayStyle = style) => {

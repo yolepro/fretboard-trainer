@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.65.0 (branche feature/fs-18-cadences) — FS-36 : appuyer sur un onglet du menu (même celui en cours) ouvre toujours sa première page (Explorer, S’exercer, Défis) ; pendant un défi, la partie est mise en pause et une fenêtre demande « Reprendre le défi » ou « Quitter le défi »
 // 1.64.0 (branche feature/fs-18-cadences) — Les Cadences passent de S’exercer à Explorer › Accords ; « La bible des accords › Les accords » devient la famille « Arpèges › Les arpèges » (filtre Arpèges) ; S’exercer garde Arpèges, Triades, Gammes
 // 1.63.0 (branche feature/fs-18-cadences) — Explorer › Les formes à jouer : Écouter joue à la suite tous les accords affichés sur la partition (chacun une fois, selon le réglage), l’accord joué est sélectionné et la partition ne bouge pas pendant la lecture
 // 1.62.1 (branche feature/fs-18-cadences) — Harmonie en paysage : en haut seulement la tonalité et Écouter ; Degrés / Fonctions, placement et corde de basse dans une barre en bas de l’écran
@@ -154,4 +155,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.64.0";
+export const APP_VERSION = "1.65.0";

@@ -14,6 +14,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
+import { useTabReset } from "@/src/tabNav";
 
 type Filter = "all" | "chords" | "arps" | "harmony" | "scales";
 type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind } | { lesson: "degrees" } | { cadence: true }; bible?: boolean; soon?: boolean };
@@ -83,6 +84,7 @@ export default function ExplorerTab() {
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<Item["open"] | null>(null);
   const back = () => setView(null);
+  useTabReset("manche", back); // the Explorer tab always opens on the families (FS-36)
 
   if (view && "explore" in view) return <ExplorerScreen key={view.explore} initialMode={view.explore} onBack={back} />;
   if (view && "shape" in view) return <ChordShapeScreen key={view.shape} kind={view.shape} onBack={back} />;

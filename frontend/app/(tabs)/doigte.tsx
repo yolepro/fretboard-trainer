@@ -58,6 +58,7 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
+import { useTabReset } from "@/src/tabNav";
 
 const LANDSCAPE_ROW_MIN = 22;
 
@@ -324,6 +325,8 @@ export default function FingeringScreen() {
     setSheet(null);
     setView("library");
   };
+  useTabReset("doigte", backToLibrary); // the S’exercer tab always opens on the library (FS-36)
+
 
   // iPhone / Android: the whole sequence is mixed ahead into one sound file (render.ts) — the rhythm no longer depends on
   // the JavaScript thread. It is mixed while nothing plays, a moment after each change, so Play starts at once.
