@@ -25,3 +25,26 @@ export function barHits(midis: number[], style: ChordStyle, t0: number, beat: nu
   const step = Math.min(beat / 2, (2 * beat) / notes.length);
   return [...notes.map((midi, i) => ({ midi, at: t0 + i * step })), ...strum(t0 + 2 * beat)];
 }
+
+const ARP_MS = 280; // between two notes of an arpeggio (as in Explorer › Les formes à jouer)
+const GAP_MS = 350; // between the arpeggio and the strum
+const RING_MS = 1300; // how long a strum rings before the next chord
+
+/**
+ * One chord played once, as in Explorer › Les formes à jouer: the arpeggio, the strum, or the arpeggio then the strum.
+ * Returns the notes from `t0` and when the next chord can start.
+ */
+export function chordOnce(midis: number[], style: ChordStyle, t0 = 0): { hits: Hit[]; next: number } {
+  const notes = [...new Set(midis)].sort((a, b) => a - b);
+  const hits: Hit[] = [];
+  let t = t0;
+  if (style !== "block") {
+    notes.forEach((midi, i) => hits.push({ midi, at: t0 + i * ARP_MS }));
+    t = t0 + notes.length * ARP_MS + (style === "arp" ? ARP_MS * 2 : GAP_MS);
+  }
+  if (style !== "arp") {
+    notes.forEach((midi, i) => hits.push({ midi, at: t + i * 30 }));
+    t += RING_MS;
+  }
+  return { hits, next: t };
+}

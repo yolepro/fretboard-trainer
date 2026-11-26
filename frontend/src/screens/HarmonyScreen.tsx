@@ -9,7 +9,7 @@ import { KeyWheel } from "@/src/components/KeyWheel";
 import { Pill, PillRow } from "@/src/components/Pill";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { initAudio, playChordNotes, playNote, preloadNotes, stopChordNotes } from "@/src/audio/sampler";
-import { barHits } from "@/src/audio/chordPlay";
+import { chordOnce } from "@/src/audio/chordPlay";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import { chordNum } from "@/src/music/cadences";
 import {
@@ -38,7 +38,6 @@ import { tr } from "@/src/i18n";
 const NO_DEGREES = new Map<number, IntervalDef>();
 const NO_LAYERS = new Set<DegreeKey>();
 const BASSES: Bass[] = ["auto", 6, 5];
-const TEMPO = 80;
 const DEGREE_RUN = [0, 1, 2, 3, 4, 5, 6, 0];
 const pretty = (l: string) => l.replace(/^b/, "♭");
 
@@ -54,7 +53,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const [keyPc, setKeyPc] = useState(0); // C
   const [keyOpen, setKeyOpen] = useState(false);
   const [tab, setTab] = useState<"degrees" | "functions">("degrees");
-  const [sel, setSel] = useState(1); // IIm7
+  const [sel, setSel] = useState(0); // IΔ
   const [bass, setBass] = useState<Bass>("auto");
   const [prog, setProg] = useState<number[]>(START);
   const [slot, setSlot] = useState(0);
@@ -96,32 +95,26 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     degreeVoicing(ch, bass)
       .notes.map((n) => TUNING[n.string] + n.fret)
       .sort((a, b) => a - b);
-  /** Degrees: the chord as an arpeggio, then strummed. Fonctions: the progression, one bar per chord. */
+  /**
+   * Degrees: the 7 degrees in a row, back to I (FS-33). Fonctions: the progression. Each chord is played once, as set in
+   * Réglages › Accords : façon de jouer (arpeggio, strum, or both), like the chord shapes; the chord being played lights up.
+   */
   const play = () => {
     if (playing) return stop();
     resumeWebAudio();
     initAudio();
-    const beat = 60000 / TEMPO;
     const seq: { midi: number; at: number }[] = [];
-    let total = 0;
-    if (tab === "degrees") {
-      // FS-33: the 7 degrees in a row, back to I at the end, one bar each; its tile lights up.
-      DEGREE_RUN.forEach((d, i) => {
-        const t0 = i * 4 * beat;
-        seq.push(...barHits(midisOf(chords[d]), settings.chordStyle, t0, beat));
-        timers.current.push(setTimeout(() => setSel(d), t0));
-      });
-      total = DEGREE_RUN.length * 4 * beat;
-    } else {
-      prog.forEach((d, i) => {
-        const t0 = i * 4 * beat;
-        seq.push(...barHits(midisOf(chords[d]), settings.chordStyle, t0, beat));
-        timers.current.push(setTimeout(() => setSlot(i), t0));
-      });
-      total = prog.length * 4 * beat;
-    }
+    let t = 0;
+    const run = tab === "degrees" ? DEGREE_RUN : prog;
+    run.forEach((d, i) => {
+      const t0 = t;
+      const one = chordOnce(midisOf(chords[d]), settings.chordStyle, t0);
+      seq.push(...one.hits);
+      t = one.next;
+      timers.current.push(setTimeout(() => (tab === "degrees" ? setSel(d) : setSlot(i)), t0));
+    });
     playChordNotes(seq, settings.volume * 0.85);
-    timers.current.push(setTimeout(() => setPlaying(false), total));
+    timers.current.push(setTimeout(() => setPlaying(false), t));
     setPlaying(true);
   };
 
@@ -131,8 +124,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     setSel(i);
     resumeWebAudio();
     initAudio();
-    const beat = 60000 / TEMPO;
-    playChordNotes(barHits(midisOf(chords[i]), settings.chordStyle, 0, beat), settings.volume * 0.85);
+    playChordNotes(chordOnce(midisOf(chords[i]), settings.chordStyle).hits, settings.volume * 0.85);
   };
 
   const onNotePress = (midi: number) => {
@@ -426,7 +418,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
               {playLabel}
             </Text>
             <Text style={styles.playSub} numberOfLines={1}>
-              {tab === "degrees" ? tr("IΔ → VIIø → IΔ · 1 mesure par accord") : tr("1 mesure par accord")}
+              {tab === "degrees" ? tr("IΔ → VIIø → IΔ") : tr("Les 4 accords à la suite")}
             </Text>
           </View>
           <Pressable testID="harmony-play" onPress={play} style={({ pressed }) => [styles.playRound, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : tr("Écouter")}>
