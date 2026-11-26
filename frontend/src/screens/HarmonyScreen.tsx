@@ -361,8 +361,9 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
     // The neck is shortened (frets 0–12 on screen) to leave room for the degrees and the explanations on its right.
     const panelW = Math.round(Math.max(260, Math.min(460, availW * 0.46)));
     const leftW = availW - panelW - spacing.md;
-    const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm;
-    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - 2 * spacing.sm - 26 - 24 - 36) / 6)));
+    const bottomH = 44; // the settings bar
+    const bodyH = height - insets.top - insets.bottom - 48 - spacing.xs - spacing.sm - bottomH;
+    const rowH = Math.floor(Math.max(20, Math.min(32, (bodyH - spacing.sm - 26 - 24) / 6)));
     return (
       <View style={[styles.screen, { paddingLeft: insets.left, paddingRight: insets.right }]} testID="harmony-screen">
         <StudioBackground />
@@ -371,28 +372,21 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
           <Text style={[styles.title, styles.titleLandscape]} numberOfLines={1}>
             {tr("Les degrés de la gamme")}
           </Text>
-          <View style={styles.headerPills}>
-            <PillRow inset={false}>
-              {pills}
-              {placementPicker}
-              {bassPicker}
-            </PillRow>
-          </View>
+          {/* Only the key up here: the other settings are in the bar at the bottom. */}
+          {pills}
+          <View style={{ flex: 1 }} />
           <View style={styles.transportPill}>
             <Pressable testID="harmony-play" onPress={play} style={({ pressed }) => [styles.playRound, styles.playRoundSmall, pressed && styles.pressed]} accessibilityLabel={playing ? tr("Arrêter") : playLabel}>
               {playIcon}
             </Pressable>
           </View>
         </View>
-        <View style={[styles.bodyRow, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View style={[styles.bodyRow, { paddingBottom: spacing.xs }]}>
           <View style={{ width: leftW, gap: spacing.sm }}>
             {fretboard(fitScale(leftW, 12), rowH)}
             <Text style={styles.muted} numberOfLines={1}>
               {shown.roman} · {nameOfChord(shown)} = {notesOf(shown.pcs)}
             </Text>
-            <View style={{ flex: 1 }} />
-            {/* Down here so the top line keeps room for the settings. */}
-            {segment(true)}
           </View>
           <ScrollView style={{ width: panelW }} contentContainerStyle={styles.panel} showsVerticalScrollIndicator={false} testID="harmony-panel">
             {tab === "degrees" ? (
@@ -413,6 +407,14 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
               </>
             )}
           </ScrollView>
+        </View>
+        {/* Settings at the bottom: Degrés / Fonctions, placement, bass string. */}
+        <View style={[styles.bottomBar, { height: bottomH + insets.bottom, paddingBottom: insets.bottom, paddingRight: LANDSCAPE_NAV_W + spacing.md }]} testID="harmony-settings">
+          <PillRow inset={false}>
+            {segment(true)}
+            {placementPicker}
+            {bassPicker}
+          </PillRow>
         </View>
         {keyWheel}
       </View>
@@ -485,12 +487,12 @@ const useStyles = makeStyles((c) => ({
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   title: { flex: 1, fontFamily: fonts.display, fontSize: 22, fontWeight: "700", color: c.onSurface },
   headerLandscape: { gap: spacing.sm, paddingBottom: spacing.xs },
-  titleLandscape: { flex: 0, flexShrink: 1, fontSize: 17, maxWidth: 150 },
-  headerPills: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center" },
+  titleLandscape: { flex: 0, flexShrink: 1, fontSize: 17 },
   transportPill: { flexDirection: "row", alignItems: "center", gap: 4, padding: 4, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary, flexShrink: 0 },
   segmentCompact: { marginHorizontal: 0, marginTop: 0, padding: 2, alignSelf: "flex-start" },
   segBtnCompact: { flex: 0, height: 26, paddingHorizontal: 8 },
   segTextCompact: { fontSize: 11 },
+  bottomBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg },
   bodyRow: { flex: 1, flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   panel: { padding: spacing.sm, gap: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   familiesStacked: { flexDirection: "column", gap: 4 },
