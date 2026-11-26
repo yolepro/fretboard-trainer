@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.61.0 (branche feature/fs-18-cadences) — Harmonie : sélecteur « Basse sur la corde 6 · 5 · 4 », la corde allumée est celle affichée (corde 6 par défaut) ; nouvelles formes avec la fondamentale sur la corde 4 (drop 2) ; une seule position par accord, toujours sans corde à vide (cases 1 à 14)
 // 1.60.2 (branche feature/fs-18-cadences) — Harmonie : chaque accord joué une seule fois (arpège, plaqué, ou arpège puis plaqué selon le réglage), comme les formes d’accords, au lieu d’une mesure répétée ; l’écran s’ouvre sur le degré I
 // 1.60.1 (branche feature/fs-18-cadences) — FS-34 : le réglage « Accords : façon de jouer » (arpégé puis plaqué, plaqué, arpégé) s’applique aussi aux Cadences et à Harmonie (déjà appliqué aux formes d’accords et à Reconnais l’accord)
 // 1.60.0 (branche feature/fs-18-cadences) — FS-33 : Harmonie › Les 7 degrés, Écouter joue tous les degrés à la suite (IΔ → VIIø → IΔ, une mesure chacun, le cadre du degré joué s’allume) ; toucher un cadre fait entendre son accord
@@ -149,4 +150,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.60.2";
+export const APP_VERSION = "1.61.0";

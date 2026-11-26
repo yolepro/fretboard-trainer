@@ -25,6 +25,7 @@ import {
   progName,
   swapDegree,
   whyOf,
+  BASSES,
   type Bass,
   type DegreeChord,
   type Fn,
@@ -37,7 +38,6 @@ import { tr } from "@/src/i18n";
 
 const NO_DEGREES = new Map<number, IntervalDef>();
 const NO_LAYERS = new Set<DegreeKey>();
-const BASSES: Bass[] = ["auto", 6, 5];
 const DEGREE_RUN = [0, 1, 2, 3, 4, 5, 6, 0];
 const pretty = (l: string) => l.replace(/^b/, "♭");
 
@@ -54,7 +54,7 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const [keyOpen, setKeyOpen] = useState(false);
   const [tab, setTab] = useState<"degrees" | "functions">("degrees");
   const [sel, setSel] = useState(0); // IΔ
-  const [bass, setBass] = useState<Bass>("auto");
+  const [bass, setBass] = useState<Bass>(6);
   const [prog, setProg] = useState<number[]>(START);
   const [slot, setSlot] = useState(0);
   const [lastFn, setLastFn] = useState<Fn>("SD");
@@ -141,7 +141,6 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   };
 
   const same = chords.filter((c) => c.fn === shown.fn && c.deg !== shown.deg);
-  const bassLabel = bass === "auto" ? tr("Basse : la plus grave") : tr("Basse sur la corde {n}", { n: bass });
   const name = progName(prog);
 
   const tag = (f: Fn) => <Text style={[styles.tag, { backgroundColor: FUNCTIONS[f].color }]}>{f}</Text>;
@@ -155,7 +154,23 @@ export function HarmonyScreen({ onBack }: { onBack: () => void }) {
   const pills = (
     <>
       <Pill testID="pill-key" label={tr("{k} majeur", { k: nameOf(keyPc) })} accent onPress={() => setKeyOpen(true)} />
-      <Pill testID="pill-bass" label={bassLabel} onPress={() => setBass(BASSES[(BASSES.indexOf(bass) + 1) % BASSES.length])} />
+      {/* The bass string: the one lit up is the one on the neck. */}
+      <View style={styles.bassBox} testID="bass-picker">
+        <Text style={styles.bassLabel}>{tr("Basse sur la corde")}</Text>
+        {BASSES.map((b) => (
+          <Pressable
+            key={b}
+            testID={`bass-${b}`}
+            onPress={() => setBass(b)}
+            style={({ pressed }) => [styles.bassBtn, bass === b && styles.bassBtnOn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: bass === b }}
+            accessibilityLabel={tr("Basse sur la corde {n}", { n: b })}
+          >
+            <Text style={[styles.bassText, bass === b && styles.bassTextOn]}>{b}</Text>
+          </Pressable>
+        ))}
+      </View>
     </>
   );
   const segment = (compact: boolean) => (
@@ -448,6 +463,12 @@ const useStyles = makeStyles((c) => ({
   familiesStacked: { flexDirection: "column", gap: 4 },
   familyChordsRow: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.md, rowGap: 2 },
   playRoundSmall: { width: 40, height: 40, borderRadius: 20 },
+  bassBox: { height: 36, flexDirection: "row", alignItems: "center", gap: 3, paddingLeft: 12, paddingRight: 3, borderRadius: 18, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceTertiary },
+  bassLabel: { fontFamily: fonts.display, fontSize: 14, color: c.onSurface, marginRight: 4 },
+  bassBtn: { width: 30, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent" },
+  bassBtnOn: { backgroundColor: c.brandTertiary, borderColor: c.brandPrimary },
+  bassText: { fontFamily: fonts.display, fontSize: 14, fontWeight: "600", color: c.onSurfaceTertiary },
+  bassTextOn: { color: c.onBrandTertiary, fontWeight: "700" },
   segment: { flexDirection: "row", marginHorizontal: spacing.lg, marginTop: spacing.xs, padding: 3, borderRadius: 999, borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   segBtn: { flex: 1, height: 32, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   segBtnOn: { backgroundColor: c.surfaceTertiary },

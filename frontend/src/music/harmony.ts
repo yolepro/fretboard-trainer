@@ -60,31 +60,38 @@ const WHY: Record<string, string> = {
 export const whyOf = (a: number, b: number) => WHY[`${Math.min(a, b)}-${Math.max(a, b)}`] ?? "";
 export const commonPcs = (a: Chord, b: Chord) => a.pcs.filter((p) => b.pcs.includes(p));
 
-// ---------- 4-note shapes (strings 6 → 1, offsets from the root fret, null = muted) ----------
-export type Bass = "auto" | 6 | 5;
-const SHAPES: Record<6 | 5, Record<string, (number | null)[]>> = {
+// ---------- 4-note shapes: one position per chord, its root on the chosen bass string ----------
+// Strings 6 → 1, offsets from the root's fret, null = muted. Bass on 6 and 5: drop 3 (the string between the root and the
+// rest is muted by the fingers); bass on 4: drop 2 on the 4 highest strings.
+export type Bass = 6 | 5 | 4;
+export const BASSES: Bass[] = [6, 5, 4];
+const SHAPES: Record<Bass, Record<string, (number | null)[]>> = {
   6: { "∆7": [0, null, 1, 1, 0, null], m7: [0, null, 0, 0, 0, null], "7": [0, null, 0, 1, 0, null], ø: [0, null, 0, 0, -1, null] },
   5: { "∆7": [null, 0, 2, 1, 2, null], m7: [null, 0, 2, 0, 1, null], "7": [null, 0, 2, 0, 2, null], ø: [null, 0, 1, 0, 1, null] },
+  4: { "∆7": [null, null, 0, 2, 2, 2], m7: [null, null, 0, 2, 1, 1], "7": [null, null, 0, 2, 1, 2], ø: [null, null, 0, 1, 1, 1] },
 };
-/** The root's fret on string 6 or 5, as low as the shape allows (an open string if no finger goes below it). */
-const rootFret = (ch: Chord, s: 6 | 5) => {
+const OPEN_PC: Record<Bass, number> = { 6: 4, 5: 9, 4: 2 }; // E, A, D
+/**
+ * The root's fret on the bass string: the lowest one where the whole shape is fretted (no open string, frets 1 to 12),
+ * so the shape is always the same movable shape and the muted strings can be damped by the fingers.
+ */
+const rootFret = (ch: Chord, s: Bass) => {
   const low = Math.min(...SHAPES[s][ch.quality].filter((o): o is number => o !== null));
-  const f = pcOf(ch.root - (s === 6 ? 4 : 9));
-  return f + low < 0 ? f + 12 : f;
+  const f = pcOf(ch.root - OPEN_PC[s]);
+  return f + low < 1 ? f + 12 : f;
 };
-export function degreeVoicing(ch: Chord, bass: Bass): ChordVoicing & { bass: 6 | 5 } {
-  const s: 6 | 5 = bass !== "auto" ? bass : rootFret(ch, 5) < rootFret(ch, 6) ? 5 : 6;
-  const r = rootFret(ch, s);
+export function degreeVoicing(ch: Chord, bass: Bass): ChordVoicing & { bass: Bass } {
+  const r = rootFret(ch, bass);
   const notes: ChordNote[] = [];
   const muted: number[] = [];
-  SHAPES[s][ch.quality].forEach((o, i) => {
+  SHAPES[bass][ch.quality].forEach((o, i) => {
     const string = 5 - i; // shape index 0 = low E = Fretboard string 5
     if (o === null) return void muted.push(string);
     const fret = o + r;
     notes.push({ string, fret, label: chordLabel(ch, TUNING[string] + fret) });
   });
   const frets = notes.map((n) => n.fret);
-  return { notes, muted, min: Math.min(...frets), max: Math.max(...frets), bass: s };
+  return { notes, muted, min: Math.min(...frets), max: Math.max(...frets), bass };
 }
 
 // ---------- Fonctions: a progression where each chord can be swapped for one of the same function ----------
