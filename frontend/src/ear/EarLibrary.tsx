@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { HandPointing, Microphone } from "phosphor-react-native";
 
 import { Chip } from "@/src/components/Chip";
@@ -62,6 +62,8 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
   const resultsV = useResultsVersion();
   const open = EAR_GAMES.find((g) => g.id === openId) ?? null;
   const reveal = useRevealOnOpen(openId); // the card that unfolds scrolls into view
+  const { width: winW, height: winH } = useWindowDimensions();
+  const landscape = winW > winH;
   const openCount = open ? countOf(open) : 0;
 
   // The record of the open game, for its current length.
@@ -156,17 +158,20 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
         {DEFI_FAMILIES.map((fam) => (
           <View key={fam.id} style={styles.family} onLayout={reveal.at(`fam:${fam.id}`)}>
             <FamilyTitle title={tr(fam.title)} lead={tr(fam.lead)} />
+            {/* Landscape: 2 columns, like Explorer. */}
+            <View style={[styles.cards, landscape && styles.cardsWide]} onLayout={reveal.at(`cards:${fam.id}`, `fam:${fam.id}`)}>
             {EAR_GAMES.filter((g) => g.family === fam.id).map((g) => {
               if (g.kind === "challenge") {
                 return (
+                  <View key={g.id} style={landscape && styles.cardWide}>
                   <GameLink
-                    key={g.id}
                     testID={`defi-${g.id}`}
                     name={tr(g.name)}
                     meta={tr(g.meta)}
                     aside={<InputIcons input={g.input} />}
                     onPress={() => onChallenge(g.challenge ?? "degree")}
                   />
+                  </View>
                 );
               }
               const on = g.id === openId;
@@ -177,7 +182,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
               const o = mic ? optsOf(g) : null;
               const pills: Pill[] = o ? (g.edit ?? []).map((id) => ({ id, label: pillLabel(o, id), onPress: () => setSheet({ game: g, id }) })) : [];
               return (
-                <View key={g.id} onLayout={reveal.at(g.id, `fam:${fam.id}`)}>
+                <View key={g.id} style={landscape && styles.cardWide} onLayout={reveal.at(g.id, `cards:${fam.id}`)}>
                 <GameCard
                   testID={`ear-game-${g.id}`}
                   name={tr(g.name)}
@@ -234,6 +239,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                 </View>
               );
             })}
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -245,6 +251,9 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
 const useStyles = makeStyles((c) => ({
   content: { paddingHorizontal: spacing.lg, gap: spacing.md },
   family: { gap: spacing.sm },
+  cards: { gap: spacing.sm },
+  cardsWide: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" },
+  cardWide: { width: "48.5%" },
   levels: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   inputs: { flexDirection: "row", gap: 4, flexShrink: 0 },
   inputIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },

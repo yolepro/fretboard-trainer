@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.66.6 — Défis en paysage : les jeux sur 2 colonnes, comme Explorer (une carte dépliée ne rallonge pas sa voisine)
 // 1.66.5 — Reconnais l’intervalle en paysage : le manche prend les deux tiers de la largeur, les choix le dernier tiers (2 colonnes, boutons qui remplissent la hauteur)
 // 1.66.4 — Reconnais l’intervalle en paysage : les choix vont jusqu’au bord droit de l’écran (la place du menu n’était à réserver que sur la ligne du haut)
 // 1.66.3 — Reconnais l’intervalle : largeur des boutons de choix en pixels (sur iPhone, chaque bouton prenait toute la largeur et la liste débordait en paysage) ; manche un peu plus grand en paysage (cases 0 à 12 à l’écran)
@@ -164,4 +165,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.66.5";
+export const APP_VERSION = "1.66.6";
