@@ -56,6 +56,7 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
   const [finalMs, setFinalMs] = useState(0);
   const [best, setBest] = useState<Best | null>(null);
   const [isRecord, setIsRecord] = useState(false);
+  const [sideH, setSideH] = useState(0); // landscape: the height of the choices column (the buttons fill it)
 
   const exitRef = useRef(onExit);
   exitRef.current = onExit;
@@ -226,10 +227,13 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
     const landscape = winW > winH;
     // Many choices (Expert: 12) or landscape: smaller buttons, 3 columns, so everything fits without scrolling.
     const compact = landscape || choices.length > 8;
-    const sideW = landscape ? Math.round(Math.min(420, Math.max(260, (availW - navInset) * 0.4))) : 0;
+    const sideW = landscape ? Math.round(Math.min(460, Math.max(260, (availW - navInset) * 0.45))) : 0;
     const leftW = landscape ? availW - navInset - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
     const cols = landscape ? (choices.length > 8 ? 3 : 2) : compact ? 3 : 2;
     const basis = cols === 3 ? "30%" : "47%";
+    // Landscape: the buttons share the whole height of the column, top to bottom.
+    const rows = Math.ceil(choices.length / cols);
+    const fillH = landscape && sideH ? Math.max(40, Math.min(110, Math.floor((sideH - (rows - 1) * spacing.sm) / rows))) : 0;
 
     const neckView = (
       <View style={landscape ? null : styles.bleed}>
@@ -282,9 +286,9 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
               testID={`interval-choice-${c.id}`}
               onPress={() => choose(c.id)}
               disabled={!!answer}
-              style={({ pressed }) => [styles.choice, { flexBasis: basis }, compact && styles.choiceCompact, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.choice, { flexBasis: basis }, compact && styles.choiceCompact, fillH ? { height: fillH, minHeight: 0 } : null, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
             >
-              <Text style={[styles.choiceName, compact && styles.choiceNameCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              <Text style={[styles.choiceName, compact && !(fillH > 60) && styles.choiceNameCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {intervalTitle(c.id)}
               </Text>
               <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1}>
@@ -344,9 +348,11 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
               {askRow}
               {review}
             </View>
-            <ScrollView style={{ width: sideW }} contentContainerStyle={{ paddingBottom: spacing.md }} showsVerticalScrollIndicator={false} testID="interval-choices-side">
-              {grid}
-            </ScrollView>
+            <View style={{ width: sideW, flex: 0 }} onLayout={(e) => setSideH(e.nativeEvent.layout.height)} testID="interval-choices-side">
+              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                {grid}
+              </ScrollView>
+            </View>
           </View>
         ) : (
           <ScrollView key={`run-${Math.round(winW)}`} contentContainerStyle={[styles.runContent, compact && styles.runContentCompact, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
