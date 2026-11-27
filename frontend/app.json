@@ -2,7 +2,7 @@
   "expo": {
     "name": "FretStudio",
     "slug": "frontend",
-    "version": "1.65.2",
+    "version": "1.65.3",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
@@ -72,7 +72,7 @@
         "projectId": "3609c71f-c800-4b1e-95d6-955bf824af69"
       }
     },
-    "owner": "yolepro",
+    "owner": "yolepros-team",
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
