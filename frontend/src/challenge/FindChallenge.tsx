@@ -212,7 +212,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
   // Plays something while listening: the detector ignores it, and on native the mic pauses meanwhile.
   const withMicPause = (play: () => void, ms: number) => {
-    ignoreUntil.current = Date.now() + ms + 300;
+    ignoreUntil.current = Date.now() + ms + 500;
     if (useMic && Platform.OS !== "web") {
       setSuspended(true);
       later(async () => {
@@ -223,7 +223,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         }
         play();
       }, 120);
-      later(() => setSuspended(false), ms + 250);
+      later(() => setSuspended(false), ms + 450); // the mic comes back once the sound is over
     } else play();
   };
   const sound = (k: "success" | "error" | "found" | "tick") => withMicPause(() => playFeedback(k, settingsRef.current.volume), FEEDBACK_MS[k]);

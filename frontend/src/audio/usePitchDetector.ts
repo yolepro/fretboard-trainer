@@ -2,24 +2,37 @@ import React, { useEffect, useRef, useState } from "react";
 import { setAudioModeAsync, useAudioStream } from "expo-audio";
 
 import { detectPitch, rmsOf, type PitchFrame } from "@/src/music/yin";
-import { restorePlaybackMode } from "@/src/audio/sampler";
+import { restorePlaybackMode, stopAll } from "@/src/audio/sampler";
 
 export type DetectorStatus = "idle" | "starting" | "listening" | "error";
 type OnFrame = (f: PitchFrame, level: number) => void;
 const WINDOW = 3072;
 const INTERVAL_MS = 70;
+const STALL_MS = 1500; // no sound (no buffer, or only digital silence) for this long: the stream is stuck, start a new one
 
 // The last switch back to playback mode: a new stream waits for it, so the two audio-mode changes never overlap.
 let lastRestore: Promise<unknown> = Promise.resolve();
 
 /**
- * One microphone session. `stream.stop()` releases the native resources: a stopped stream does not deliver buffers
- * again after `start()` (on iPhone, only the first note of a challenge was heard: the mic pauses during each feedback
- * sound). So every session mounts this component again (new key) and gets a fresh native stream.
+ * One microphone session. On iPhone only the first note of a challenge was heard: the mic pauses during each feedback
+ * sound and came back silent, until « Écouter » (which pauses every player) was pressed. So each session:
+ * - mounts this component again (new key) and gets a fresh native stream (`stop()` releases the native resources);
+ * - first pauses every player (a player left “playing” after its sound kept the stream silent);
+ * - waits for the previous switch back to playback mode;
+ * - and starts a new stream if no buffer arrives for STALL_MS (watchdog).
  */
-function MicStream({ onFrame, onStatus }: { onFrame: React.MutableRefObject<OnFrame>; onStatus: (s: DetectorStatus, e?: string) => void }) {
+function MicStream({
+  onFrame,
+  onStatus,
+  onStall,
+}: {
+  onFrame: React.MutableRefObject<OnFrame>;
+  onStatus: (s: DetectorStatus, e?: string) => void;
+  onStall: () => void;
+}) {
   const win = useRef(new Float32Array(WINDOW));
   const last = useRef(0);
+  const lastBuffer = useRef(0);
   const { stream } = useAudioStream({
     sampleRate: 48000,
     channels: 1,
@@ -36,16 +49,20 @@ function MicStream({ onFrame, onStatus }: { onFrame: React.MutableRefObject<OnFr
       const now = Date.now();
       if (now - last.current < INTERVAL_MS) return;
       last.current = now;
-      onFrame.current(detectPitch(w, b.sampleRate), rmsOf(w));
+      const level = rmsOf(w);
+      if (level > 1e-6) lastBuffer.current = now; // a real mic always hears a little noise; exact silence = stuck
+      onFrame.current(detectPitch(w, b.sampleRate), level);
     },
   });
 
   useEffect(() => {
     if (!stream) return;
     let cancelled = false;
+    let watchdog: ReturnType<typeof setInterval> | null = null;
     onStatus("starting");
     (async () => {
       try {
+        stopAll();
         await lastRestore;
         if (cancelled) return;
         await setAudioModeAsync({
@@ -56,13 +73,19 @@ function MicStream({ onFrame, onStatus }: { onFrame: React.MutableRefObject<OnFr
         });
         if (cancelled) return;
         await stream.start();
-        if (!cancelled) onStatus("listening");
+        if (cancelled) return;
+        onStatus("listening");
+        lastBuffer.current = Date.now();
+        watchdog = setInterval(() => {
+          if (!cancelled && Date.now() - lastBuffer.current > STALL_MS) onStall();
+        }, 500);
       } catch (e: any) {
         if (!cancelled) onStatus("error", String(e?.message ?? e));
       }
     })();
     return () => {
       cancelled = true;
+      if (watchdog) clearInterval(watchdog);
       try {
         stream.stop();
       } catch {
@@ -85,6 +108,7 @@ export function usePitchDetector(enabled: boolean, onFrame: OnFrame) {
   const [status, setStatus] = useState<DetectorStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const session = useRef(0);
+  const [restarts, setRestarts] = useState(0); // fresh streams after a stall, within the same session
   const wasOn = useRef(false);
   if (enabled && !wasOn.current) session.current += 1;
   wasOn.current = enabled;
@@ -98,6 +122,8 @@ export function usePitchDetector(enabled: boolean, onFrame: OnFrame) {
     if (e) setError(e);
   }).current;
 
-  const mic = enabled ? React.createElement(MicStream, { key: session.current, onFrame: cbRef, onStatus }) : null;
+  const onStall = useRef(() => setRestarts((n) => n + 1)).current;
+
+  const mic = enabled ? React.createElement(MicStream, { key: `${session.current}-${restarts}`, onFrame: cbRef, onStatus, onStall }) : null;
   return { status, error, mic };
 }

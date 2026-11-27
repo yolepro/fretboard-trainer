@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.65.2 (branche feature/fs-18-cadences) — FS-37 micro sur iPhone, 2e correction : avant chaque reprise du micro, tous les sons (notes et sons de réponse) sont mis en pause (c’est ce que faisait « Écouter », qui débloquait la détection) ; le micro revient 450 ms après la fin du son ; s’il ne transmet plus rien pendant 1,5 s, un nouveau flux est lancé automatiquement
 // 1.65.1 (branche feature/fs-18-cadences) — Défis au micro sur iPhone : après la première note plus rien n’était détecté (le micro se coupe pendant chaque son de réponse et un flux arrêté ne redémarre pas) ; chaque reprise du micro crée maintenant un nouveau flux, et les changements de mode audio ne se chevauchent plus
 // 1.65.0 (branche feature/fs-18-cadences) — FS-36 : appuyer sur un onglet du menu (même celui en cours) ouvre toujours sa première page (Explorer, S’exercer, Défis) ; pendant un défi, la partie est mise en pause et une fenêtre demande « Reprendre le défi » ou « Quitter le défi »
 // 1.64.0 (branche feature/fs-18-cadences) — Les Cadences passent de S’exercer à Explorer › Accords ; « La bible des accords › Les accords » devient la famille « Arpèges › Les arpèges » (filtre Arpèges) ; S’exercer garde Arpèges, Triades, Gammes
@@ -156,4 +157,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.65.1";
+export const APP_VERSION = "1.65.2";

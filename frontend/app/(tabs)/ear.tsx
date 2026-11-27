@@ -213,8 +213,8 @@ export default function EarScreen() {
         if (token === suspendToken.current) playFeedback(kind, vol);
       }, 120);
       later(() => {
-        if (token === suspendToken.current) setSuspended(false);
-      }, ms + 250);
+        if (token === suspendToken.current) setSuspended(false); // the mic comes back once the sound is over
+      }, ms + 450);
     } else playFeedback(kind, vol);
   };
 
