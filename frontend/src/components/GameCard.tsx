@@ -120,17 +120,38 @@ export function GameCard({
 }
 
 /** A game that opens its own screen (its levels, records, results): same card, with an arrow. */
-export function GameLink({ testID, name, meta, aside, onPress }: { testID?: string; name: string; meta?: string; aside?: ReactNode; onPress: () => void }) {
+export function GameLink({
+  testID,
+  name,
+  meta,
+  aside,
+  onPress,
+  disabled,
+}: {
+  testID?: string;
+  name: string;
+  meta?: string;
+  aside?: ReactNode;
+  onPress: () => void;
+  disabled?: string; // a reason: the game is shown greyed out, with this label, and cannot be opened
+}) {
   const styles = useStyles();
   const { colors } = useTheme();
   return (
-    <Pressable testID={testID} onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.card, styles.head, pressed && styles.pressed]}>
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      disabled={!!disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [styles.card, styles.head, !!disabled && styles.disabled, pressed && styles.pressed]}
+    >
       <View style={styles.headText}>
         <Text style={styles.name}>{name}</Text>
         {meta ? <Text style={styles.muted}>{meta}</Text> : null}
       </View>
-      {aside}
-      <CaretRight size={16} color={colors.onSurfaceTertiary} weight="bold" />
+      {disabled ? <Text style={styles.disabledTag}>{disabled}</Text> : aside}
+      {disabled ? null : <CaretRight size={16} color={colors.onSurfaceTertiary} weight="bold" />}
     </Pressable>
   );
 }
@@ -207,6 +228,8 @@ export function FamilyTitle({ title, lead }: { title: string; lead?: string }) {
 }
 
 const useStyles = makeStyles((c) => ({
+  disabled: { opacity: 0.55 },
+  disabledTag: { fontFamily: fonts.text, fontSize: 10, fontWeight: "600", letterSpacing: 0.4, color: c.onSurfaceTertiary, borderWidth: 1, borderColor: c.borderStrong, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, overflow: "hidden" },
   card: { borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)" },
   cardOn: { borderColor: c.brandPrimary, backgroundColor: c.brandTertiary },
   head: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 56, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },

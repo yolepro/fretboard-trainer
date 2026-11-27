@@ -315,6 +315,7 @@ const EN: Record<string, string> = {
   "sur la corde {s} ({l})": "on string {s} ({l})",
   "C’est ça !": "That’s it!",
   "Résultats": "Results",
+  "EN TRAVAUX": "IN PROGRESS",
   "Reconnais l’intervalle": "Name the interval",
   "Réécouter": "Listen again",
   "Quel intervalle entends-tu ?": "Which interval do you hear?",

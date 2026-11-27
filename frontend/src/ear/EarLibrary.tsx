@@ -170,6 +170,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                     meta={tr(g.meta)}
                     aside={<InputIcons input={g.input} />}
                     onPress={() => onChallenge(g.challenge ?? "degree")}
+                    disabled={g.off ? tr("EN TRAVAUX") : undefined}
                   />
                   </View>
                 );

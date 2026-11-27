@@ -24,6 +24,7 @@ export type EarGame = {
   id: string;
   family: DefiFamily;
   kind: "mic" | "chords" | "intervals" | "challenge"; // chords / intervals: a quiz with choices and levels
+  off?: boolean; // shown greyed out « En travaux », cannot be opened (not usable as it is)
   section?: Section; // micro games and Accords: the question engine and the results it is counted with
   challenge?: "degree" | "scale" | "chord"; // challenge games
   name: string;
@@ -74,9 +75,10 @@ export const EAR_GAMES: EarGame[] = [
     preset: { strings: [5, 4, 3] },
     edit: ["strings"],
   },
-  { id: "find-degree", family: "neck", kind: "challenge", challenge: "degree", name: "Trouve le degré", meta: "Les degrés d’une tonalité, position par position · débutant à expert", input: ["mic", "touch"] },
+  // Off for now: not usable as they are (27/11).
+  { id: "find-degree", off: true, family: "neck", kind: "challenge", challenge: "degree", name: "Trouve le degré", meta: "Les degrés d’une tonalité, position par position · débutant à expert", input: ["mic", "touch"] },
   { id: "find-scale", family: "neck", kind: "challenge", challenge: "scale", name: "Trouve la gamme", meta: "Toutes les notes d’une gamme dans une position", input: ["mic", "touch"] },
-  { id: "find-chord", family: "neck", kind: "challenge", challenge: "chord", name: "Trouve l’accord de la tonalité", meta: "Le IV de G, le ii de C… dans les cadences choisies · débutant à expert", input: ["mic", "touch"] },
+  { id: "find-chord", off: true, family: "neck", kind: "challenge", challenge: "chord", name: "Trouve l’accord de la tonalité", meta: "Le IV de G, le ii de C… dans les cadences choisies · débutant à expert", input: ["mic", "touch"] },
   { id: "degree", family: "neck", kind: "mic", section: "degree", name: "Trouve le degré de l’accord", meta: "Joue le degré demandé d’un accord, à n’importe quelle octave.", input: ["mic"] },
   // ----- Entraîner l’oreille -----
   { id: "listen", family: "ear", kind: "mic", section: "listen", name: "Rejoue la note", meta: "Écoute une note et rejoue-la à la bonne octave.", input: ["mic"] },
