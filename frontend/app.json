@@ -72,12 +72,12 @@
         "projectId": "3609c71f-c800-4b1e-95d6-955bf824af69"
       }
     },
-    "owner": "yolepro",
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "owner": "yolepros-team",
     "updates": {
       "url": "https://u.expo.dev/3609c71f-c800-4b1e-95d6-955bf824af69"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
     }
   }
 }

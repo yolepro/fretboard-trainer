@@ -9,7 +9,7 @@
 #   yarn deploy [expo|local|both]                       (depuis frontend/)
 #
 # Options (variables d'environnement) :
-#   CHANNEL=main  PLATFORM=ios|android|all              publication Expo Go
+#   CHANNEL=main  PLATFORM=all|ios|android              publication Expo Go (défaut : all = iPhone + Android)
 #   SKIP_PULL=1                                          ne pas faire de git pull
 #   HOST=fretstudio.<région>.cloudapp.azure.com         local : adresse que l'iPhone utilisera (VM Azure)
 #   PORT=8081                                            local : port du serveur
@@ -21,7 +21,7 @@ set -euo pipefail
 FRONT="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(cd "$FRONT/.." && pwd)"
 CHANNEL="${CHANNEL:-main}"
-PLATFORM="${PLATFORM:-ios}"
+PLATFORM="${PLATFORM:-all}"
 PORT="${PORT:-8081}"
 
 say() { printf '\n▸ %s\n' "$*"; }
@@ -31,7 +31,7 @@ fail() { printf '\n✖ %s\n' "$*" >&2; exit 1; }
 MODE="${1:-}"
 if [ -z "$MODE" ]; then
   if [ -t 0 ]; then
-    printf 'Où déployer ?\n  1) Expo Go (publication EAS Update, pour l’iPhone)\n  2) En local (serveur Expo sur cette machine)\n  3) Les deux\n'
+    printf 'Où déployer ?\n  1) Expo Go (publication EAS Update, iPhone + Android, organisation yolepros-team)\n  2) En local (serveur Expo sur cette machine)\n  3) Les deux\n'
     read -r -p 'Choix [1-3] : ' c
     case "$c" in 1) MODE=expo ;; 2) MODE=local ;; 3) MODE=both ;; *) fail "Choix inconnu : $c" ;; esac
   else
