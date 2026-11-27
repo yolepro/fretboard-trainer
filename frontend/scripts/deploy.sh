@@ -11,6 +11,7 @@
 # Options (variables d'environnement) :
 #   CHANNEL=main  PLATFORM=ios|android|all              publication Expo Go
 #   SKIP_PULL=1                                          ne pas faire de git pull
+#   ALLOW_BRANCH=1                                       publier dans Expo Go depuis une autre branche que main
 #   HOST=fretstudio.<région>.cloudapp.azure.com         local : adresse que l'iPhone utilisera (VM Azure)
 #   PORT=8081                                            local : port du serveur
 #   OPEN=ios|android|web                                 local : ouvrir directement le simulateur / le navigateur
@@ -63,6 +64,18 @@ if [ "$PUBLISH" = 1 ] && [ -n "$(git status --porcelain --untracked-files=no)" ]
   fail "Des fichiers suivis par git ont été modifiés (ci-dessus). Enregistre-les (commit) ou annule-les (git restore <fichier>) avant de publier."
 fi
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+# Expo Go (canal main) et le site web (GitHub Pages) suivent la branche main : on publie depuis main.
+if [ "$PUBLISH" = 1 ] && [ "$BRANCH" != "main" ] && [ "${ALLOW_BRANCH:-0}" != "1" ]; then
+  if [ -t 0 ]; then
+    read -r -p "Tu es sur la branche « $BRANCH », pas sur main. Passer sur main avant de publier ? [O/n] " r
+    case "$r" in
+      n | N | non) printf 'Publication depuis « %s ».\n' "$BRANCH" ;;
+      *) git checkout main || fail "Impossible de passer sur main (voir ci-dessus)."; BRANCH=main ;;
+    esac
+  else
+    fail "Tu es sur la branche « $BRANCH ». Lance « git checkout main », ou ALLOW_BRANCH=1 pour publier quand même."
+  fi
+fi
 
 # 2. git pull
 BEFORE="$(git rev-parse HEAD)"
