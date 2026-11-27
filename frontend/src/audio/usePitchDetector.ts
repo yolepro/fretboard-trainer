@@ -8,7 +8,15 @@ export type DetectorStatus = "idle" | "starting" | "listening" | "error";
 type OnFrame = (f: PitchFrame, level: number) => void;
 const WINDOW = 3072;
 const INTERVAL_MS = 70;
-const STALL_MS = 1500; // no sound (no buffer, or only digital silence) for this long: the stream is stuck, start a new one
+const STALL_MS = 2500; // no buffer at all for this long while listening: the stream is stuck, start a new one
+const MAX_RESTARTS = 2; // per listening session (each new stream is a risk: see below)
+// A new stream never starts sooner than this after the previous one stopped, and waits a little after the audio mode
+// switch: starting the input too soon makes iOS throw inside AVAudioEngine (installTap / AURemoteIO timeout), which
+// crashes the whole app — seen on the simulator when the mic paused and resumed at each note touched.
+const MIN_GAP_MS = 450;
+const AFTER_MODE_MS = 150;
+let lastStopAt = 0;
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // The last switch back to playback mode: a new stream waits for it, so the two audio-mode changes never overlap.
 let lastRestore: Promise<unknown> = Promise.resolve();
@@ -19,7 +27,8 @@ let lastRestore: Promise<unknown> = Promise.resolve();
  * - mounts this component again (new key) and gets a fresh native stream (`stop()` releases the native resources);
  * - first pauses every player (a player left “playing” after its sound kept the stream silent);
  * - waits for the previous switch back to playback mode;
- * - and starts a new stream if no buffer arrives for STALL_MS (watchdog).
+ * - and starts a new stream if no buffer arrives for STALL_MS (watchdog, at most MAX_RESTARTS times).
+ * Starts are spaced out (MIN_GAP_MS): see the crash note above.
  */
 function MicStream({
   onFrame,
@@ -38,6 +47,7 @@ function MicStream({
     channels: 1,
     encoding: "float32",
     onBuffer: (b) => {
+      lastBuffer.current = Date.now();
       const data = new Float32Array(b.data);
       const w = win.current;
       if (data.length >= w.length) {
@@ -49,9 +59,7 @@ function MicStream({
       const now = Date.now();
       if (now - last.current < INTERVAL_MS) return;
       last.current = now;
-      const level = rmsOf(w);
-      if (level > 1e-6) lastBuffer.current = now; // a real mic always hears a little noise; exact silence = stuck
-      onFrame.current(detectPitch(w, b.sampleRate), level);
+      onFrame.current(detectPitch(w, b.sampleRate), rmsOf(w));
     },
   });
 
@@ -63,6 +71,10 @@ function MicStream({
     (async () => {
       try {
         stopAll();
+        // Starts are spaced out: a quick pause / resume (a note touched) never reaches the native stream.
+        const gap = lastStopAt + MIN_GAP_MS - Date.now();
+        if (gap > 0) await wait(gap);
+        if (cancelled) return;
         await lastRestore;
         if (cancelled) return;
         await setAudioModeAsync({
@@ -71,6 +83,7 @@ function MicStream({
           shouldRouteThroughEarpiece: false,
           interruptionMode: "doNotMix",
         });
+        await wait(AFTER_MODE_MS);
         if (cancelled) return;
         await stream.start();
         if (cancelled) return;
@@ -78,7 +91,7 @@ function MicStream({
         lastBuffer.current = Date.now();
         watchdog = setInterval(() => {
           if (!cancelled && Date.now() - lastBuffer.current > STALL_MS) onStall();
-        }, 500);
+        }, 1000);
       } catch (e: any) {
         if (!cancelled) onStatus("error", String(e?.message ?? e));
       }
@@ -91,6 +104,7 @@ function MicStream({
       } catch {
         // already stopped
       }
+      lastStopAt = Date.now();
       lastRestore = restorePlaybackMode().catch(() => {});
     };
   }, [stream]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -122,7 +136,17 @@ export function usePitchDetector(enabled: boolean, onFrame: OnFrame) {
     if (e) setError(e);
   }).current;
 
-  const onStall = useRef(() => setRestarts((n) => n + 1)).current;
+  const sessionRestarts = useRef({ session: 0, n: 0 });
+  const onStall = useRef(() => {
+    const r = sessionRestarts.current;
+    if (r.session !== session.current) {
+      r.session = session.current;
+      r.n = 0;
+    }
+    if (r.n >= MAX_RESTARTS) return;
+    r.n += 1;
+    setRestarts((n) => n + 1);
+  }).current;
 
   const mic = enabled ? React.createElement(MicStream, { key: `${session.current}-${restarts}`, onFrame: cbRef, onStatus, onStall }) : null;
   return { status, error, mic };
