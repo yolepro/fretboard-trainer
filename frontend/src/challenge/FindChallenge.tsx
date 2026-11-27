@@ -31,6 +31,7 @@ import {
 } from "@/src/challenge/rounds";
 import { LEVELS, levelOptions, neckRounds, type LevelId } from "@/src/challenge/levels";
 import { CUSTOM_GAMES, type ChallengeSetting, type CustomGame } from "@/src/challenge/games";
+import { CADENCES, cadenceById } from "@/src/music/cadences";
 import { GameCard, OptionSheet, type OptionSheetDef, type Pill } from "@/src/components/GameCard";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
@@ -45,12 +46,15 @@ import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
+import { useLeaveGuard } from "@/src/tabNav";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Props = { kind: ChallengeKind; onBack: () => void; preset?: "neck" };
 type Phase = "setup" | "rotate" | "running" | "done"; // rotate: whole-neck game waiting for landscape
 
-const TITLES: Record<ChallengeKind, string> = { degree: "Trouve le degré", scale: "Trouve la gamme" };
+const TITLES: Record<ChallengeKind, string> = { degree: "Trouve le degré", scale: "Trouve la gamme", chord: "Trouve l’accord de la tonalité" };
+/** Chord challenge: the round is won when every degree of the chord has been found once (any string, any octave). */
+const degreesFound = (cells: Cell[]) => new Set(cells.map((c) => c.label)).size;
 
 /** “Trouve le degré” / “Trouve la gamme”: fill a position by playing (mic) or touching the notes. */
 export function FindChallenge({ kind, onBack, preset }: Props) {
@@ -208,7 +212,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   // Plays a feedback sound; on native the mic pauses meanwhile (iOS lowers the output while recording).
   // Plays something while listening: the detector ignores it, and on native the mic pauses meanwhile.
   const withMicPause = (play: () => void, ms: number) => {
-    ignoreUntil.current = Date.now() + ms + 300;
+    ignoreUntil.current = Date.now() + ms + 500;
     if (useMic && Platform.OS !== "web") {
       setSuspended(true);
       later(async () => {
@@ -219,7 +223,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         }
         play();
       }, 120);
-      later(() => setSuspended(false), ms + 250);
+      later(() => setSuspended(false), ms + 450); // the mic comes back once the sound is over
     } else play();
   };
   const sound = (k: "success" | "error" | "found" | "tick") => withMicPause(() => playFeedback(k, settingsRef.current.volume), FEEDBACK_MS[k]);
@@ -326,7 +330,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     if (!r || busyRef.current) return;
     busyRef.current = true;
     pauseChrono();
-    const missing = remaining();
+    const gotLabels = new Set(foundRef.current.map((c) => c.label));
+    const missing = r.need !== undefined ? remaining().filter((c) => !gotLabels.has(c.label)) : remaining();
     const now = Date.now();
     missing.forEach((c) =>
       saveAttempt({
@@ -378,6 +383,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setSuspended(false);
     setPhase("setup");
   }, []);
+  // FS-36: pressing a tab during a round pauses it (the pause screen) and asks before leaving.
+  useLeaveGuard(phase === "running", { pause: goAway, resume: comeBack, quit: stop });
 
   const onFound = (c: Cell, fromTouch: boolean) => {
     const now = Date.now();
@@ -400,7 +407,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     setWrong(null);
     setMessage(null);
     const r = roundRef.current!;
-    const last = foundRef.current.length >= r.targets.length;
+    const last = r.need !== undefined ? degreesFound(foundRef.current) >= r.need : foundRef.current.length >= r.targets.length;
     // A light tick for each note found (the round's last note gets the “success” sound instead).
     // Touched: hear the note itself. Played on the guitar: a very short tick (the guitar is still ringing).
     if (fromTouch) withMicPause(() => playNote(c.midi, settingsRef.current.volume), 700);
@@ -503,7 +510,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     if (cands.length && stable.current.count === 2) tryCells(cands, null, false);
     else if (!cands.length && stable.current.clear === 6) onMistake(null, notHere(), false);
   };
-  usePitchDetector(listening, onFrame);
+  const { mic } = usePitchDetector(listening, onFrame);
 
   // ---------- Views ----------
 
@@ -544,13 +551,29 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   }
 
   if (phase === "running" && round) {
-    const pct = round.targets.length ? found.length / round.targets.length : 0;
+    const goal = round.need ?? round.targets.length;
+    const got = round.need !== undefined ? degreesFound(found) : found.length;
+    const pct = goal ? got / goal : 0;
     const keyName = nameOf(round.rootPc);
     const scaleName = tr(scaleOf(round.scaleId).name).toLowerCase();
-    const big = kind === "degree" ? round.degrees.map((n) => prettyLabel(labelOfNum(round.scaleId, n))).join(" · ") : `${keyName} ${scaleName}`;
-    const prompt = kind === "degree" ? tr("Trouve toutes les notes de degré") : tr("Joue toutes les notes de");
+    const big =
+      kind === "chord" && round.chord
+        ? tr("le {r} de {k}", { r: round.chord.roman, k: keyName })
+        : kind === "degree"
+          ? round.degrees.map((n) => prettyLabel(labelOfNum(round.scaleId, n))).join(" · ")
+          : `${keyName} ${scaleName}`;
+    const prompt =
+      kind === "chord"
+        ? play.chordStyle === "simple"
+          ? tr("Trouve la fondamentale (corde de Mi ou de La) de")
+          : tr("Trouve l’accord")
+        : kind === "degree"
+          ? tr("Trouve toutes les notes de degré")
+          : tr("Joue toutes les notes de");
     const sub =
-      kind === "degree"
+      kind === "chord" && round.chord
+        ? tr(round.chord.cadence)
+        : kind === "degree"
         ? tr("de {key} {scale}", { key: keyName, scale: scaleName })
         : play.order === "up"
           ? tr("dans l’ordre, du grave vers l’aigu")
@@ -558,6 +581,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
     return (
       <View style={styles.screen} testID="find-challenge-running">
         <StudioBackground />
+        {mic}
         {header(sprint ? tr("Tour {i}", { i: roundIdx + 1 }) : tr("Tour {i}/{n}", { i: roundIdx + 1, n: play.rounds }), stop, "close")}
         {away ? (
           <View style={styles.pauseOverlay} testID="challenge-paused">
@@ -591,7 +615,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                 <View style={[styles.fill, { width: `${Math.round(pct * 100)}%` }]} />
               </View>
               <Text style={styles.count}>
-                {found.length}/{round.targets.length}
+                {got}/{goal}
               </Text>
             </View>
           ) : (
@@ -602,7 +626,9 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
               <Text style={styles.sub}>{sub}</Text>
             </View>
             <Text style={styles.scope}>
-              {round.scope === "neck"
+              {kind === "chord" && play.chordStyle === "simple"
+                ? tr("Cordes de Mi et de La · cases {a}–{b}", { a: round.min, b: round.max })
+                : round.scope === "neck"
                 ? tr("Tout le manche · cases {a}–{b}", { a: round.min, b: round.max })
                 : tr("Position {n} · cases {a}–{b}", { n: round.position + 1, a: round.min, b: round.max })}
             </Text>
@@ -611,9 +637,12 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
                 <View style={[styles.fill, { width: `${Math.round(pct * 100)}%` }]} />
               </View>
               <Text style={styles.count}>
-                {found.length}/{round.targets.length}
+                {got}/{goal}
               </Text>
             </View>
+            {kind === "chord" && round.chord && got >= goal ? (
+              <Text style={styles.sub}>{`${nameOf(round.chord.root)}${round.chord.quality}`}</Text>
+            ) : null}
           </View>
           )}
           <ChallengeNeck
@@ -796,6 +825,27 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             set({ scales: has ? o.scales.filter((x) => x !== id) : [...o.scales, id] });
           },
         };
+      case "cadences":
+        return {
+          title: tr("Cadences"),
+          hint: tr("Les accords sont tirés dans les cadences choisies."),
+          multi: true,
+          options: CADENCES.flatMap((grp) => grp.items.map((c) => ({ id: c.id, label: `${tr(c.name)} · ${c.roman}`, selected: o.cadences.includes(c.id) }))),
+          onPick: (id) => {
+            const has = o.cadences.includes(id);
+            if (has && o.cadences.length === 1) return;
+            set({ cadences: has ? o.cadences.filter((x) => x !== id) : [...o.cadences, id] });
+          },
+        };
+      case "cadenceOrder":
+        return {
+          title: tr("Ordre des accords"),
+          options: [
+            { id: "order", label: tr("Dans l’ordre de la cadence"), selected: o.cadenceOrder === "order" },
+            { id: "mix", label: tr("Mélangés"), selected: o.cadenceOrder === "mix" },
+          ],
+          onPick: (id) => set({ cadenceOrder: id as ChallengeOptions["cadenceOrder"] }),
+        };
       case "order":
         return {
           title: tr("Ordre"),
@@ -837,6 +887,10 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
         return { id, onPress: open, label: o.scales.length === 1 ? tr(scaleOf(o.scales[0]).name) : tr("{n} gammes", { n: o.scales.length }) };
       case "order":
         return { id, onPress: open, label: o.order === "up" ? tr("Du grave à l’aigu") : tr("Ordre libre") };
+      case "cadences":
+        return { id, onPress: open, label: o.cadences.length === 1 ? tr(cadenceById(o.cadences[0]).name) : tr("{n} cadences", { n: o.cadences.length }) };
+      case "cadenceOrder":
+        return { id, onPress: open, label: o.cadenceOrder === "order" ? tr("Dans l’ordre") : tr("Mélangés") };
     }
   };
 

@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CaretRight, MusicNotes, Trophy } from "phosphor-react-native";
 import { useRouter } from "expo-router";
 
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
+import { Chip, ChipRow } from "@/src/components/Chip";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { tr } from "@/src/i18n";
 import type { ExerciseId } from "@/src/music/exercises";
@@ -23,25 +24,28 @@ export type ExercisePreset = {
   arpKind?: "shapes" | "twoStrings";
 };
 
-type Family = "S’exercer";
-const FAMILIES: Family[] = ["S’exercer"];
+type Family = "Arpèges" | "Triades" | "Gammes";
+// The cadences moved to Explorer › Accords.
+const FAMILIES: Family[] = ["Arpèges", "Triades", "Gammes"];
 const LEADS: Record<Family, string> = {
-  "S’exercer": "Avec la partition, le tempo et le métronome.",
+  Gammes: "La gamme en position ou le long du manche, note à note ou par intervalles.",
+  Arpèges: "Les arpèges à 4 sons, leurs schémas et leurs enchaînements.",
+  Triades: "Deux triades voisines de la tonalité, en alternance.",
 };
 
-/** S’exercer: one card per exercise. Edit names here. */
+/** S’exercer: one card per exercise, grouped by family. Edit names here. */
 export const PRESETS: ExercisePreset[] = [
-  { id: "scale", family: "S’exercer", name: "Montée & descente de gamme", meta: "Sur une position · toutes les gammes", subject: "scale", exerciseId: "scale", horizontal: false },
-  { id: "thirds", family: "S’exercer", name: "Gamme par tierces", meta: "Sur une position", subject: "scale", exerciseId: "thirds", horizontal: false },
-  { id: "thirds-h", family: "S’exercer", name: "Gamme par tierces horizontales", meta: "Sur 2 cordes, le long du manche", subject: "scale", exerciseId: "thirds", horizontal: true },
-  { id: "triads", family: "S’exercer", name: "Gamme par triades diatoniques", meta: "Sur une position · 1-3-5 sur chaque degré", subject: "scale", exerciseId: "triads", horizontal: false },
-  { id: "triads-h", family: "S’exercer", name: "Gamme par triades horizontales", meta: "Sur 2 ou 3 cordes, le long du manche", subject: "scale", exerciseId: "triads", horizontal: true },
-  { id: "sevenths", family: "S’exercer", name: "Gamme par arpèges 7e diatoniques", meta: "Sur une position · 1-3-5-7 sur chaque degré", subject: "scale", exerciseId: "sevenths", horizontal: false },
-  { id: "sevenths-h", family: "S’exercer", name: "Gamme par arpèges 7e horizontaux", meta: "Sur 2 à 4 cordes, le long du manche", subject: "scale", exerciseId: "sevenths", horizontal: true },
-  { id: "arp", family: "S’exercer", name: "Arpèges à 4 sons", meta: "5 schémas · ∆7, 7, m7, Ø", subject: "arp", horizontal: false, arpKind: "shapes" },
-  { id: "arp-h", family: "S’exercer", name: "Enchaînement d’arpèges", meta: "D’un schéma au voisin, vers la caisse ou le sillet", subject: "arp", horizontal: true, arpKind: "shapes" },
-  { id: "arp-2", family: "S’exercer", name: "Triades sur 2 cordes", meta: "Mi-La, Ré-Sol, Si-Mi · avec ou sans la 7e", subject: "arp", horizontal: true, arpKind: "twoStrings" },
-  { id: "pairs", family: "S’exercer", name: "Paires de triades", meta: "IV et V de la tonalité · Up, Down, Alterné", subject: "pairs", horizontal: false },
+  { id: "scale", family: "Gammes", name: "Montée & descente de gamme", meta: "Sur une position · toutes les gammes", subject: "scale", exerciseId: "scale", horizontal: false },
+  { id: "thirds", family: "Gammes", name: "Gamme par tierces", meta: "Sur une position", subject: "scale", exerciseId: "thirds", horizontal: false },
+  { id: "thirds-h", family: "Gammes", name: "Gamme par tierces horizontales", meta: "Sur 2 cordes, le long du manche", subject: "scale", exerciseId: "thirds", horizontal: true },
+  { id: "triads", family: "Gammes", name: "Gamme par triades diatoniques", meta: "Sur une position · 1-3-5 sur chaque degré", subject: "scale", exerciseId: "triads", horizontal: false },
+  { id: "triads-h", family: "Gammes", name: "Gamme par triades horizontales", meta: "Sur 2 ou 3 cordes, le long du manche", subject: "scale", exerciseId: "triads", horizontal: true },
+  { id: "sevenths", family: "Gammes", name: "Gamme par arpèges 7e diatoniques", meta: "Sur une position · 1-3-5-7 sur chaque degré", subject: "scale", exerciseId: "sevenths", horizontal: false },
+  { id: "sevenths-h", family: "Gammes", name: "Gamme par arpèges 7e horizontaux", meta: "Sur 2 à 4 cordes, le long du manche", subject: "scale", exerciseId: "sevenths", horizontal: true },
+  { id: "arp", family: "Arpèges", name: "Arpèges à 4 sons", meta: "5 schémas · ∆7, 7, m7, Ø", subject: "arp", horizontal: false, arpKind: "shapes" },
+  { id: "arp-h", family: "Arpèges", name: "Enchaînement d’arpèges", meta: "D’un schéma au voisin, vers la caisse ou le sillet", subject: "arp", horizontal: true, arpKind: "shapes" },
+  { id: "arp-2", family: "Arpèges", name: "Triades sur 2 cordes", meta: "Mi-La, Ré-Sol, Si-Mi · avec ou sans la 7e", subject: "arp", horizontal: true, arpKind: "twoStrings" },
+  { id: "pairs", family: "Triades", name: "Paires de triades", meta: "IV et V de la tonalité · Up, Down, Alterné", subject: "pairs", horizontal: false },
 ];
 
 type Props = { currentId: string | null; onPick: (p: ExercisePreset) => void };
@@ -52,7 +56,8 @@ export function ExerciseLibrary({ currentId, onPick }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
-  const families = FAMILIES;
+  const [filter, setFilter] = useState<Family | null>(null);
+  const families = filter ? [filter] : FAMILIES;
   const bottom = usesNativeTabs || landscape ? insets.bottom : 0;
   const router = useRouter();
 
@@ -62,9 +67,16 @@ export function ExerciseLibrary({ currentId, onPick }: Props) {
       <View style={[styles.header, { paddingTop: insets.top + (landscape ? spacing.xs : spacing.lg) }, landscape && { paddingRight: LANDSCAPE_NAV_W + spacing.md }]}>
         <Text style={styles.title}>{tr("S’exercer")}</Text>
       </View>
+      <ChipRow testID="library-filters">
+        <Chip testID="library-filter-all" label={tr("Tout")} selected={filter === null} onPress={() => setFilter(null)} />
+        {FAMILIES.map((f) => (
+          <Chip key={f} testID={`library-filter-${f}`} label={tr(f)} selected={filter === f} onPress={() => setFilter(f)} />
+        ))}
+      </ChipRow>
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
         {families.map((fam) => (
           <View key={fam} style={styles.section}>
+            <Text style={styles.sectionTitle}>{tr(fam)}</Text>
             <Text style={styles.lead}>{tr(LEADS[fam])}</Text>
             <View style={[styles.cards, landscape && styles.cardsWide]}>
               {PRESETS.filter((p) => p.family === fam).map((p) => (

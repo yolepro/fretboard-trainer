@@ -38,7 +38,7 @@ export function MicTester() {
   // Leaving Réglages turns the mic off (tab screens stay mounted).
   useFocusEffect(useCallback(() => () => setOn(false), []));
 
-  const { status, error } = usePitchDetector(on, (f, l) => {
+  const { status, error, mic } = usePitchDetector(on, (f, l) => {
     setLevel(l);
     const now = Date.now();
     setPeak((p) => {
@@ -85,6 +85,7 @@ export function MicTester() {
 
   return (
     <View style={styles.wrap} testID="mic-tester">
+      {mic}
       <Pressable testID="mic-test-toggle" onPress={toggle} style={({ pressed }) => [styles.btn, on && styles.btnOn, pressed && { opacity: 0.85 }]}>
         {on ? <Stop size={18} color={colors.onBrandPrimary} weight="fill" /> : <Microphone size={18} color={colors.onSurface} />}
         <Text style={[styles.btnText, on && styles.btnTextOn]}>{on ? tr("Arrêter le test") : tr("Tester le micro")}</Text>

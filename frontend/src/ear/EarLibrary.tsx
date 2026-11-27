@@ -44,7 +44,7 @@ type Props = {
   countOf: (g: EarGame) => number;
   setCountOf: (g: EarGame, n: number) => void;
   onStart: (g: EarGame) => void;
-  onChallenge: (c: "degree" | "scale") => void; // Trouve le degré / Trouve la gamme: their own screen
+  onChallenge: (c: "degree" | "scale" | "chord") => void; // Trouve le degré / Trouve la gamme: their own screen
   chordLevel: ChordLevel; // Reconnais l’accord: the level chosen
   setChordLevel: (l: ChordLevel) => void;
   perm: "unknown" | "granted" | "ask" | "blocked";

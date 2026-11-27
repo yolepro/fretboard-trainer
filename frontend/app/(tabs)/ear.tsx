@@ -40,6 +40,7 @@ import { storage } from "@/src/utils/storage";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { CaretLeft, ChartBar } from "phosphor-react-native";
 import { tr } from "@/src/i18n";
+import { useLeaveGuard, useTabReset } from "@/src/tabNav";
 
 type Phase = "setup" | "running" | "done";
 type Perm = "unknown" | "granted" | "ask" | "blocked";
@@ -94,7 +95,7 @@ export default function EarScreen() {
   const countOf = (g: EarGame) => (g.kind === "mic" ? optsOf(g).count : (gameCounts[g.id] ?? defaultCountOf(g)));
   // Reconnais l’accord: the level chosen. Trouve le degré / la gamme: their own screen while open.
   const [chordLevel, setChordLevel] = useState<ChordLevel>(CHORD_LEVELS[0]);
-  const [challenge, setChallenge] = useState<"degree" | "scale" | null>(null);
+  const [challenge, setChallenge] = useState<"degree" | "scale" | "chord" | null>(null);
   // The micro game being played (its record key).
   const gameRef = useRef<EarGame>(EAR_GAMES[0]);
   const [curGame, setCurGame] = useState<EarGame>(EAR_GAMES[0]);
@@ -212,8 +213,8 @@ export default function EarScreen() {
         if (token === suspendToken.current) playFeedback(kind, vol);
       }, 120);
       later(() => {
-        if (token === suspendToken.current) setSuspended(false);
-      }, ms + 250);
+        if (token === suspendToken.current) setSuspended(false); // the mic comes back once the sound is over
+      }, ms + 450);
     } else playFeedback(kind, vol);
   };
 
@@ -387,7 +388,7 @@ export default function EarScreen() {
     else if (!match && stable.current.count === 6) onWrong(midi);
   };
 
-  const { status, error } = usePitchDetector(listening && !suspended, onFrame);
+  const { status, error, mic } = usePitchDetector(listening && !suspended, onFrame);
 
   const stop = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -512,12 +513,33 @@ export default function EarScreen() {
         ? tr("Joue la note…")
         : tr("Micro en pause");
 
+  // FS-36: the Défis tab always opens on the games; a game in progress is paused and confirmed before leaving.
+  useTabReset("ear", () => {
+    stop();
+    setChallenge(null);
+    leaveChords();
+    setTab("play");
+    setOpenGame(null);
+  });
+  useLeaveGuard(phase === "running", {
+    pause: () => {
+      pauseChrono();
+      setListening(false);
+    },
+    resume: () => {
+      resumeChrono();
+      setListening(true);
+    },
+    quit: stop,
+  });
+
   // Trouve le degré / Trouve la gamme: their own screen (levels, records, results), back to Défis with its arrow.
   if (challenge) return <FindChallenge key={challenge} kind={challenge} onBack={() => setChallenge(null)} />;
 
   return (
     <View style={styles.screen} testID="ear-screen">
       <StudioBackground />
+      {mic}
       {phase === "running" && question ? (
         <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: bottomChrome, paddingLeft: insets.left, paddingRight: insets.right }]}>
           <ChallengeView

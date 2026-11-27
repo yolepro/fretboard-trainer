@@ -208,14 +208,18 @@ export function playChordNotes(notes: { midi: number; at: number }[], volume = 1
   );
 }
 
+/** Pauses every note and feedback sound. Also called before the mic starts: on iPhone, a player left “playing” after
+ *  its sound ended kept the microphone stream silent (only the first note of a challenge was heard). */
 export function stopAll() {
-  players.forEach((p) => {
+  const pause = (p: AudioPlayer | undefined) => {
     try {
-      p.pause();
+      p?.pause();
     } catch {
       // ignore
     }
-  });
+  };
+  players.forEach(pause);
+  Object.values(feedbackPlayers).forEach(pause);
 }
 
 export function playSequence(midis: number[], volume = 1, gapMs = 380): () => void {

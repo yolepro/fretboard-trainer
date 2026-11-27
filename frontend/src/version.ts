@@ -2,6 +2,24 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.65.2 (branche feature/fs-18-cadences) — FS-37 micro sur iPhone, 2e correction : avant chaque reprise du micro, tous les sons (notes et sons de réponse) sont mis en pause (c’est ce que faisait « Écouter », qui débloquait la détection) ; le micro revient 450 ms après la fin du son ; s’il ne transmet plus rien pendant 1,5 s, un nouveau flux est lancé automatiquement
+// 1.65.1 (branche feature/fs-18-cadences) — Défis au micro sur iPhone : après la première note plus rien n’était détecté (le micro se coupe pendant chaque son de réponse et un flux arrêté ne redémarre pas) ; chaque reprise du micro crée maintenant un nouveau flux, et les changements de mode audio ne se chevauchent plus
+// 1.65.0 (branche feature/fs-18-cadences) — FS-36 : appuyer sur un onglet du menu (même celui en cours) ouvre toujours sa première page (Explorer, S’exercer, Défis) ; pendant un défi, la partie est mise en pause et une fenêtre demande « Reprendre le défi » ou « Quitter le défi »
+// 1.64.0 (branche feature/fs-18-cadences) — Les Cadences passent de S’exercer à Explorer › Accords ; « La bible des accords › Les accords » devient la famille « Arpèges › Les arpèges » (filtre Arpèges) ; S’exercer garde Arpèges, Triades, Gammes
+// 1.63.0 (branche feature/fs-18-cadences) — Explorer › Les formes à jouer : Écouter joue à la suite tous les accords affichés sur la partition (chacun une fois, selon le réglage), l’accord joué est sélectionné et la partition ne bouge pas pendant la lecture
+// 1.62.1 (branche feature/fs-18-cadences) — Harmonie en paysage : en haut seulement la tonalité et Écouter ; Degrés / Fonctions, placement et corde de basse dans une barre en bas de l’écran
+// 1.62.0 (branche feature/fs-18-cadences) — Harmonie : placement « Par corde » (toutes les fondamentales sur la corde choisie) ou « Par zone » (IΔ sur la corde choisie, les autres accords sur la corde 6, 5 ou 4 au plus près, 7 accords en 6 cases au plus) ; en paysage, Degrés / Fonctions en bas à gauche ; Cadences : chaque accord joué une seule fois au tempo (arpège, plaqué ou les deux), comme les formes d’accords
+// 1.61.0 (branche feature/fs-18-cadences) — Harmonie : sélecteur « Basse sur la corde 6 · 5 · 4 », la corde allumée est celle affichée (corde 6 par défaut) ; nouvelles formes avec la fondamentale sur la corde 4 (drop 2) ; une seule position par accord, toujours sans corde à vide (cases 1 à 14)
+// 1.60.2 (branche feature/fs-18-cadences) — Harmonie : chaque accord joué une seule fois (arpège, plaqué, ou arpège puis plaqué selon le réglage), comme les formes d’accords, au lieu d’une mesure répétée ; l’écran s’ouvre sur le degré I
+// 1.60.1 (branche feature/fs-18-cadences) — FS-34 : le réglage « Accords : façon de jouer » (arpégé puis plaqué, plaqué, arpégé) s’applique aussi aux Cadences et à Harmonie (déjà appliqué aux formes d’accords et à Reconnais l’accord)
+// 1.60.0 (branche feature/fs-18-cadences) — FS-33 : Harmonie › Les 7 degrés, Écouter joue tous les degrés à la suite (IΔ → VIIø → IΔ, une mesure chacun, le cadre du degré joué s’allume) ; toucher un cadre fait entendre son accord
+// 1.59.2 (branche feature/fs-18-cadences) — FS-32 en paysage : glissière Degrés / Fonctions plus petite ; manche raccourci (cases 0 à 12) à gauche, cadres colorés des degrés (ou la progression) et explications à droite
+// 1.59.1 (branche feature/fs-18-cadences) — FS-32 en paysage : sur une ligne en haut, tonalité, basse, glissière Degrés / Fonctions et bouton Écouter (à gauche du menu) ; manche entier à gauche avec les degrés ou la progression dessous, explications dans un panneau à droite
+// 1.59.0 (branche feature/fs-18-cadences) — FS-32 : Explorer › Harmonie › Les degrés de la gamme (IΔ…VIIø en accords à 4 sons, fonctions tonique / sous-dominante / dominante, accords interchangeables et notes communes, vue Fonctions avec remplacement dans I – IV – V – I)
+// 1.58.3 (branche feature/fs-18-cadences) — FS-8 : Fm et Bm barrés dans Accords ouverts ; FS-9 : en paysage, Doigts / Degrés rejoint le bouton Écouter (plus coupé)
+// 1.58.2 (branche feature/fs-18-cadences) — Les accords avant les gammes : Explorer (La bible des accords, Les formes à jouer, puis Gammes ; filtres Tout · Accords · Gammes), S’exercer (Accords · Arpèges · Triades · Gammes), texte de l’Accueil
+// 1.58.1 (branche feature/fs-18-cadences) — S’exercer : retour des familles Gammes · Arpèges · Triades, plus Accords (Cadences), avec les filtres Tout / par famille
+// 1.58.0 (branche feature/fs-18-cadences) — FS-18 : S’exercer › Cadences (11 cadences par nom : Les bases du rock, Pop 4 accords, II–V–I…, en G par défaut, jouées en accords simples, triades en position ou accords à 4 sons en position ; manche, partition, boucle, tempo) ; Défis › Trouve l’accord de la tonalité (Débutant : fondamentale sur Mi ou La ; Intermédiaire : triades en position ; Expert : 4 sons en position ; cadences au choix, dans l’ordre ou mélangés ; micro ou toucher, records)
 // 1.57.0 — Formes d’accords : le manche de Les gammes (apparence des Réglages, défilement et surbrillance de la zone comme une position) ; cordes à vide jouées remplies, autres formes en anneaux, × pour les cordes étouffées, barré dessiné ; ‹ › sous le manche en portrait
 // 1.56.2 — Partition des formes : plus d’espace entre la portée et la tablature (lignes supplémentaires des notes graves)
 // 1.56.1 — Formes d’accords : tablature plus aérée (les chiffres ne se chevauchent plus), portée plus grande en paysage, manche plus haut, titre réduit pour laisser la place à la pastille Doigts / Degrés
@@ -139,4 +157,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.57.0";
+export const APP_VERSION = "1.65.2";

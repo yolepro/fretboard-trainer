@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "main": "expo-router/entry",
-  "version": "1.57.0",
+  "version": "1.65.2",
   "scripts": {
     "preinstall": "./scripts/cmd-guard.js --preinstall",
     "start": "expo start",
@@ -9,7 +9,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "deploy": "./scripts/deploy.sh",
+    "publish:expo-go": "./scripts/deploy.sh expo",
+    "start:local": "./scripts/deploy.sh local"
   },
   "dependencies": {
     "@expo/metro-runtime": "58.0.15",
@@ -31,6 +34,7 @@
     "expo-status-bar": "58.0.4",
     "expo-symbols": "58.0.4",
     "expo-system-ui": "58.0.6",
+    "expo-updates": "~58.0.22",
     "expo-web-browser": "58.0.6",
     "phosphor-react-native": "3.0.6",
     "react": "19.3.0",

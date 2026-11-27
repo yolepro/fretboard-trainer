@@ -45,6 +45,9 @@ export const OPEN_CHORDS: OpenDef[] = [
   { root: 9, symbol: "m", type: "Mineur", frets: [x, 0, 2, 2, 1, 0], fingers: [x, 0, 2, 3, 1, 0], degs: [x, "1", "5", "1", "♭3", "5"] },
   { root: 4, symbol: "m", type: "Mineur", frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0], degs: ["1", "5", "1", "♭3", "5", "1"] },
   { root: 2, symbol: "m", type: "Mineur", frets: [x, x, 0, 2, 3, 1], fingers: [x, x, 0, 2, 3, 1], degs: [x, x, "1", "5", "1", "♭3"] },
+  // Fm and Bm have no open shape either: barred near the nut.
+  { root: 5, symbol: "m", type: "Mineur", frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1], degs: ["1", "5", "1", "♭3", "5", "1"], note: "Barré en case 1 (forme de Mi mineur) : pas de forme ouverte" },
+  { root: 11, symbol: "m", type: "Mineur", frets: [x, 2, 4, 4, 3, 2], fingers: [x, 1, 3, 4, 2, 1], degs: [x, "1", "5", "1", "♭3", "5"], note: "Barré en case 2 (forme de La mineur) : pas de forme ouverte" },
   { root: 0, symbol: "7", type: "Septième", frets: [x, 3, 2, 3, 1, 0], fingers: [x, 3, 2, 4, 1, 0], degs: [x, "1", "3", "♭7", "1", "3"] },
   { root: 9, symbol: "7", type: "Septième", frets: [x, 0, 2, 0, 2, 0], fingers: [x, 0, 2, 0, 3, 0], degs: [x, "1", "5", "♭7", "3", "5"] },
   { root: 7, symbol: "7", type: "Septième", frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1], degs: ["1", "3", "5", "1", "3", "♭7"] },

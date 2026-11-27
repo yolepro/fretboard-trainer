@@ -42,7 +42,7 @@ import { tr } from "@/src/i18n";
 export type ExploreMode = "scale" | "chord";
 type Mode = ExploreMode;
 
-/** Explorer: « Les gammes » / « Les accords » — the whole neck, the score, playback. */
+/** Explorer: « Les gammes » / « Les arpèges » — the whole neck, the score, playback. */
 export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMode; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
@@ -402,7 +402,7 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
             <CaretLeft size={20} color={colors.onSurface} weight="bold" />
           </Pressable>
           <Text style={[styles.title, styles.titleCompact]} testID="fretboard-title" numberOfLines={1}>
-            {mode === "scale" ? tr("Les gammes") : tr("Les accords")}
+            {mode === "scale" ? tr("Les gammes") : tr("Les arpèges")}
           </Text>
           <KeyButton rootPc={rootPc} nameOf={nameOf} onChange={setRootPc} />
           <View style={styles.headerPills}>
@@ -426,7 +426,7 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
             <View style={styles.headerText}>
               {/* The key, the scale / chord and the position are on the pills just below. */}
               <Text style={styles.title} testID="fretboard-title" numberOfLines={1}>
-                {mode === "scale" ? tr("Les gammes") : tr("Les accords")}
+                {mode === "scale" ? tr("Les gammes") : tr("Les arpèges")}
               </Text>
             </View>
           </View>
@@ -522,7 +522,7 @@ export function ExplorerScreen({ initialMode, onBack }: { initialMode: ExploreMo
         onPositionChange={selectPosition}
         labelMode={settings.labelMode}
         onLabelModeChange={(m) => update({ labelMode: m })}
-        title={mode === "scale" ? tr("Gamme") : tr("Accord")}
+        title={mode === "scale" ? tr("Gamme") : tr("Arpège")}
       />
       <Sheet visible={sheet === "where"} onClose={closeSheet} title={tr("Position")} testID="manche-where-sheet">
         {whereSheet}

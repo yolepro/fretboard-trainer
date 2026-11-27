@@ -1,45 +1,34 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BookOpen, CaretRight, Eye, HandPointing } from "phosphor-react-native";
+import { BookOpen, CaretRight, Eye, HandPointing, MusicNotes } from "phosphor-react-native";
 
 import { Chip, ChipRow } from "@/src/components/Chip";
 import { LANDSCAPE_NAV_W } from "@/src/components/AppTabBar";
 import { StudioBackground } from "@/src/components/StudioBackground";
 import { ExplorerScreen, type ExploreMode } from "@/src/screens/ExplorerScreen";
 import { ChordShapeScreen, type ShapeKind } from "@/src/screens/ChordShapeScreen";
+import { HarmonyScreen } from "@/src/screens/HarmonyScreen";
+import { CadenceScreen } from "@/src/screens/CadenceScreen";
 import { usesNativeTabs } from "@/src/navigation";
 import { useSettings } from "@/src/settings";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 import { tr } from "@/src/i18n";
+import { useTabReset } from "@/src/tabNav";
 
-type Filter = "all" | "scales" | "chords";
-type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind }; bible?: boolean; soon?: boolean };
-type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: string; items: Item[] };
+type Filter = "all" | "chords" | "arps" | "harmony" | "scales";
+type Item = { id: string; name: string; meta: string; open?: { explore: ExploreMode } | { shape: ShapeKind } | { lesson: "degrees" } | { cadence: true }; bible?: boolean; soon?: boolean };
+type Group = { id: string; filter: Exclude<Filter, "all">; title: string; lead: string; isNew?: boolean; items: Item[] };
 
 /** Explorer: the families and their cards. Edit names here. */
 const GROUPS: Group[] = [
-  {
-    id: "scales",
-    filter: "scales",
-    title: "Gammes",
-    lead: "Les notes d’une gamme sur tout le manche, position par position, avec la partition et l’écoute.",
-    items: [{ id: "scales", name: "Les gammes", meta: "Majeure, mineures, modes, pentatoniques, blues · 5 positions", open: { explore: "scale" } }],
-  },
-  {
-    id: "bible",
-    filter: "chords",
-    title: "La bible des accords",
-    lead: "Construis n’importe quel accord sur n’importe quelle note et vois toutes ses notes sur le manche.",
-    items: [{ id: "chords", name: "Les accords", meta: "Triades, sus, septièmes, 6, 9, 11, 13 · partition et écoute", open: { explore: "chord" }, bible: true }],
-  },
   {
     id: "shapes",
     filter: "chords",
     title: "Les formes à jouer",
     lead: "Les doigtés tels qu’on les joue : doigts, barré, cordes à vide et étouffées, joué en arpège puis plaqué.",
     items: [
-      { id: "open", name: "Accords ouverts", meta: "C, A, G, E, D, F, B, Am, Em, Dm et leurs 7 · cases 0 à 5 (F et B se jouent barrés : pas de forme ouverte)", open: { shape: "open" } },
+      { id: "open", name: "Accords ouverts", meta: "C, A, G, E, D, F, B, Am, Em, Dm, Fm, Bm et leurs 7 · cases 0 à 5 (F, B, Fm et Bm se jouent barrés : pas de forme ouverte)", open: { shape: "open" } },
       { id: "barre", name: "Accords barrés", meta: "Forme de Mi, forme de La · majeur, mineur, 7, m7, maj7", open: { shape: "barre" } },
       { id: "power", name: "Power chords", meta: "1-5 et 1-5-8 · fondamentale sur Mi, La ou Ré", open: { shape: "power" } },
       { id: "caged", name: "Système CAGED", meta: "Les 5 formes d’un accord le long du manche", open: { shape: "caged" } },
@@ -47,11 +36,42 @@ const GROUPS: Group[] = [
       { id: "four", name: "Accords à 4 sons", meta: "Septièmes en Drop 2 et Drop 3 · 4 renversements", soon: true },
     ],
   },
+  {
+    id: "cadences",
+    filter: "chords",
+    title: "Cadences",
+    lead: "Les accords d’une cadence, en accords simples ou sans changer de position.",
+    items: [{ id: "cadences", name: "Cadences", meta: "Les bases du rock, Pop 4 accords, II–V–I… · accords simples ou dans la position", open: { cadence: true } }],
+  },
+  {
+    id: "arps",
+    filter: "arps",
+    title: "Arpèges",
+    lead: "Construis l’arpège de n’importe quel accord sur n’importe quelle note et joue ses notes une à une sur tout le manche.",
+    items: [{ id: "chords", name: "Les arpèges", meta: "Triades, sus, septièmes, 6, 9, 11, 13 · partition et écoute", open: { explore: "chord" }, bible: true }],
+  },
+  {
+    id: "harmony",
+    filter: "harmony",
+    isNew: true,
+    title: "Harmonie",
+    lead: "Comment les accords d’une tonalité s’enchaînent et se remplacent.",
+    items: [{ id: "degrees", name: "Les degrés de la gamme", meta: "IΔ, IIm7, IIIm7, IVΔ, V7, VIm7, VIIø · tonique, sous-dominante, dominante, relatifs", open: { lesson: "degrees" } }],
+  },
+  {
+    id: "scales",
+    filter: "scales",
+    title: "Gammes",
+    lead: "Les notes d’une gamme sur tout le manche, position par position, avec la partition et l’écoute.",
+    items: [{ id: "scales", name: "Les gammes", meta: "Majeure, mineures, modes, pentatoniques, blues · 5 positions", open: { explore: "scale" } }],
+  },
 ];
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Tout" },
-  { id: "scales", label: "Gammes" },
   { id: "chords", label: "Accords" },
+  { id: "arps", label: "Arpèges" },
+  { id: "harmony", label: "Harmonie" },
+  { id: "scales", label: "Gammes" },
 ];
 
 export default function ExplorerTab() {
@@ -64,9 +84,12 @@ export default function ExplorerTab() {
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<Item["open"] | null>(null);
   const back = () => setView(null);
+  useTabReset("manche", back); // the Explorer tab always opens on the families (FS-36)
 
   if (view && "explore" in view) return <ExplorerScreen key={view.explore} initialMode={view.explore} onBack={back} />;
   if (view && "shape" in view) return <ChordShapeScreen key={view.shape} kind={view.shape} onBack={back} />;
+  if (view && "lesson" in view) return <HarmonyScreen onBack={back} />;
+  if (view && "cadence" in view) return <CadenceScreen onBack={back} />;
 
   const groups = filter === "all" ? GROUPS : GROUPS.filter((g) => g.filter === filter);
   const bottom = usesNativeTabs || landscape ? insets.bottom : 0;
@@ -85,7 +108,10 @@ export default function ExplorerTab() {
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
         {groups.map((g) => (
           <View key={g.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{tr(g.title)}</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>{tr(g.title)}</Text>
+              {g.isNew ? <Text style={styles.newBadge}>{tr("NOUVEAU")}</Text> : null}
+            </View>
             <Text style={styles.lead}>{tr(g.lead)}</Text>
             <View style={[styles.cards, landscape && styles.cardsWide]}>
               {g.items.map((it) => (
@@ -98,7 +124,9 @@ export default function ExplorerTab() {
                   accessibilityRole="button"
                 >
                   <View style={[styles.cardIcon, it.bible && styles.cardIconBible]}>
-                    {g.id === "scales" ? (
+                    {g.id === "harmony" ? (
+                      <MusicNotes size={18} color="#A78BFA" weight="bold" />
+                    ) : g.id === "scales" ? (
                       <Eye size={18} color={colors.brandSecondary} weight="bold" />
                     ) : it.bible ? (
                       <BookOpen size={18} color={colors.brandPrimary} weight="bold" />
@@ -131,6 +159,8 @@ const useStyles = makeStyles((c) => ({
   title: { fontFamily: fonts.display, fontSize: 26, fontWeight: "700", color: c.onSurface },
   list: { paddingHorizontal: spacing.lg, gap: spacing.lg, paddingTop: spacing.sm },
   section: { gap: spacing.sm },
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  newBadge: { fontFamily: fonts.text, fontSize: 10, fontWeight: "700", color: "#101114", backgroundColor: c.brandPrimary, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, overflow: "hidden" },
   sectionTitle: { fontFamily: fonts.text, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "600", color: c.onSurfaceTertiary },
   lead: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18, marginTop: -2 },
   cards: { gap: spacing.sm },
