@@ -228,15 +228,17 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
     // Many choices (Expert: 12) or landscape: smaller buttons, 3 columns, so everything fits without scrolling.
     const compact = landscape || choices.length > 8;
     // The landscape menu only takes the top right corner: under the top line, the whole width is ours.
-    const sideW = landscape ? Math.round(Math.min(520, Math.max(260, availW * 0.48))) : 0;
+    // At least two thirds for the neck, the last third for the choices.
+    const sideW = landscape ? Math.round((availW - 3 * spacing.lg) / 3) : 0;
     const leftW = landscape ? availW - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
-    const cols = landscape ? (choices.length > 8 ? 3 : 2) : compact ? 3 : 2;
+    const cols = landscape ? 2 : compact ? 3 : 2;
     // Widths in pixels: a percentage inside a ScrollView is not resolved on iPhone (each button took the full width).
     const gridW = landscape ? sideW : leftW;
     const itemW = Math.floor((gridW - (cols - 1) * spacing.sm) / cols);
     // Landscape: the buttons share the whole height of the column, top to bottom.
     const rows = Math.ceil(choices.length / cols);
-    const fillH = landscape && sideH ? Math.max(40, Math.min(110, Math.floor((sideH - (rows - 1) * spacing.sm) / rows))) : 0;
+    const gapV = landscape && rows > 4 ? 6 : spacing.sm;
+    const fillH = landscape && sideH ? Math.max(34, Math.min(110, Math.floor((sideH - (rows - 1) * gapV) / rows))) : 0;
 
     const neckView = (
       <View style={landscape ? null : styles.bleed}>
@@ -279,7 +281,7 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
       </View>
     );
     const grid = (
-      <View style={styles.grid}>
+      <View style={[styles.grid, gapV !== spacing.sm && { gap: gapV }]}>
         {choices.map((c) => {
           const isRight = !!answer && c.id === q.id;
           const isWrong = answer === c.id && c.id !== q.id;
@@ -294,9 +296,9 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
               <Text style={[styles.choiceName, compact && !(fillH > 60) && styles.choiceNameCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {intervalTitle(c.id)}
               </Text>
-              <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1}>
+              {fillH && fillH < 44 ? null : <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1}>
                 {intervalSub(c.id)}
-              </Text>
+              </Text>}
             </Pressable>
           );
         })}
