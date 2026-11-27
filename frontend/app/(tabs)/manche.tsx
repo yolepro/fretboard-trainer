@@ -142,7 +142,7 @@ export default function ExplorerTab() {
                       {tr(it.meta)}
                     </Text>
                   </View>
-                  {it.soon ? <Text style={styles.soon}>{tr("ÉTAPE 2")}</Text> : <CaretRight size={18} color={colors.onSurfaceTertiary} weight="bold" />}
+                  {it.soon ? <Text style={styles.soon}>{tr("À VENIR")}</Text> : <CaretRight size={18} color={colors.onSurfaceTertiary} weight="bold" />}
                 </Pressable>
               ))}
             </View>

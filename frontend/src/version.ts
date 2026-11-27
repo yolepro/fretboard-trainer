@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.66.8 — Étiquette « À VENIR » pour les défis désactivés (Défis) et les cartes pas encore faites (Explorer, au lieu de « Étape 2 »)
 // 1.66.7 — Défis : « Trouve le degré » et « Trouve l’accord de la tonalité » désactivés (cartes grisées « En travaux », ne s’ouvrent plus) : pas utilisables en l’état
 // 1.66.6 — Défis en paysage : les jeux sur 2 colonnes, comme Explorer (une carte dépliée ne rallonge pas sa voisine)
 // 1.66.5 — Reconnais l’intervalle en paysage : le manche prend les deux tiers de la largeur, les choix le dernier tiers (2 colonnes, boutons qui remplissent la hauteur)
@@ -166,4 +167,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.66.7";
+export const APP_VERSION = "1.66.8";
