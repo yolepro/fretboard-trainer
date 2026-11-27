@@ -227,8 +227,9 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
     const landscape = winW > winH;
     // Many choices (Expert: 12) or landscape: smaller buttons, 3 columns, so everything fits without scrolling.
     const compact = landscape || choices.length > 8;
-    const sideW = landscape ? Math.round(Math.min(420, Math.max(240, (availW - navInset) * 0.4))) : 0;
-    const leftW = landscape ? availW - navInset - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
+    // The landscape menu only takes the top right corner: under the top line, the whole width is ours.
+    const sideW = landscape ? Math.round(Math.min(520, Math.max(260, availW * 0.48))) : 0;
+    const leftW = landscape ? availW - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
     const cols = landscape ? (choices.length > 8 ? 3 : 2) : compact ? 3 : 2;
     // Widths in pixels: a percentage inside a ScrollView is not resolved on iPhone (each button took the full width).
     const gridW = landscape ? sideW : leftW;
@@ -337,14 +338,14 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
             <X size={18} color={colors.onSurface} />
           </Pressable>
         </View>
-        <View style={[styles.dots, landscape && { paddingRight: navInset + spacing.lg }]}>
+        <View style={styles.dots}>
           {Array.from({ length: count }, (_, i) => (
             <View key={i} style={[styles.dot, i < done && { backgroundColor: results[i] ? colors.success : colors.error }, i === done && styles.dotNow]} />
           ))}
         </View>
         {landscape ? (
           // Landscape: the neck and the question on the left, the choices on the side.
-          <View style={[styles.sideRow, { paddingRight: navInset + spacing.lg, paddingBottom: bottomPad }]}>
+          <View style={[styles.sideRow, { paddingRight: spacing.lg, paddingBottom: bottomPad }]}>
             <View style={{ width: leftW, gap: spacing.sm }}>
               {neckView}
               {askRow}
