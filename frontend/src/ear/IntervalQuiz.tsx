@@ -227,10 +227,12 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
     const landscape = winW > winH;
     // Many choices (Expert: 12) or landscape: smaller buttons, 3 columns, so everything fits without scrolling.
     const compact = landscape || choices.length > 8;
-    const sideW = landscape ? Math.round(Math.min(460, Math.max(260, (availW - navInset) * 0.45))) : 0;
+    const sideW = landscape ? Math.round(Math.min(420, Math.max(240, (availW - navInset) * 0.4))) : 0;
     const leftW = landscape ? availW - navInset - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
     const cols = landscape ? (choices.length > 8 ? 3 : 2) : compact ? 3 : 2;
-    const basis = cols === 3 ? "30%" : "47%";
+    // Widths in pixels: a percentage inside a ScrollView is not resolved on iPhone (each button took the full width).
+    const gridW = landscape ? sideW : leftW;
+    const itemW = Math.floor((gridW - (cols - 1) * spacing.sm) / cols);
     // Landscape: the buttons share the whole height of the column, top to bottom.
     const rows = Math.ceil(choices.length / cols);
     const fillH = landscape && sideH ? Math.max(40, Math.min(110, Math.floor((sideH - (rows - 1) * spacing.sm) / rows))) : 0;
@@ -238,7 +240,7 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
     const neckView = (
       <View style={landscape ? null : styles.bleed}>
         <Fretboard
-          fretScale={landscape ? fitScale(leftW, 15) : winW > 700 ? fitScale(leftW + 2 * spacing.lg, 15) : 1}
+          fretScale={landscape ? fitScale(leftW, 12) : winW > 700 ? fitScale(leftW + 2 * spacing.lg, 15) : 1}
           rowH={landscape ? 24 : 30}
           degreeMap={NO_DEGREES}
           visibleLayers={NO_LAYERS}
@@ -286,7 +288,7 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
               testID={`interval-choice-${c.id}`}
               onPress={() => choose(c.id)}
               disabled={!!answer}
-              style={({ pressed }) => [styles.choice, { flexBasis: basis }, compact && styles.choiceCompact, fillH ? { height: fillH, minHeight: 0 } : null, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.choice, { width: itemW }, compact && styles.choiceCompact, fillH ? { height: fillH, minHeight: 0 } : null, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
             >
               <Text style={[styles.choiceName, compact && !(fillH > 60) && styles.choiceNameCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {intervalTitle(c.id)}
@@ -412,7 +414,7 @@ const useStyles = makeStyles((c) => ({
   questionCompact: { fontSize: 17 },
   hint: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  choice: { flexGrow: 1, minHeight: 58, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", alignItems: "center", justifyContent: "center", gap: 2 },
+  choice: { minHeight: 58, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", alignItems: "center", justifyContent: "center", gap: 2 },
   choiceRight: { backgroundColor: "#10B981", borderColor: "#10B981" },
   choiceWrong: { backgroundColor: "#B91C1C", borderColor: "#B91C1C" },
   choiceCompact: { minHeight: 44, paddingVertical: 4, paddingHorizontal: 6, borderRadius: radius.sm, gap: 0 },
