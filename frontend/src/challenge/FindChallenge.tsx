@@ -47,6 +47,7 @@ import { useSettings } from "@/src/settings";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
 import { useLeaveGuard } from "@/src/tabNav";
+import { useRevealOnOpen } from "@/src/components/useRevealOnOpen";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Props = { kind: ChallengeKind; onBack: () => void; preset?: "neck" };
@@ -108,6 +109,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
   const setCustom = (g: CustomGame, o: ChallengeOptions) => setCustomOpts((m) => ({ ...m, [g.id]: o }));
   // A single game is always open; with several, none until one is chosen.
   const customGame = level ? null : customGames.length === 1 ? customGames[0] : (customGames.find((g) => g.id === customId) ?? null);
+  // The card that unfolds scrolls into view.
+  const reveal = useRevealOnOpen(cat ? `cat:${cat.id}` : customGame && customGames.length > 1 ? `game:${customGame.id}` : null);
   const roundChoices = level ? (neckCat ? neckRounds : level.rounds) : (customGame?.rounds ?? ROUND_CHOICES[kind]);
   const levelRoundCount = level ? (levelRounds[roundsKey] ?? (neckCat ? neckRounds[0] : level.defaultRounds)) : 0;
   // What is actually played.
@@ -896,7 +899,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
 
   // Levels: every game keeps its description; the selected one opens with its settings, its rounds and the Start button.
   const levelSetup = level ? (
-    <View style={styles.cats}>
+    <View style={styles.cats} onLayout={reveal.at("cats")}>
       {level.categories.map((c, i) => {
         const on = c === cat;
         const ctx = c.set?.scaleId ?? (level.base.scaleId as string | undefined) ?? "major";
@@ -918,8 +921,8 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           : [];
         if (on && play.randomKey && play.naturalKeys) pills[0] = { ...pills[0], label: tr("Tonalité : hasard, sans ♯ ni ♭") };
         return (
+          <View key={c.id} onLayout={reveal.at(`cat:${c.id}`, "cats")}>
           <GameCard
-            key={c.id}
             testID={`challenge-cat-${c.id}`}
             name={tr(c.name)}
             meta={tr(c.meta)}
@@ -945,20 +948,21 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             startLabel={tr("Démarrer · {name}", { name: tr(c.name) })}
             onStart={requestStart}
           />
+          </View>
         );
       })}
     </View>
   ) : null;
 
   const customSetup = (
-    <View style={styles.cats}>
+    <View style={styles.cats} onLayout={reveal.at("cats")}>
       {customGames.map((g) => {
         const on = g === customGame;
         const o = customOf(g);
         const pills = on ? g.edit.map((id) => customPill(g, o, id)).filter((p): p is Pill => !!p) : [];
         return (
+          <View key={g.id} onLayout={reveal.at(`game:${g.id}`, "cats")}>
           <GameCard
-            key={g.id}
             testID={`challenge-game-${g.id}`}
             name={tr(g.name)}
             meta={tr(g.meta)}
@@ -980,6 +984,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
             startLabel={tr("Démarrer · {name}", { name: tr(g.name) })}
             onStart={requestStart}
           />
+          </View>
         );
       })}
     </View>
@@ -1003,7 +1008,7 @@ export function FindChallenge({ kind, onBack, preset }: Props) {
           <ChallengeResults kind={kind} nameOf={nameOf} bottomPad={bottom + spacing.xl} variant={variant} lengths={sprint ? ["sprint"] : roundChoices} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={[styles.setup, { paddingBottom: bottom + spacing.xl, paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + spacing.lg }]} showsVerticalScrollIndicator={false}>
+        <ScrollView {...reveal.scroll} contentContainerStyle={[styles.setup, { paddingBottom: bottom + spacing.xl, paddingLeft: insets.left + spacing.lg, paddingRight: insets.right + spacing.lg }]} showsVerticalScrollIndicator={false}>
           {kind === "degree" ? (
             <View style={styles.levels}>
               {(["beginner", "inter", "expert", "custom"] as const).map((m) => (

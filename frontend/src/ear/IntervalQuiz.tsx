@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SpeakerHigh, X } from "phosphor-react-native";
 
 import { Fretboard, fitScale, type ChordMark } from "@/src/components/Fretboard";
@@ -42,7 +43,9 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
   const styles = useStyles();
   const { colors } = useTheme();
   const { settings, nameOf } = useSettings();
-  const { width: winW } = useWindowDimensions();
+  const { width: winW, height: winH } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const availW = winW - insets.left - insets.right; // the Défis screen keeps the safe-area margins
   const lvl = INTERVAL_LEVELS.find((l) => l.id === level.id) ?? INTERVAL_LEVELS[0];
   const choices = INTERVALS.filter((i) => (lvl.intervals ?? []).includes(i.id));
   const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
@@ -220,10 +223,97 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
   if (phase === "running" && q && neck) {
     const done = results.length;
     const right = answer === q.id;
-    const contentW = winW - 2 * spacing.lg;
+    const landscape = winW > winH;
+    // Many choices (Expert: 12) or landscape: smaller buttons, 3 columns, so everything fits without scrolling.
+    const compact = landscape || choices.length > 8;
+    const sideW = landscape ? Math.round(Math.min(420, Math.max(260, (availW - navInset) * 0.4))) : 0;
+    const leftW = landscape ? availW - navInset - sideW - 3 * spacing.lg : availW - 2 * spacing.lg;
+    const cols = landscape ? (choices.length > 8 ? 3 : 2) : compact ? 3 : 2;
+    const basis = cols === 3 ? "30%" : "47%";
+
+    const neckView = (
+      <View style={landscape ? null : styles.bleed}>
+        <Fretboard
+          fretScale={landscape ? fitScale(leftW, 15) : winW > 700 ? fitScale(leftW + 2 * spacing.lg, 15) : 1}
+          rowH={landscape ? 24 : 30}
+          degreeMap={NO_DEGREES}
+          visibleLayers={NO_LAYERS}
+          labelMode="degree"
+          showNeutral={false}
+          nameOf={nameOf}
+          onNotePress={(midi) => playNote(midi, settings.volume)}
+          windowRange={neck.window}
+          marks={neck.marks}
+        />
+      </View>
+    );
+    const askRow = (
+      <View style={styles.askRow}>
+        <Pressable
+          testID="interval-replay"
+          onPress={() => playQ(q)}
+          style={({ pressed }) => [styles.listen, compact && styles.listenCompact, pressed && styles.pressed]}
+          accessibilityLabel={tr("Réécouter")}
+        >
+          <SpeakerHigh size={compact ? 22 : 28} color={colors.onBrandPrimary} weight="fill" />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.question, compact && styles.questionCompact]}>
+            {answer ? (right ? tr("Bravo !") : tr("C’était : {name}", { name: intervalTitle(q.id) })) : tr("Quel intervalle entends-tu ?")}
+          </Text>
+          <Text style={styles.hint} numberOfLines={2}>
+            {answer
+              ? `${nameOf(q.root.midi % 12)} → ${nameOf(q.other.midi % 12)} · ${q.down ? tr("en descendant") : tr("en montant")}`
+              : lvl.down
+                ? tr("1 = la note jouée en premier · le ? peut être plus grave ou plus aigu")
+                : tr("1 = la note jouée en premier · touche le haut-parleur pour réécouter")}
+          </Text>
+        </View>
+      </View>
+    );
+    const grid = (
+      <View style={styles.grid}>
+        {choices.map((c) => {
+          const isRight = !!answer && c.id === q.id;
+          const isWrong = answer === c.id && c.id !== q.id;
+          return (
+            <Pressable
+              key={c.id}
+              testID={`interval-choice-${c.id}`}
+              onPress={() => choose(c.id)}
+              disabled={!!answer}
+              style={({ pressed }) => [styles.choice, { flexBasis: basis }, compact && styles.choiceCompact, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
+            >
+              <Text style={[styles.choiceName, compact && styles.choiceNameCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                {intervalTitle(c.id)}
+              </Text>
+              <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1}>
+                {intervalSub(c.id)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+    const review =
+      answer && !right ? (
+        <View style={styles.reviewRow}>
+          <Pressable
+            testID="interval-hear-mine"
+            onPress={() => playInterval(q.root.midi, q.root.midi + (q.down ? -1 : 1) * intervalById(answer).semi, true)}
+            style={({ pressed }) => [styles.secondary, compact && styles.btnCompact, pressed && styles.pressed]}
+          >
+            <Text style={styles.secondaryText}>{tr("Écouter mon choix")}</Text>
+          </Pressable>
+          <Pressable testID="interval-next" onPress={next} style={({ pressed }) => [styles.primarySmall, compact && styles.btnCompact, pressed && styles.pressed]}>
+            <Text style={styles.primaryText}>{tr("Suivant")}</Text>
+          </Pressable>
+        </View>
+      ) : null;
+
     return (
       <View style={[styles.flex, { paddingTop: topPad }]} testID="interval-quiz-running">
-        <View style={[styles.topRow, { paddingRight: navInset + spacing.lg }]}>
+        <View style={[styles.topRow, landscape && styles.topRowCompact, { paddingRight: navInset + spacing.lg }]}>
           <Text style={styles.label} numberOfLines={1}>
             {tr("Reconnais l’intervalle")} · {tr(lvl.name)}
           </Text>
@@ -241,78 +331,31 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
             <X size={18} color={colors.onSurface} />
           </Pressable>
         </View>
-        <View style={styles.dots}>
+        <View style={[styles.dots, landscape && { paddingRight: navInset + spacing.lg }]}>
           {Array.from({ length: count }, (_, i) => (
             <View key={i} style={[styles.dot, i < done && { backgroundColor: results[i] ? colors.success : colors.error }, i === done && styles.dotNow]} />
           ))}
         </View>
-        <ScrollView key={`run-${Math.round(winW)}`} contentContainerStyle={[styles.runContent, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
-          <View style={styles.bleed}>
-            <Fretboard
-              fretScale={winW > 700 ? fitScale(contentW + 2 * spacing.lg, 15) : 1}
-              rowH={30}
-              degreeMap={NO_DEGREES}
-              visibleLayers={NO_LAYERS}
-              labelMode="degree"
-              showNeutral={false}
-              nameOf={nameOf}
-              onNotePress={(midi) => playNote(midi, settings.volume)}
-              windowRange={neck.window}
-              marks={neck.marks}
-            />
-          </View>
-          <View style={styles.askRow}>
-            <Pressable testID="interval-replay" onPress={() => playQ(q)} style={({ pressed }) => [styles.listen, pressed && styles.pressed]} accessibilityLabel={tr("Réécouter")}>
-              <SpeakerHigh size={28} color={colors.onBrandPrimary} weight="fill" />
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.question}>
-                {answer ? (right ? tr("Bravo !") : tr("C’était : {name}", { name: intervalTitle(q.id) })) : tr("Quel intervalle entends-tu ?")}
-              </Text>
-              <Text style={styles.hint}>
-                {answer
-                  ? `${nameOf(q.root.midi % 12)} → ${nameOf(q.other.midi % 12)} · ${q.down ? tr("en descendant") : tr("en montant")}`
-                  : lvl.down
-                    ? tr("1 = la note jouée en premier · le ? peut être plus grave ou plus aigu")
-                    : tr("1 = la note jouée en premier · touche le haut-parleur pour réécouter")}
-              </Text>
+        {landscape ? (
+          // Landscape: the neck and the question on the left, the choices on the side.
+          <View style={[styles.sideRow, { paddingRight: navInset + spacing.lg, paddingBottom: bottomPad }]}>
+            <View style={{ width: leftW, gap: spacing.sm }}>
+              {neckView}
+              {askRow}
+              {review}
             </View>
+            <ScrollView style={{ width: sideW }} contentContainerStyle={{ paddingBottom: spacing.md }} showsVerticalScrollIndicator={false} testID="interval-choices-side">
+              {grid}
+            </ScrollView>
           </View>
-          <View style={styles.grid}>
-            {choices.map((c) => {
-              const isRight = !!answer && c.id === q.id;
-              const isWrong = answer === c.id && c.id !== q.id;
-              return (
-                <Pressable
-                  key={c.id}
-                  testID={`interval-choice-${c.id}`}
-                  onPress={() => choose(c.id)}
-                  disabled={!!answer}
-                  style={({ pressed }) => [styles.choice, isRight && styles.choiceRight, isWrong && styles.choiceWrong, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.choiceName, (isRight || isWrong) && styles.choiceNameOn]} numberOfLines={1} adjustsFontSizeToFit>
-                    {intervalTitle(c.id)}
-                  </Text>
-                  <Text style={[styles.choiceSub, (isRight || isWrong) && styles.choiceNameOn]}>{intervalSub(c.id)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {answer && !right ? (
-            <View style={styles.reviewRow}>
-              <Pressable
-                testID="interval-hear-mine"
-                onPress={() => playInterval(q.root.midi, q.root.midi + (q.down ? -1 : 1) * intervalById(answer).semi, true)}
-                style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-              >
-                <Text style={styles.secondaryText}>{tr("Écouter mon choix")}</Text>
-              </Pressable>
-              <Pressable testID="interval-next" onPress={next} style={({ pressed }) => [styles.primarySmall, pressed && styles.pressed]}>
-                <Text style={styles.primaryText}>{tr("Suivant")}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </ScrollView>
+        ) : (
+          <ScrollView key={`run-${Math.round(winW)}`} contentContainerStyle={[styles.runContent, compact && styles.runContentCompact, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
+            {neckView}
+            {askRow}
+            {grid}
+            {review}
+          </ScrollView>
+        )}
       </View>
     );
   }
@@ -345,6 +388,8 @@ export function IntervalQuiz({ level, count, onPhase, onExit, onResults, bottomP
 const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   topRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingLeft: spacing.lg, height: 52 },
+  topRowCompact: { height: 46 },
+  sideRow: { flex: 1, flexDirection: "row", gap: spacing.lg, paddingLeft: spacing.lg },
   label: { flex: 1, fontFamily: fonts.display, fontSize: 15, color: c.onSurfaceSecondary },
   chrono: { fontFamily: fonts.display, fontSize: 24, fontWeight: "700", color: c.brandPrimary, fontVariant: ["tabular-nums"] },
   roundBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center" },
@@ -352,17 +397,24 @@ const useStyles = makeStyles((c) => ({
   dot: { flex: 1, height: 8, borderRadius: 4, backgroundColor: c.surfaceTertiary },
   dotNow: { backgroundColor: c.brandPrimary },
   runContent: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  runContentCompact: { gap: spacing.sm },
   bleed: { marginHorizontal: -spacing.lg },
   askRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   listen: { width: 64, height: 64, borderRadius: 32, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  listenCompact: { width: 48, height: 48, borderRadius: 24 },
   question: { fontFamily: fonts.display, fontSize: 20, fontWeight: "700", color: c.onSurface },
+  questionCompact: { fontSize: 17 },
   hint: { fontFamily: fonts.text, fontSize: 13, color: c.onSurfaceTertiary, lineHeight: 18 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  choice: { flexBasis: "47%", flexGrow: 1, minHeight: 58, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", alignItems: "center", justifyContent: "center", gap: 2 },
+  choice: { flexGrow: 1, minHeight: 58, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: "rgba(28,30,36,0.80)", alignItems: "center", justifyContent: "center", gap: 2 },
   choiceRight: { backgroundColor: "#10B981", borderColor: "#10B981" },
   choiceWrong: { backgroundColor: "#B91C1C", borderColor: "#B91C1C" },
+  choiceCompact: { minHeight: 44, paddingVertical: 4, paddingHorizontal: 6, borderRadius: radius.sm, gap: 0 },
   choiceName: { fontFamily: fonts.display, fontSize: 16, fontWeight: "700", color: c.onSurface },
+  choiceNameCompact: { fontSize: 14 },
   choiceSub: { fontFamily: fonts.text, fontSize: 12, color: c.onSurfaceTertiary },
+  choiceSubCompact: { fontSize: 10.5 },
+  btnCompact: { height: 40 },
   choiceNameOn: { color: "#FFFFFF" },
   reviewRow: { flexDirection: "row", gap: spacing.sm },
   primarySmall: { flex: 1, height: 48, borderRadius: radius.pill, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },

@@ -2,6 +2,7 @@
 // Bump the minor number (middle digit) at each feature change so a reload can be verified on screen.
 // Keep app.json and package.json "version" in sync.
 //
+// 1.66.1 — Reconnais l’intervalle : en paysage, les choix à droite du manche ; boutons plus petits sur 3 colonnes en Expert (plus de défilement) ; Défis et réglages des défis : la carte qui se déplie défile pour être visible en entier
 // 1.66.0 — FS-38 : Défis › Entraîner l’oreille › « Reconnais l’intervalle » remplace « Rejoue l’intervalle » : l’intervalle est joué en arpège dès l’affichage et montré sur le manche (fondamentale 1, note ?), liste de choix, niveaux Débutant (3, 4, 5, 8), Intermédiaire (8 intervalles), Expert (les 12, en montant ou en descendant) ; records par niveau dans Mes résultats
 // 1.65.3 — app.json : owner « yolepros-team » (le propriétaire du projet sur expo.dev), eas update refusait de publier
 // 1.65.2 (branche feature/fs-18-cadences) — FS-37 micro sur iPhone, 2e correction : avant chaque reprise du micro, tous les sons (notes et sons de réponse) sont mis en pause (c’est ce que faisait « Écouter », qui débloquait la détection) ; le micro revient 450 ms après la fin du son ; s’il ne transmet plus rien pendant 1,5 s, un nouveau flux est lancé automatiquement
@@ -159,4 +160,4 @@
 // 1.3.0 — 5 styles de manche au choix (Réglages → Manche) : Studio, Palissandre, Érable miel, Ébène, Nuit indigo
 // 1.2.0 — repères de touche en marron (se détachent des notes)
 // 1.1.0 — positions décalées (ancienne Pos. 2 = Pos. 1) + bascule 1/2 ↔ 2/2 (position homologue +12 frets)
-export const APP_VERSION = "1.66.0";
+export const APP_VERSION = "1.66.1";

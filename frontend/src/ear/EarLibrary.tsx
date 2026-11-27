@@ -10,6 +10,7 @@ import { SCALES, STRING_LABELS } from "@/src/music/theory";
 import { useResultsVersion } from "@/src/results";
 import { storage } from "@/src/utils/storage";
 import { tr } from "@/src/i18n";
+import { useRevealOnOpen } from "@/src/components/useRevealOnOpen";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 /** Record key of a Défis game (micro: per game id; Accords: per level). */
@@ -60,6 +61,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
   const [bests, setBests] = useState<Record<string, Best | null>>({});
   const resultsV = useResultsVersion();
   const open = EAR_GAMES.find((g) => g.id === openId) ?? null;
+  const reveal = useRevealOnOpen(openId); // the card that unfolds scrolls into view
   const openCount = open ? countOf(open) : 0;
 
   // The record of the open game, for its current length.
@@ -150,9 +152,9 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
 
   return (
     <>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false} testID="ear-library">
+      <ScrollView {...reveal.scroll} contentContainerStyle={[styles.content, { paddingBottom: bottomPad + spacing.xl }]} showsVerticalScrollIndicator={false} testID="ear-library">
         {DEFI_FAMILIES.map((fam) => (
-          <View key={fam.id} style={styles.family}>
+          <View key={fam.id} style={styles.family} onLayout={reveal.at(`fam:${fam.id}`)}>
             <FamilyTitle title={tr(fam.title)} lead={tr(fam.lead)} />
             {EAR_GAMES.filter((g) => g.family === fam.id).map((g) => {
               if (g.kind === "challenge") {
@@ -175,8 +177,8 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
               const o = mic ? optsOf(g) : null;
               const pills: Pill[] = o ? (g.edit ?? []).map((id) => ({ id, label: pillLabel(o, id), onPress: () => setSheet({ game: g, id }) })) : [];
               return (
+                <View key={g.id} onLayout={reveal.at(g.id, `fam:${fam.id}`)}>
                 <GameCard
-                  key={g.id}
                   testID={`ear-game-${g.id}`}
                   name={tr(g.name)}
                   meta={tr(g.meta)}
@@ -229,6 +231,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                   startLabel={tr("Démarrer · {name}", { name: lv ? tr(lv.name) : tr(g.name) })}
                   onStart={() => onStart(g)}
                 />
+                </View>
               );
             })}
           </View>
