@@ -22,7 +22,7 @@ const FEATURES = [
   },
   {
     title: "Défis",
-    text: "Mesure-toi au chrono. Connaître le manche : trouve la note, le degré, la gamme, le degré de l’accord. Entraîner l’oreille : rejoue la note ou l’intervalle, reconnais l’accord. Records, résultats et points faibles.",
+    text: "Mesure-toi au chrono. Connaître le manche : trouve la note, le degré, la gamme, le degré de l’accord. Entraîner l’oreille : rejoue la note, reconnais l’intervalle ou l’accord. Records, résultats et points faibles.",
   },
   {
     title: "Réglages",

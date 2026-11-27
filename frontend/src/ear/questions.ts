@@ -18,7 +18,7 @@ export const SECTIONS: { id: Section; label: string; desc: string }[] = [
   { id: "board", label: "Trouve la note", desc: "Joue la note demandée sur la corde indiquée." },
   { id: "listen", label: "Rejoue la note", desc: "Écoute une note et rejoue-la à la bonne octave." },
   { id: "degree", label: "Trouve le degré de l’accord", desc: "Joue le degré demandé d’un accord (n’importe quelle octave)." },
-  { id: "interval", label: "Rejoue l’intervalle", desc: "L’app joue la tonique : joue l’intervalle demandé au-dessus." },
+  { id: "interval", label: "Reconnais l’intervalle", desc: "Un intervalle est joué et montré sur le manche : reconnais-le." },
   { id: "chords", label: "Reconnais l’accord", desc: "Un accord est joué : reconnais son type (majeur, mineur…)." },
 ];
 
@@ -70,6 +70,7 @@ const numOf = (label: string) => parseInt(label.replace(/[^0-9]/g, ""), 10);
 
 export function intervalName(label: string) {
   const n = numOf(label);
+  if (n === 8) return tr("Octave");
   const perfect = n === 4 || n === 5;
   let q = perfect ? "juste" : "majeure";
   if (label.startsWith("bb")) q = "diminuée";

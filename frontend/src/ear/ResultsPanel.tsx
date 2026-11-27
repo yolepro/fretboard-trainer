@@ -5,6 +5,7 @@ import { CaretLeft, CaretRight, Crosshair } from "phosphor-react-native";
 
 import { Chip, ChipRow, SectionLabel } from "@/src/components/Chip";
 import { SETS as CHORD_SETS } from "@/src/ear/ChordQuiz";
+import { INTERVAL_LEVELS } from "@/src/ear/games";
 import { useResultsVersion } from "@/src/results";
 import { SECTIONS, bestKey, formatTime, intervalName, positionText, type Best, type Section } from "@/src/ear/questions";
 import { MIN_TRIES, loadHistory, since, targetStats, tops, type Attempt, type Period, type SessionRec, type TargetStat } from "@/src/ear/stats";
@@ -25,6 +26,9 @@ type Props = {
 type View_ = "home" | "map" | "tops";
 type Mode = "speed" | "acc";
 
+/** Quizzes keep one record per level (Reconnais l’accord, Reconnais l’intervalle). */
+const quizSetsOf = (section: Section): { id: string; name: string }[] | null =>
+  section === "chords" ? CHORD_SETS : section === "interval" ? INTERVAL_LEVELS : null;
 const COUNTS = [5, 10, 20];
 const PERIODS: Period[] = [7, 30, 0];
 // Green (good) → dark red (bad); the steps also differ in lightness.
@@ -81,7 +85,8 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
         }),
       ),
     ).then(setBests);
-    if (section === "chords") {
+    const quizSets = quizSetsOf(section);
+    if (quizSets) {
       const parse = (v: unknown) => {
         try {
           return typeof v === "string" ? (JSON.parse(v) as Best) : null;
@@ -90,7 +95,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
         }
       };
       Promise.all(
-        CHORD_SETS.flatMap((st) => COUNTS.map((n) => storage.getItem(`${bestKey("chords", n)}_${st.id}`, null).then((v) => [`${st.id}_${n}`, parse(v)] as const))),
+        quizSets.flatMap((st) => COUNTS.map((n) => storage.getItem(`${bestKey(section, n)}_${st.id}`, null).then((v) => [`${st.id}_${n}`, parse(v)] as const))),
       ).then((pairs) => setChordBests(Object.fromEntries(pairs)));
     }
     setSel(null);
@@ -306,7 +311,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
               </View>
             ))
           )}
-          {section !== "chords" ? (
+          {!quizSetsOf(section) ? (
             <Pressable testID="results-train-weak" onPress={onTrainWeak} style={({ pressed }) => [styles.trainBtn, pressed && styles.pressed]}>
               <Crosshair size={18} color={colors.brandPrimary} weight="bold" />
               <Text style={styles.trainText}>{tr("Travailler mes points faibles")}</Text>
@@ -345,17 +350,17 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
           <Text style={styles.label}>{tr("Records")}</Text>
           {periodChip}
         </View>
-        {section === "chords" ? (
+        {quizSetsOf(section) ? (
           <View style={styles.card} testID="results-chord-records">
             <View style={styles.chordRow}>
               <Text style={[styles.muted, styles.chordName]}> </Text>
               {COUNTS.map((n) => (
                 <Text key={n} style={[styles.muted, styles.chordCell]}>
-                  {tr("{n} accords", { n })}
+                  {section === "interval" ? tr("{n} intervalles", { n }) : tr("{n} accords", { n })}
                 </Text>
               ))}
             </View>
-            {CHORD_SETS.map((st) => (
+            {quizSetsOf(section)!.map((st) => (
               <View key={st.id} style={styles.chordRow}>
                 <Text style={[styles.chordSet, styles.chordName]} numberOfLines={2}>
                   {tr(st.name)}
@@ -438,7 +443,7 @@ export function ResultsPanel({ section, onSection, nameOf, bottomPad, onTrainWea
 
         <Pressable testID="results-open-tops" onPress={() => setView("tops")} style={({ pressed }) => [styles.card, styles.linkCard, pressed && styles.pressed]}>
           <View style={styles.linkText}>
-            <Text style={styles.cardTitle}>{section === "chords" ? tr("Accords rapides, lents, fragiles") : tr("Notes rapides, lentes, fragiles")}</Text>
+            <Text style={styles.cardTitle}>{section === "chords" ? tr("Accords rapides, lents, fragiles") : section === "interval" ? tr("Intervalles rapides, lents, fragiles") : tr("Notes rapides, lentes, fragiles")}</Text>
             <Text style={styles.muted} numberOfLines={2}>
               {top.slow[0] || top.fragile[0]
                 ? [top.slow[0] && tr("Plus lente : {x}", { x: nameOfStat(top.slow[0]) }), top.fragile[0] && tr("plus ratée : {x}", { x: nameOfStat(top.fragile[0]) })].filter(Boolean).join(" · ")

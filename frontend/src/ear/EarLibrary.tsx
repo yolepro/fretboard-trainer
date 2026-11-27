@@ -14,7 +14,7 @@ import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 /** Record key of a Défis game (micro: per game id; Accords: per level). */
 export const earBestKey = (g: EarGame, count: number, levelId?: string) =>
-  g.kind === "chords" ? `${bestKey("chords", count)}_${levelId ?? g.levels?.[0]?.id}` : bestKey(g.id as Section, count);
+  g.levels ? `${bestKey(g.section ?? "chords", count)}_${levelId ?? g.levels[0]?.id}` : bestKey(g.id as Section, count);
 
 /** How the player answers: micro, touch, or both (small icons on the card). */
 function InputIcons({ input }: { input: EarGame["input"] }) {
@@ -45,15 +45,15 @@ type Props = {
   setCountOf: (g: EarGame, n: number) => void;
   onStart: (g: EarGame) => void;
   onChallenge: (c: "degree" | "scale" | "chord") => void; // Trouve le degré / Trouve la gamme: their own screen
-  chordLevel: ChordLevel; // Reconnais l’accord: the level chosen
-  setChordLevel: (l: ChordLevel) => void;
+  levelOf: (g: EarGame) => ChordLevel; // quizzes (Reconnais l’accord, l’intervalle): the level chosen
+  setLevelOf: (g: EarGame, l: ChordLevel) => void;
   perm: "unknown" | "granted" | "ask" | "blocked";
   error: string | null;
   bottomPad: number;
 };
 
 /** Défis: every game on one list, in two families (src/ear/games.ts). */
-export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCountOf, onStart, onChallenge, chordLevel, setChordLevel, perm, error, bottomPad }: Props) {
+export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCountOf, onStart, onChallenge, levelOf, setLevelOf, perm, error, bottomPad }: Props) {
   const styles = useStyles();
   // The open sheet (game + setting); its choices are rebuilt from the current settings at every render.
   const [sheet, setSheet] = useState<{ game: EarGame; id: EarSetting } | null>(null);
@@ -65,7 +65,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
   // The record of the open game, for its current length.
   useEffect(() => {
     if (!open) return;
-    const key = earBestKey(open, openCount, chordLevel.id);
+    const key = earBestKey(open, openCount, levelOf(open).id);
     storage.getItem(key, null).then((v) => {
       let b: Best | null = null;
       try {
@@ -75,7 +75,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
       }
       setBests((m) => ({ ...m, [key]: b }));
     });
-  }, [open, openCount, resultsV, chordLevel.id]);
+  }, [open, openCount, resultsV, open ? levelOf(open).id : ""]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** The sheet of one setting of a micro game. */
   const sheetOf = (g: EarGame, id: EarSetting): OptionSheetDef => {
@@ -169,7 +169,8 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
               }
               const on = g.id === openId;
               const n = countOf(g);
-              const best = on ? bests[earBestKey(g, n, chordLevel.id)] : null;
+              const lv = g.levels ? levelOf(g) : null;
+              const best = on ? bests[earBestKey(g, n, lv?.id)] : null;
               const mic = g.kind === "mic";
               const o = mic ? optsOf(g) : null;
               const pills: Pill[] = o ? (g.edit ?? []).map((id) => ({ id, label: pillLabel(o, id), onPress: () => setSheet({ game: g, id }) })) : [];
@@ -183,7 +184,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                   open={on}
                   onToggle={() => onOpen(on ? null : g.id)}
                   pills={pills}
-                  countLabel={mic ? tr("Notes") : tr("Accords")}
+                  countLabel={mic ? tr("Notes") : g.kind === "intervals" ? tr("Intervalles") : tr("Accords")}
                   counts={countsOf(g)}
                   count={n}
                   onCount={(c) => setCountOf(g, c)}
@@ -205,14 +206,14 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                           </Text>
                         ) : null}
                       </>
-                    ) : g.levels ? (
+                    ) : g.levels && lv ? (
                       <>
-                        <View style={styles.levels} testID="chord-level">
+                        <View style={styles.levels} testID={`${g.id}-level`}>
                           {g.levels.map((l) => (
-                            <Chip key={l.id} testID={`chord-level-${l.id}`} label={tr(l.name)} selected={l.id === chordLevel.id} onPress={() => setChordLevel(l)} />
+                            <Chip key={l.id} testID={`${g.kind === "chords" ? "chord" : g.id}-level-${l.id}`} label={tr(l.name)} selected={l.id === lv.id} onPress={() => setLevelOf(g, l)} />
                           ))}
                         </View>
-                        <Text style={styles.small}>{tr(chordLevel.meta)}</Text>
+                        <Text style={styles.small}>{tr(lv.meta)}</Text>
                       </>
                     ) : null
                   }
@@ -225,7 +226,7 @@ export function EarLibrary({ openId, onOpen, optsOf, setOptsOf, countOf, setCoun
                   }
                   warning={mic ? micNote : null}
                   startTestID={`ear-start-${g.id}`}
-                  startLabel={tr("Démarrer · {name}", { name: g.levels ? tr(chordLevel.name) : tr(g.name) })}
+                  startLabel={tr("Démarrer · {name}", { name: lv ? tr(lv.name) : tr(g.name) })}
                   onStart={() => onStart(g)}
                 />
               );

@@ -15,6 +15,7 @@ import { FindChallenge } from "@/src/challenge/FindChallenge";
 import { resumeWebAudio } from "@/src/audio/webAudio";
 import { ResultsPanel } from "@/src/ear/ResultsPanel";
 import { ChordQuiz } from "@/src/ear/ChordQuiz";
+import { IntervalQuiz } from "@/src/ear/IntervalQuiz";
 import { loadHistory, saveAttempt, saveSession, type Attempt } from "@/src/ear/stats";
 import { useResultsVersion } from "@/src/results";
 import { pickWeakKey, sessionProgress, weaknessScores } from "@/src/ear/weakness";
@@ -93,14 +94,15 @@ export default function EarScreen() {
   const [gameCounts, setGameCounts] = useState<Record<string, number>>({});
   const optsOf = (g: EarGame): Options => gameOpts[g.id] ?? { ...DEFAULT_OPTIONS, count: defaultCountOf(g), ...g.preset };
   const countOf = (g: EarGame) => (g.kind === "mic" ? optsOf(g).count : (gameCounts[g.id] ?? defaultCountOf(g)));
-  // Reconnais l’accord: the level chosen. Trouve le degré / la gamme: their own screen while open.
-  const [chordLevel, setChordLevel] = useState<ChordLevel>(CHORD_LEVELS[0]);
+  // Quizzes (Reconnais l’accord, Reconnais l’intervalle): the level chosen per game. Trouve le degré / la gamme: their own screen while open.
+  const [quizLevels, setQuizLevels] = useState<Record<string, ChordLevel>>({});
+  const levelOf = (g: EarGame) => quizLevels[g.id] ?? g.levels?.[0] ?? CHORD_LEVELS[0];
   const [challenge, setChallenge] = useState<"degree" | "scale" | "chord" | null>(null);
   // The micro game being played (its record key).
   const gameRef = useRef<EarGame>(EAR_GAMES[0]);
   const [curGame, setCurGame] = useState<EarGame>(EAR_GAMES[0]);
-  // Accords: the game launched runs its own quiz (ChordQuiz), mounted until it is left.
-  const [chordGame, setChordGame] = useState<{ level: ChordLevel; count: number; token: number } | null>(null);
+  // Quizzes: the game launched runs its own screen (ChordQuiz, IntervalQuiz), mounted until it is left.
+  const [chordGame, setChordGame] = useState<{ game: EarGame; level: ChordLevel; count: number; token: number } | null>(null);
   const [chordPhase, setChordPhase] = useState<"setup" | "running" | "done">("setup");
   const chordRunning = !!chordGame && chordPhase === "running";
   // (Accords: only while its quiz is on screen, i.e. on the “play” tab.)
@@ -474,11 +476,11 @@ export default function EarScreen() {
 
   /** “Démarrer · <jeu>” on a card of the library. */
   const startGame = (g: EarGame) => {
-    if (g.kind === "chords") {
+    if (g.kind === "chords" || g.kind === "intervals") {
       resumeWebAudio(); // Safari (iPhone): the audio clock only runs after a tap
-      setSection("chords");
+      setSection(g.section ?? "chords");
       setChordPhase("setup");
-      setChordGame({ level: chordLevel, count: countOf(g), token: Date.now() });
+      setChordGame({ game: g, level: levelOf(g), count: countOf(g), token: Date.now() });
       return;
     }
     zoneRef.current = null;
@@ -583,7 +585,7 @@ export default function EarScreen() {
                 </Pressable>
               ) : null}
               <Text style={styles.title} numberOfLines={1}>
-                {showingDone ? (chordGame ? tr("Reconnais l’accord") : tr(curGame.name)) : tab === "results" ? tr("Mes résultats") : tr("Défis")}
+                {showingDone ? (chordGame ? tr(chordGame.game.name) : tr(curGame.name)) : tab === "results" ? tr("Mes résultats") : tr("Défis")}
               </Text>
               {tab === "play" && !showingDone ? (
                 <Pressable testID="ear-tab-results" onPress={() => setTab("results")} style={styles.iconBtn} accessibilityLabel={tr("Mes résultats")}>
@@ -641,21 +643,23 @@ export default function EarScreen() {
               />
             </View>
           ) : chordGame ? (
-            <ChordQuiz
-              key={chordGame.token}
-              level={chordGame.level}
-              count={chordGame.count}
-              onPhase={setChordPhase}
-              onExit={leaveChords}
-              onResults={() => {
-                leaveChords();
-                setSection("chords");
-                setTab("results");
-              }}
-              bottomPad={bottomChrome + spacing.xl}
-              topPad={0}
-              navInset={navInset}
-            />
+            (() => {
+              const quizProps = {
+                level: chordGame.level,
+                count: chordGame.count,
+                onPhase: setChordPhase,
+                onExit: leaveChords,
+                onResults: () => {
+                  leaveChords();
+                  setSection(chordGame.game.section ?? "chords");
+                  setTab("results");
+                },
+                bottomPad: bottomChrome + spacing.xl,
+                topPad: 0,
+                navInset,
+              };
+              return chordGame.game.kind === "intervals" ? <IntervalQuiz key={chordGame.token} {...quizProps} /> : <ChordQuiz key={chordGame.token} {...quizProps} />;
+            })()
           ) : (
             <EarLibrary
               openId={openGame}
@@ -668,8 +672,8 @@ export default function EarScreen() {
               }
               onStart={startGame}
               onChallenge={setChallenge}
-              chordLevel={chordLevel}
-              setChordLevel={setChordLevel}
+              levelOf={levelOf}
+              setLevelOf={(g, l) => setQuizLevels((m) => ({ ...m, [g.id]: l }))}
               perm={perm}
               error={error}
               bottomPad={bottomChrome + spacing.xl}

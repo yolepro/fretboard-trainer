@@ -7,8 +7,13 @@ export type EarSetting = "strings" | "scale" | "level" | "intervals";
 
 export type DefiFamily = "neck" | "ear";
 
-/** Accords: one level = one set of chord kinds to tell apart (records per level). */
-export type ChordLevel = { id: string; name: string; meta: string; chords: string[] };
+/**
+ * Quiz levels (records per level).
+ * Reconnais l’accord: `chords` = the chord kinds to tell apart.
+ * Reconnais l’intervalle: `intervals` = the intervals asked (labels of src/ear/intervals.ts), `down` = also descending.
+ */
+export type ChordLevel = { id: string; name: string; meta: string; chords: string[]; intervals?: string[]; down?: boolean };
+export type QuizLevel = ChordLevel;
 
 export type EarGame = {
   /**
@@ -18,7 +23,7 @@ export type EarGame = {
    */
   id: string;
   family: DefiFamily;
-  kind: "mic" | "chords" | "challenge";
+  kind: "mic" | "chords" | "intervals" | "challenge"; // chords / intervals: a quiz with choices and levels
   section?: Section; // micro games and Accords: the question engine and the results it is counted with
   challenge?: "degree" | "scale" | "chord"; // challenge games
   name: string;
@@ -43,6 +48,19 @@ export const CHORD_LEVELS: ChordLevel[] = [
   { id: "all", name: "Tout", meta: "Les 8 accords mélangés", chords: ["maj", "min", "dim", "aug", "maj7", "dom7", "min7", "m7b5"] },
 ];
 
+/** Reconnais l’intervalle (FS-38). */
+export const INTERVAL_LEVELS: QuizLevel[] = [
+  { id: "beginner", name: "Débutant", meta: "Tierce majeure, quarte, quinte, octave · en montant", chords: [], intervals: ["3", "4", "5", "8"] },
+  {
+    id: "inter",
+    name: "Intermédiaire",
+    meta: "Les intervalles de la gamme majeure et leurs voisins mineurs (seconde, tierces, quarte, quinte, sixte, septième mineure, octave) · en montant",
+    chords: [],
+    intervals: ["2", "b3", "3", "4", "5", "6", "b7", "8"],
+  },
+  { id: "expert", name: "Expert", meta: "Les 12 intervalles, en montant ou en descendant", chords: [], intervals: ["b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7", "8"], down: true },
+];
+
 export const EAR_GAMES: EarGame[] = [
   // ----- Connaître le manche -----
   {
@@ -62,16 +80,16 @@ export const EAR_GAMES: EarGame[] = [
   { id: "degree", family: "neck", kind: "mic", section: "degree", name: "Trouve le degré de l’accord", meta: "Joue le degré demandé d’un accord, à n’importe quelle octave.", input: ["mic"] },
   // ----- Entraîner l’oreille -----
   { id: "listen", family: "ear", kind: "mic", section: "listen", name: "Rejoue la note", meta: "Écoute une note et rejoue-la à la bonne octave.", input: ["mic"] },
+  // FS-38: replaces « Rejoue l’intervalle » (micro). Its results stay in the same section.
   {
-    id: "interval",
+    id: "intervals",
     family: "ear",
-    kind: "mic",
+    kind: "intervals",
     section: "interval",
-    name: "Rejoue l’intervalle",
-    meta: "L’app joue la tonique : joue l’intervalle demandé au-dessus.",
-    input: ["mic"],
-    preset: { scaleId: "major", level: 1, intervals: ["5"] },
-    edit: ["scale", "level", "intervals"],
+    name: "Reconnais l’intervalle",
+    meta: "Un intervalle est joué et montré sur le manche : choisis son nom.",
+    input: ["touch"],
+    levels: INTERVAL_LEVELS,
   },
   { id: "chords", family: "ear", kind: "chords", section: "chords", name: "Reconnais l’accord", meta: "Un accord est joué : choisis son type.", input: ["touch"], levels: CHORD_LEVELS },
 ];
